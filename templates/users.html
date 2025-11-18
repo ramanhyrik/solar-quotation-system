@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Solar Quotation</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>☀️ Solar Energy</h2>
+        <nav>
+            <a href="/dashboard">New Quote</a>
+            <a href="/admin">Admin Panel</a>
+            <a href="/users" class="active">Manage Users</a>
+            <a href="/logout">Logout</a>
+        </nav>
+        <div class="user-info">
+            <p>{{ user.email }}</p>
+            <p><small>ADMIN</small></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1>User Management</h1>
+
+        <div class="quote-form">
+            <h3>Create New User</h3>
+            <form id="createUserForm">
+                <div class="form-grid">
+                    <div>
+                        <label>Full Name</label>
+                        <input type="text" id="userName" placeholder="John Doe" required>
+                    </div>
+                    <div>
+                        <label>Email</label>
+                        <input type="email" id="userEmail" placeholder="john@example.com" required>
+                    </div>
+                    <div>
+                        <label>Password</label>
+                        <input type="password" id="userPassword" placeholder="Minimum 8 characters" minlength="8" required>
+                    </div>
+                    <div>
+                        <label>Role</label>
+                        <select id="userRole" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                            <option value="SALES_REP">Sales Representative</option>
+                            <option value="ADMIN">Administrator</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-calculate">Create User</button>
+            </form>
+        </div>
+
+        <div class="quote-form" style="margin-top: 20px;">
+            <h3>Existing Users</h3>
+            <div class="quote-history">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #999;">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px;">Edit User</h3>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Full Name</label>
+                    <input type="text" id="editUserName" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email</label>
+                    <input type="email" id="editUserEmail" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">New Password (leave blank to keep current)</label>
+                    <input type="password" id="editUserPassword" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Role</label>
+                    <select id="editUserRole" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        <option value="SALES_REP">Sales Representative</option>
+                        <option value="ADMIN">Administrator</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn-calculate" style="flex: 1;">Save Changes</button>
+                    <button type="button" onclick="closeEditModal()" class="btn-calculate" style="flex: 1; background: #999;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let users = [];
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                if (response.ok) {
+                    users = await response.json();
+                    displayUsers();
+                } else {
+                    console.error('Error loading users');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Display users in table
+        function displayUsers() {
+            const tbody = document.getElementById('usersTableBody');
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.email}</td>
+                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#667eea' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role}</span></td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Edit</button>
+                        <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Create user
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('name', document.getElementById('userName').value);
+            formData.append('email', document.getElementById('userEmail').value);
+            formData.append('password', document.getElementById('userPassword').value);
+            formData.append('role', document.getElementById('userRole').value);
+
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('User created successfully!');
+                    document.getElementById('createUserForm').reset();
+                    loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Error creating user: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating user');
+            }
+        });
+
+        // Edit user
+        function editUser(userId) {
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUserName').value = user.name || '';
+            document.getElementById('editUserEmail').value = user.email;
+            document.getElementById('editUserPassword').value = '';
+            document.getElementById('editUserRole').value = user.role;
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Update user
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const userId = document.getElementById('editUserId').value;
+            const formData = new FormData();
+            formData.append('name', document.getElementById('editUserName').value);
+            formData.append('email', document.getElementById('editUserEmail').value);
+            formData.append('role', document.getElementById('editUserRole').value);
+
+            const password = document.getElementById('editUserPassword').value;
+            if (password) {
+                formData.append('password', password);
+            }
+
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('User updated successfully!');
+                    closeEditModal();
+                    loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Error updating user: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating user');
+            }
+        });
+
+        // Delete user
+        async function deleteUser(userId, userEmail) {
+            if (!confirm(`Are you sure you want to delete user "${userEmail}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('User deleted successfully!');
+                    loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Error deleting user: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting user');
+            }
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

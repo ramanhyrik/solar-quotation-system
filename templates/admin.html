@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Solar Quotation</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>☀️ Solar Energy</h2>
+        <nav>
+            <a href="/dashboard">New Quote</a>
+            <a href="/admin" class="active">Admin Panel</a>
+            <a href="/users">Manage Users</a>
+            <a href="/logout">Logout</a>
+        </nav>
+        <div class="user-info">
+            <p>{{ user.email }}</p>
+            <p><small>ADMIN</small></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1>Admin Panel</h1>
+
+        <div class="quote-form">
+            <h3>Pricing Parameters</h3>
+            <form id="pricingForm">
+                <div class="form-grid">
+                    <div>
+                        <label>Price per kWp (₪)</label>
+                        <input type="number" id="pricePerKwp" step="0.01" required>
+                    </div>
+                    <div>
+                        <label>Production per kWp (kWh/year)</label>
+                        <input type="number" id="productionPerKwp" step="0.01" required>
+                    </div>
+                    <div>
+                        <label>Tariff Rate (₪/kWh)</label>
+                        <input type="number" id="tariffRate" step="0.01" required>
+                    </div>
+                    <div>
+                        <label>Trees Multiplier</label>
+                        <input type="number" id="treesMultiplier" step="0.01" value="0.05">
+                    </div>
+                    <div>
+                        <label>VAT Rate (%)</label>
+                        <input type="number" id="vatRate" step="0.01" value="17">
+                    </div>
+                </div>
+                <button type="submit" class="btn-calculate">Update Pricing</button>
+            </form>
+        </div>
+
+        <div class="quote-form" style="margin-top: 20px;">
+            <h3>Company Settings</h3>
+            <form id="companyForm">
+                <div class="form-grid">
+                    <input type="text" id="companyName" placeholder="Company Name" required>
+                    <input type="tel" id="companyPhone" placeholder="Phone">
+                    <input type="email" id="companyEmail" placeholder="Email">
+                    <input type="text" id="companyAddress" placeholder="Address">
+                </div>
+                <button type="submit" class="btn-calculate">Update Company Info</button>
+            </form>
+        </div>
+
+        <div class="quote-form" style="margin-top: 20px;">
+            <h3>Company Logo</h3>
+            <div id="logoPreview" style="margin-bottom: 15px; text-align: center;">
+                <img id="logoImage" src="" alt="Company Logo" style="max-width: 300px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                <p id="noLogo" style="color: #999; font-style: italic;">No logo uploaded yet</p>
+            </div>
+            <form id="logoForm">
+                <div style="margin-bottom: 15px;">
+                    <label for="logoFile" style="display: block; margin-bottom: 5px; font-weight: 600;">Upload Logo (PNG, JPG, or SVG)</label>
+                    <input type="file" id="logoFile" name="logo" accept="image/png,image/jpeg,image/jpg,image/svg+xml" required>
+                    <p style="font-size: 12px; color: #666; margin-top: 5px;">Recommended size: 300x100 pixels</p>
+                </div>
+                <button type="submit" class="btn-calculate">Upload Logo</button>
+                <button type="button" id="deleteLogo" class="btn-calculate" style="background: #dc3545; margin-left: 10px; display: none;">Delete Logo</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Load current settings
+        async function loadSettings() {
+            const pricingResponse = await fetch('/api/pricing');
+            const pricing = await pricingResponse.json();
+
+            document.getElementById('pricePerKwp').value = pricing.price_per_kwp;
+            document.getElementById('productionPerKwp').value = pricing.production_per_kwp;
+            document.getElementById('tariffRate').value = pricing.tariff_rate;
+            document.getElementById('treesMultiplier').value = pricing.trees_multiplier;
+            document.getElementById('vatRate').value = pricing.vat_rate * 100;
+
+            const companyResponse = await fetch('/api/company');
+            const company = await companyResponse.json();
+
+            document.getElementById('companyName').value = company.company_name || '';
+            document.getElementById('companyPhone').value = company.company_phone || '';
+            document.getElementById('companyEmail').value = company.company_email || '';
+            document.getElementById('companyAddress').value = company.company_address || '';
+
+            // Load logo if exists
+            if (company.company_logo) {
+                document.getElementById('logoImage').src = company.company_logo;
+                document.getElementById('logoImage').style.display = 'block';
+                document.getElementById('noLogo').style.display = 'none';
+                document.getElementById('deleteLogo').style.display = 'inline-block';
+            } else {
+                document.getElementById('logoImage').style.display = 'none';
+                document.getElementById('noLogo').style.display = 'block';
+                document.getElementById('deleteLogo').style.display = 'none';
+            }
+        }
+
+        // Update pricing
+        document.getElementById('pricingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('price_per_kwp', document.getElementById('pricePerKwp').value);
+            formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
+            formData.append('tariff_rate', document.getElementById('tariffRate').value);
+            formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
+            formData.append('vat_rate', parseFloat(document.getElementById('vatRate').value) / 100);
+
+            try {
+                const response = await fetch('/api/pricing', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Pricing updated successfully!');
+                } else {
+                    alert('Error updating pricing');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating pricing');
+            }
+        });
+
+        // Update company
+        document.getElementById('companyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('company_name', document.getElementById('companyName').value);
+            formData.append('company_phone', document.getElementById('companyPhone').value);
+            formData.append('company_email', document.getElementById('companyEmail').value);
+            formData.append('company_address', document.getElementById('companyAddress').value);
+
+            try {
+                const response = await fetch('/api/company', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Company settings updated successfully!');
+                } else {
+                    alert('Error updating company settings');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating company settings');
+            }
+        });
+
+        // Upload logo
+        document.getElementById('logoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('logoFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('logo', file);
+
+            try {
+                const response = await fetch('/api/logo/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Logo uploaded successfully!');
+                    loadSettings(); // Reload to show new logo
+                    fileInput.value = ''; // Clear file input
+                } else {
+                    const error = await response.json();
+                    alert('Error uploading logo: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error uploading logo');
+            }
+        });
+
+        // Delete logo
+        document.getElementById('deleteLogo').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to delete the logo?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/logo/delete', {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Logo deleted successfully!');
+                    loadSettings(); // Reload to hide logo
+                } else {
+                    alert('Error deleting logo');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting logo');
+            }
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>

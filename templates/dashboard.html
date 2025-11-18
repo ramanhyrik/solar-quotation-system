@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Dashboard - Solar Quotation</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>☀️ Solar Energy</h2>
+        <nav>
+            <a href="/dashboard" class="active">New Quote</a>
+            <a href="#" onclick="loadQuoteHistory()">Quote History</a>
+            {% if user.role == 'ADMIN' %}
+            <a href="/admin">Admin Panel</a>
+            <a href="/users">Manage Users</a>
+            {% endif %}
+            <a href="/logout">Logout</a>
+        </nav>
+        <div class="user-info">
+            <p>{{ user.email }}</p>
+            <p><small>{{ user.role }}</small></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1>Create New Quote</h1>
+
+        <div class="quote-form">
+            <h3>Customer Information</h3>
+            <div class="form-grid">
+                <input type="text" id="customerName" placeholder="Customer Name *" required>
+                <input type="tel" id="customerPhone" placeholder="Phone">
+                <input type="email" id="customerEmail" placeholder="Email">
+                <input type="text" id="customerAddress" placeholder="Address">
+            </div>
+
+            <h3>System Specifications</h3>
+            <div class="form-grid">
+                <input type="number" id="systemSize" placeholder="System Size (kWp) *" step="0.1" required>
+                <input type="number" id="roofArea" placeholder="Roof Area (m²)" step="0.1">
+                <input type="text" id="panelType" placeholder="Panel Type (e.g., Longi 550W)">
+                <input type="number" id="panelCount" placeholder="Panel Count">
+                <input type="text" id="inverterType" placeholder="Inverter Type">
+                <select id="direction">
+                    <option value="south">South</option>
+                    <option value="southwest">South-West</option>
+                    <option value="southeast">South-East</option>
+                    <option value="east_west">East-West</option>
+                </select>
+                <input type="number" id="tiltAngle" placeholder="Tilt Angle (°)" step="0.1">
+                <input type="number" id="warrantyYears" placeholder="Warranty (years)" value="25">
+            </div>
+
+            <button onclick="calculateQuote()" class="btn-calculate">Calculate</button>
+
+            <div id="calculations" class="calculations" style="display:none;">
+                <div class="calc-box">
+                    <h4>Total Price</h4>
+                    <div class="calc-value" id="totalPrice">₪0</div>
+                </div>
+                <div class="calc-box success">
+                    <h4>Annual Revenue</h4>
+                    <div class="calc-value" id="annualRevenue">₪0</div>
+                </div>
+                <div class="calc-box info">
+                    <h4>Payback Period</h4>
+                    <div class="calc-value" id="paybackPeriod">0 years</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="saveQuote()" class="btn-primary">Save Quote</button>
+                <button onclick="generatePDF()" class="btn-secondary">Generate PDF</button>
+            </div>
+        </div>
+
+        <div id="quoteHistory" style="display:none;">
+            <h1>Quote History</h1>
+            <table id="quotesTable">
+                <thead>
+                    <tr>
+                        <th>Quote #</th>
+                        <th>Customer</th>
+                        <th>System Size</th>
+                        <th>Price</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

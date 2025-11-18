@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Calculator Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .widget-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+
+        .results {
+            margin-top: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+            border-radius: 12px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            color: #333;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .result-value.price {
+            color: #667eea;
+        }
+
+        .result-value.revenue {
+            color: #52c41a;
+        }
+
+        .result-value.payback {
+            color: #fa8c16;
+        }
+
+        .environmental {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            border-left: 4px solid #52c41a;
+        }
+
+        .environmental-title {
+            color: #237804;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .environmental-text {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .powered-by {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .powered-by a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .powered-by a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .widget-container {
+                padding: 20px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            .result-value {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <h2>Solar Energy Calculator</h2>
+        <p class="subtitle">Calculate your solar system cost and savings</p>
+
+        <div class="input-group">
+            <label for="systemSize">System Size (kWp)</label>
+            <input type="number" id="systemSize" placeholder="Enter kWp (e.g., 15)" min="1" max="1000" step="0.1" value="15">
+        </div>
+
+        <button class="calculate-btn" onclick="calculate()">Calculate</button>
+
+        <div id="results" class="results">
+            <div class="result-item">
+                <div class="result-label">Total Investment</div>
+                <div class="result-value price" id="totalPrice">₪0</div>
+            </div>
+
+            <div class="result-item">
+                <div class="result-label">Annual Energy Production</div>
+                <div class="result-value" id="annualProduction">0 kWh</div>
+            </div>
+
+            <div class="result-item">
+                <div class="result-label">Estimated Annual Revenue</div>
+                <div class="result-value revenue" id="annualRevenue">₪0</div>
+            </div>
+
+            <div class="result-item">
+                <div class="result-label">Payback Period</div>
+                <div class="result-value payback" id="paybackPeriod">0 years</div>
+            </div>
+
+            <div class="environmental">
+                <div class="environmental-title">Environmental Impact</div>
+                <div class="environmental-text" id="environmentalText">
+                    Your solar system will help protect the environment.
+                </div>
+            </div>
+        </div>
+
+        <div class="powered-by">
+            Powered by <a href="/" target="_top">Solar Energy Solutions</a>
+        </div>
+    </div>
+
+    <script>
+        async function calculate() {
+            const systemSize = parseFloat(document.getElementById('systemSize').value);
+
+            if (!systemSize || systemSize <= 0) {
+                alert('Please enter a valid system size');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('system_size', systemSize);
+
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update results
+                    document.getElementById('totalPrice').textContent = `₪${data.total_price.toLocaleString()}`;
+                    document.getElementById('annualProduction').textContent = `${data.annual_production.toLocaleString()} kWh`;
+                    document.getElementById('annualRevenue').textContent = `₪${data.annual_revenue.toLocaleString()}`;
+                    document.getElementById('paybackPeriod').textContent = `${data.payback_period} years`;
+
+                    // Environmental text
+                    const envText = `Equivalent to planting ${data.trees_equivalent.toLocaleString()} trees and reducing CO2 emissions by ${data.co2_reduction.toLocaleString()} kg per year.`;
+                    document.getElementById('environmentalText').textContent = envText;
+
+                    // Show results with animation
+                    document.getElementById('results').classList.add('show');
+                } else {
+                    alert('Error calculating. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error calculating. Please check your connection.');
+            }
+        }
+
+        // Calculate on Enter key
+        document.getElementById('systemSize').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculate();
+            }
+        });
+    </script>
+</body>
+</html>
