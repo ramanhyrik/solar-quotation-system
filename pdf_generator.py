@@ -4,10 +4,42 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 from datetime import datetime, timedelta
 from chart_generator import generate_monthly_production_chart, generate_payback_chart
 import os
+
+# Register Hebrew-supporting font
+def register_hebrew_font():
+    """Register a Hebrew-supporting font for PDF generation"""
+    font_paths = [
+        # Windows fonts
+        ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
+        # Linux fonts
+        ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+    ]
+
+    for regular_path, bold_path in font_paths:
+        if os.path.exists(regular_path):
+            try:
+                pdfmetrics.registerFont(TTFont('Hebrew', regular_path))
+                if os.path.exists(bold_path):
+                    pdfmetrics.registerFont(TTFont('Hebrew-Bold', bold_path))
+                else:
+                    pdfmetrics.registerFont(TTFont('Hebrew-Bold', regular_path))
+                return True
+            except Exception as e:
+                print(f"Error registering font: {e}")
+                continue
+
+    return False
+
+# Register fonts on module load
+HEBREW_FONT_AVAILABLE = register_hebrew_font()
+FONT_NAME = 'Hebrew' if HEBREW_FONT_AVAILABLE else 'Helvetica'
+FONT_NAME_BOLD = 'Hebrew-Bold' if HEBREW_FONT_AVAILABLE else 'Helvetica-Bold'
 
 def generate_quote_pdf(quote_data, company_info=None):
     """
@@ -43,7 +75,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         textColor=colors.HexColor('#2d3748'),
         spaceAfter=6,
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+        fontName=FONT_NAME_BOLD
     )
 
     heading_style = ParagraphStyle(
@@ -53,14 +85,15 @@ def generate_quote_pdf(quote_data, company_info=None):
         textColor=colors.HexColor('#667eea'),
         spaceAfter=8,
         spaceBefore=12,
-        fontName='Helvetica-Bold'
+        fontName=FONT_NAME_BOLD
     )
 
     normal_style = ParagraphStyle(
         'CustomNormal',
         parent=styles['Normal'],
         fontSize=9,
-        spaceAfter=4
+        spaceAfter=4,
+        fontName=FONT_NAME
     )
 
     subtitle_style = ParagraphStyle(
@@ -70,7 +103,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         textColor=colors.HexColor('#667eea'),
         spaceAfter=4,
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+        fontName=FONT_NAME_BOLD
     )
 
     # Company header
@@ -118,7 +151,8 @@ def generate_quote_pdf(quote_data, company_info=None):
     quote_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
+        ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
         ('TOPPADDING', (0, 0), (-1, -1), 2),
@@ -140,7 +174,8 @@ def generate_quote_pdf(quote_data, company_info=None):
 
     customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
     customer_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
+        ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
@@ -172,7 +207,8 @@ def generate_quote_pdf(quote_data, company_info=None):
 
     specs_table = Table(specs_data, colWidths=[2*inch, 4*inch])
     specs_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
+        ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
@@ -235,9 +271,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (0, -1), 'Helvetica'),
-        ('FONTNAME', (1, 1), (1, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
+        ('FONTNAME', (0, 1), (0, -1), FONT_NAME),
+        ('FONTNAME', (1, 1), (1, -1), FONT_NAME_BOLD),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
@@ -273,7 +309,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         fontSize=7,
         textColor=colors.HexColor('#718096'),
         alignment=TA_CENTER,
-        leading=10
+        leading=10,
+        fontName=FONT_NAME
     )
 
     footer_lines = [f"<b>{company_name}</b>"]
