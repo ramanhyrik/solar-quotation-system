@@ -29,11 +29,13 @@ def reshape_hebrew(text):
     if text is None:
         return ''
     text_str = str(text)
-    if text_str == 'None':
+    if text_str == 'None' or text_str == '':
         return ''
     if BIDI_AVAILABLE:
         try:
-            return get_display(text_str)
+            # Apply bidi algorithm to properly display RTL text
+            result = get_display(text_str)
+            return result
         except Exception as e:
             print(f"[WARNING] Bidi processing error: {e}")
             return text_str
@@ -47,38 +49,44 @@ def register_hebrew_font():
     bundled_font_dir = os.path.join(script_dir, 'fonts')
 
     font_paths = [
-        # Bundled fonts (highest priority - for Render/Linux deployment)
+        # Bundled Rubik fonts (highest priority - best Hebrew support)
+        (os.path.join(bundled_font_dir, 'Rubik-Regular.ttf'),
+         os.path.join(bundled_font_dir, 'Rubik-Bold.ttf')),
+        # Bundled NotoSansHebrew fonts
         (os.path.join(bundled_font_dir, 'NotoSansHebrew-Regular.ttf'),
          os.path.join(bundled_font_dir, 'NotoSansHebrew-Bold.ttf')),
-        # Windows fonts - Arial is best for Hebrew
+        # Windows fonts - Arial
         ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
         ('C:/Windows/Fonts/ARIAL.TTF', 'C:/Windows/Fonts/ARIALBD.TTF'),
-        # David font - good Hebrew support
+        # David font
         ('C:/Windows/Fonts/David.ttf', 'C:/Windows/Fonts/Davidbd.ttf'),
-        ('C:/Windows/Fonts/DAVID.TTF', 'C:/Windows/Fonts/DAVIDBD.TTF'),
-        # Tahoma - also supports Hebrew
+        # Tahoma
         ('C:/Windows/Fonts/tahoma.ttf', 'C:/Windows/Fonts/tahomabd.ttf'),
         # Linux system fonts
         ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
         ('/usr/share/fonts/truetype/freefont/FreeSans.ttf', '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf'),
-        ('/usr/share/fonts/truetype/noto/NotoSansHebrew-Regular.ttf', '/usr/share/fonts/truetype/noto/NotoSansHebrew-Bold.ttf'),
     ]
 
     for regular_path, bold_path in font_paths:
         if os.path.exists(regular_path):
             try:
                 pdfmetrics.registerFont(TTFont('Hebrew', regular_path))
+                print(f"[OK] Registered Hebrew font: {regular_path}")
+
                 if os.path.exists(bold_path):
                     pdfmetrics.registerFont(TTFont('Hebrew-Bold', bold_path))
+                    print(f"[OK] Registered Hebrew-Bold font: {bold_path}")
                 else:
                     pdfmetrics.registerFont(TTFont('Hebrew-Bold', regular_path))
-                print(f"[OK] Successfully registered Hebrew font: {regular_path}")
+                    print(f"[OK] Using regular font for bold: {regular_path}")
+
                 return True
             except Exception as e:
                 print(f"[ERROR] Error registering font {regular_path}: {e}")
+                traceback.print_exc()
                 continue
 
-    print("[WARNING] No Hebrew font found. PDF will use default font - Hebrew text may not display correctly.")
+    print("[WARNING] No Hebrew font found. PDF will use default font.")
     return False
 
 # Register fonts on module load
@@ -86,16 +94,25 @@ HEBREW_FONT_AVAILABLE = register_hebrew_font()
 FONT_NAME = 'Hebrew' if HEBREW_FONT_AVAILABLE else 'Helvetica'
 FONT_NAME_BOLD = 'Hebrew-Bold' if HEBREW_FONT_AVAILABLE else 'Helvetica-Bold'
 
+print(f"[INFO] Using font: {FONT_NAME}, Bold: {FONT_NAME_BOLD}")
+
 def safe_get(data, key, default=''):
     """Safely get a value from dictionary, handling None values"""
     value = data.get(key)
-    if value is None or value == 'None' or value == '':
+    if value is None or str(value) == 'None' or value == '':
         return default
     return value
 
+def format_number(num):
+    """Format number with thousands separator"""
+    try:
+        return f"{int(num):,}"
+    except:
+        return str(num)
+
 def generate_quote_pdf(quote_data, company_info=None):
     """
-    Generate a professional PDF quote
+    Generate a professional PDF quote with Hebrew support
 
     Args:
         quote_data: Dictionary containing quote information
@@ -119,7 +136,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements = []
         styles = getSampleStyleSheet()
 
-        # Custom styles - Professional sizing
+        # Custom styles
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
@@ -159,18 +176,14 @@ def generate_quote_pdf(quote_data, company_info=None):
         )
 
         # Company header
-        company_name = 'Solar Energy Solutions'
-        if company_info and company_info.get('company_name'):
-            company_name = company_info['company_name']
+        company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
         # Add company logo if exists
         if company_info and company_info.get('company_logo'):
             logo_path = company_info['company_logo']
-            # Remove leading slash if present
             if logo_path.startswith('/'):
                 logo_path = logo_path[1:]
 
-            # Check if logo file exists
             if os.path.exists(logo_path):
                 try:
                     logo = Image(logo_path, width=2.5*inch, height=1*inch, kind='proportional')
@@ -184,8 +197,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         title = Paragraph(f"<para align=center><b>{company_name}</b></para>", title_style)
         elements.append(title)
 
-        subtitle_text = f"<para align=center>{reshape_hebrew('הצעת מחיר אנרגיה סולארית')}</para>"
-        subtitle = Paragraph(subtitle_text, subtitle_style)
+        # Subtitle in Hebrew
+        subtitle_hebrew = reshape_hebrew('הצעת מחיר אנרגיה סולארית')
+        subtitle = Paragraph(f"<para align=center>{subtitle_hebrew}</para>", subtitle_style)
         elements.append(subtitle)
         elements.append(Spacer(1, 0.15*inch))
 
@@ -203,8 +217,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         quote_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
             ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
-            ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
             ('TOPPADDING', (0, 0), (-1, -1), 2),
@@ -217,22 +230,23 @@ def generate_quote_pdf(quote_data, company_info=None):
         customer_heading = Paragraph(reshape_hebrew("פרטי לקוח"), heading_style)
         elements.append(customer_heading)
 
-        customer_name_val = safe_get(quote_data, 'customer_name', 'לא צוין')
-        customer_phone_val = safe_get(quote_data, 'customer_phone', 'לא צוין')
-        customer_email_val = safe_get(quote_data, 'customer_email', 'לא צוין')
-        customer_address_val = safe_get(quote_data, 'customer_address', 'לא צוין')
+        customer_name_val = safe_get(quote_data, 'customer_name', '')
+        customer_phone_val = safe_get(quote_data, 'customer_phone', '')
+        customer_email_val = safe_get(quote_data, 'customer_email', '')
+        customer_address_val = safe_get(quote_data, 'customer_address', '')
+
+        not_specified = reshape_hebrew('לא צוין')
 
         customer_data = [
-            [reshape_hebrew('שם:'), customer_name_val],
-            [reshape_hebrew('טלפון:'), customer_phone_val if customer_phone_val != 'לא צוין' else reshape_hebrew('לא צוין')],
-            [reshape_hebrew('אימייל:'), customer_email_val if customer_email_val != 'לא צוין' else reshape_hebrew('לא צוין')],
-            [reshape_hebrew('כתובת:'), customer_address_val if customer_address_val != 'לא צוין' else reshape_hebrew('לא צוין')],
+            [reshape_hebrew('שם:'), customer_name_val if customer_name_val else not_specified],
+            [reshape_hebrew('טלפון:'), customer_phone_val if customer_phone_val else not_specified],
+            [reshape_hebrew('אימייל:'), customer_email_val if customer_email_val else not_specified],
+            [reshape_hebrew('כתובת:'), customer_address_val if customer_address_val else not_specified],
         ]
 
         customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
         customer_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
-            ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
@@ -250,27 +264,21 @@ def generate_quote_pdf(quote_data, company_info=None):
         roof_area = quote_data.get('roof_area')
         annual_prod = quote_data.get('annual_production', 0) or 0
 
-        def format_spec_value(value, suffix='', default='לא צוין'):
-            if value is None or value == '' or value == 'None' or value == 0:
-                return reshape_hebrew(default)
-            return reshape_hebrew(f"{value}{suffix}")
-
         specs_data = [
-            [reshape_hebrew('גודל מערכת:'), reshape_hebrew(f"{system_size} קוט״ש")],
-            [reshape_hebrew('שטח גג:'), format_spec_value(roof_area, ' מ״ר')],
-            [reshape_hebrew('ייצור שנתי:'), reshape_hebrew(f"{int(annual_prod):,} קוט״ש/שנה") if annual_prod else reshape_hebrew('לא צוין')],
-            [reshape_hebrew('סוג פאנל:'), format_spec_value(safe_get(quote_data, 'panel_type'))],
-            [reshape_hebrew('מספר פאנלים:'), format_spec_value(safe_get(quote_data, 'panel_count'))],
-            [reshape_hebrew('סוג ממיר:'), format_spec_value(safe_get(quote_data, 'inverter_type'))],
-            [reshape_hebrew('כיוון:'), format_spec_value(safe_get(quote_data, 'direction'))],
-            [reshape_hebrew('זווית הטיה:'), format_spec_value(quote_data.get('tilt_angle'), '°')],
-            [reshape_hebrew('אחריות:'), reshape_hebrew(f"{quote_data.get('warranty_years', 25)} שנים")],
+            [reshape_hebrew('גודל מערכת:'), reshape_hebrew(f"{system_size} " + 'קוט״ש')],
+            [reshape_hebrew('שטח גג:'), reshape_hebrew(f"{roof_area} " + 'מ״ר') if roof_area else not_specified],
+            [reshape_hebrew('ייצור שנתי:'), reshape_hebrew(f"{format_number(annual_prod)} " + 'קוט״ש/שנה') if annual_prod else not_specified],
+            [reshape_hebrew('סוג פאנל:'), safe_get(quote_data, 'panel_type') or not_specified],
+            [reshape_hebrew('מספר פאנלים:'), str(safe_get(quote_data, 'panel_count')) if safe_get(quote_data, 'panel_count') else not_specified],
+            [reshape_hebrew('סוג ממיר:'), safe_get(quote_data, 'inverter_type') or not_specified],
+            [reshape_hebrew('כיוון:'), safe_get(quote_data, 'direction') or not_specified],
+            [reshape_hebrew('זווית הטיה:'), f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified],
+            [reshape_hebrew('אחריות:'), reshape_hebrew(f"{quote_data.get('warranty_years', 25)} " + 'שנים')],
         ]
 
         specs_table = Table(specs_data, colWidths=[2*inch, 4*inch])
         specs_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (0, -1), FONT_NAME_BOLD),
-            ('FONTNAME', (1, 0), (1, -1), FONT_NAME),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
@@ -283,13 +291,12 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(specs_table)
         elements.append(Spacer(1, 0.15*inch))
 
-        # Get financial data for charts
+        # Get financial data
         total_price = quote_data.get('total_price', 0) or 0
         annual_revenue = quote_data.get('annual_revenue', 0) or 0
 
         # Production Charts
         if system_size and annual_prod:
-            # Monthly Production Chart
             chart_heading = Paragraph(reshape_hebrew("ייצור אנרגיה חודשי"), heading_style)
             elements.append(chart_heading)
 
@@ -300,9 +307,7 @@ def generate_quote_pdf(quote_data, company_info=None):
                 elements.append(Spacer(1, 0.15*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating monthly chart: {e}")
-                traceback.print_exc()
 
-            # Payback Period Chart
             if total_price and annual_revenue:
                 payback_heading = Paragraph(reshape_hebrew("ניתוח החזר השקעה"), heading_style)
                 elements.append(payback_heading)
@@ -314,7 +319,6 @@ def generate_quote_pdf(quote_data, company_info=None):
                     elements.append(Spacer(1, 0.15*inch))
                 except Exception as e:
                     print(f"[ERROR] Error generating payback chart: {e}")
-                    traceback.print_exc()
 
         # Financial Summary
         financial_heading = Paragraph(reshape_hebrew("סיכום פיננסי"), heading_style)
@@ -324,10 +328,10 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         financial_data = [
             [reshape_hebrew('תיאור'), reshape_hebrew('סכום')],
-            [reshape_hebrew('סך ההשקעה'), f"₪{int(total_price):,}"],
-            [reshape_hebrew('הכנסה שנתית משוערת'), f"₪{int(annual_revenue):,}"],
-            [reshape_hebrew('תקופת החזר'), reshape_hebrew(f"{payback} שנים")],
-            [reshape_hebrew('חיסכון כולל ל-25 שנה'), f"₪{int(annual_revenue * 25):,}"],
+            [reshape_hebrew('סך ההשקעה'), f"₪{format_number(total_price)}"],
+            [reshape_hebrew('הכנסה שנתית משוערת'), f"₪{format_number(annual_revenue)}"],
+            [reshape_hebrew('תקופת החזר'), reshape_hebrew(f"{payback} " + 'שנים')],
+            [reshape_hebrew('חיסכון כולל ל-25 שנה'), f"₪{format_number(annual_revenue * 25)}"],
         ]
 
         financial_table = Table(financial_data, colWidths=[3.5*inch, 2.5*inch])
@@ -335,9 +339,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00358A')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-            ('FONTNAME', (0, 1), (0, -1), FONT_NAME),
-            ('FONTNAME', (1, 1), (1, -1), FONT_NAME_BOLD),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
@@ -358,9 +360,16 @@ def generate_quote_pdf(quote_data, company_info=None):
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
-        env_text = reshape_hebrew(f"המערכת הסולארית שלך תייצר כ-{int(annual_prod):,} קוט״ש של אנרגיה נקייה בשנה, "
-                    f"שווה ערך לנטיעת {trees:,} עצים והפחתת פליטות CO2 ב-{co2_saved:,} ק״ג בשנה. "
-                    f"במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.")
+        env_text_parts = [
+            reshape_hebrew('המערכת הסולארית שלך תייצר כ-'),
+            format_number(annual_prod),
+            reshape_hebrew(' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת '),
+            format_number(trees),
+            reshape_hebrew(' עצים והפחתת פליטות CO2 ב-'),
+            format_number(co2_saved),
+            reshape_hebrew(' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
+        ]
+        env_text = ''.join(env_text_parts)
 
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
@@ -389,7 +398,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         footer_lines.append("")
         footer_lines.append(f"<i>{reshape_hebrew('הצעה זו בתוקף 30 ימים מתאריך ההנפקה.')}</i>")
-        footer_lines.append(reshape_hebrew("תודה שבחרתם באנרגיה סולארית!"))
+        footer_lines.append(reshape_hebrew('תודה שבחרתם באנרגיה סולארית!'))
 
         footer_text = "<para align=center>" + "<br/>".join(footer_lines) + "</para>"
         footer = Paragraph(footer_text, footer_style)
