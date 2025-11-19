@@ -49,7 +49,10 @@ def register_hebrew_font():
     bundled_font_dir = os.path.join(script_dir, 'fonts')
 
     font_paths = [
-        # Bundled Rubik fonts (highest priority - has both Hebrew AND Latin characters)
+        # Bundled Heebo fonts (highest priority - designed for Hebrew with full Latin support)
+        (os.path.join(bundled_font_dir, 'Heebo-Regular.ttf'),
+         os.path.join(bundled_font_dir, 'Heebo-Bold.ttf')),
+        # Bundled Rubik fonts (backup)
         (os.path.join(bundled_font_dir, 'Rubik-Regular.ttf'),
          os.path.join(bundled_font_dir, 'Rubik-Bold.ttf')),
         # Windows fonts - Arial (has Hebrew support)
