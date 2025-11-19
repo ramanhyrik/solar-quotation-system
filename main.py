@@ -62,10 +62,10 @@ def get_current_user(session_id: Optional[str] = Cookie(None)):
         return None
     return sessions[session_id]
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Homepage with calculator"""
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/")
+async def home():
+    """Redirect to login page"""
+    return RedirectResponse(url="/login", status_code=302)
 
 @app.get("/widget", response_class=HTMLResponse)
 async def widget(request: Request):

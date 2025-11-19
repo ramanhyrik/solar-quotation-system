@@ -42,7 +42,14 @@ def reshape_hebrew(text):
 # Register Hebrew-supporting font
 def register_hebrew_font():
     """Register a Hebrew-supporting font for PDF generation"""
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    bundled_font_dir = os.path.join(script_dir, 'fonts')
+
     font_paths = [
+        # Bundled fonts (highest priority - for Render/Linux deployment)
+        (os.path.join(bundled_font_dir, 'NotoSansHebrew-Regular.ttf'),
+         os.path.join(bundled_font_dir, 'NotoSansHebrew-Bold.ttf')),
         # Windows fonts - Arial is best for Hebrew
         ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
         ('C:/Windows/Fonts/ARIAL.TTF', 'C:/Windows/Fonts/ARIALBD.TTF'),
@@ -51,10 +58,9 @@ def register_hebrew_font():
         ('C:/Windows/Fonts/DAVID.TTF', 'C:/Windows/Fonts/DAVIDBD.TTF'),
         # Tahoma - also supports Hebrew
         ('C:/Windows/Fonts/tahoma.ttf', 'C:/Windows/Fonts/tahomabd.ttf'),
-        # Linux fonts
+        # Linux system fonts
         ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
         ('/usr/share/fonts/truetype/freefont/FreeSans.ttf', '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf'),
-        # NotoSans Hebrew
         ('/usr/share/fonts/truetype/noto/NotoSansHebrew-Regular.ttf', '/usr/share/fonts/truetype/noto/NotoSansHebrew-Bold.ttf'),
     ]
 
