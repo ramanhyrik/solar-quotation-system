@@ -49,20 +49,15 @@ def register_hebrew_font():
     bundled_font_dir = os.path.join(script_dir, 'fonts')
 
     font_paths = [
-        # Bundled Rubik fonts (highest priority - best Hebrew support)
+        # Bundled Rubik fonts (highest priority - has both Hebrew AND Latin characters)
         (os.path.join(bundled_font_dir, 'Rubik-Regular.ttf'),
          os.path.join(bundled_font_dir, 'Rubik-Bold.ttf')),
-        # Bundled NotoSansHebrew fonts
-        (os.path.join(bundled_font_dir, 'NotoSansHebrew-Regular.ttf'),
-         os.path.join(bundled_font_dir, 'NotoSansHebrew-Bold.ttf')),
-        # Windows fonts - Arial
+        # Windows fonts - Arial (has Hebrew support)
         ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
         ('C:/Windows/Fonts/ARIAL.TTF', 'C:/Windows/Fonts/ARIALBD.TTF'),
-        # David font
-        ('C:/Windows/Fonts/David.ttf', 'C:/Windows/Fonts/Davidbd.ttf'),
-        # Tahoma
+        # Tahoma (has Hebrew support)
         ('C:/Windows/Fonts/tahoma.ttf', 'C:/Windows/Fonts/tahomabd.ttf'),
-        # Linux system fonts
+        # Linux system fonts - DejaVuSans has good Hebrew + Latin coverage
         ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
         ('/usr/share/fonts/truetype/freefont/FreeSans.ttf', '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf'),
     ]
