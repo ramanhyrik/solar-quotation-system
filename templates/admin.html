@@ -1,91 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Solar Quotation</title>
+    <title>לוח ניהול - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
     <div class="sidebar">
-        <h2>☀️ Solar Energy</h2>
+        <h2>☀️ אנרגיה סולארית</h2>
         <nav>
-            <a href="/dashboard">New Quote</a>
-            <a href="/admin" class="active">Admin Panel</a>
-            <a href="/users">Manage Users</a>
-            <a href="/logout">Logout</a>
+            <a href="/dashboard">הצעה חדשה</a>
+            <a href="/admin" class="active">לוח ניהול</a>
+            <a href="/users">ניהול משתמשים</a>
+            <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
             <p>{{ user.email }}</p>
-            <p><small>ADMIN</small></p>
+            <p><small>מנהל</small></p>
         </div>
     </div>
 
     <div class="main-content">
-        <h1>Admin Panel</h1>
+        <h1>לוח ניהול</h1>
 
         <div class="quote-form">
-            <h3>Pricing Parameters</h3>
+            <h3>פרמטרי תמחור</h3>
             <form id="pricingForm">
                 <div class="form-grid">
                     <div>
-                        <label>Price per kWp (₪)</label>
+                        <label>מחיר לקוט״ש (₪)</label>
                         <input type="number" id="pricePerKwp" step="0.01" required>
                     </div>
                     <div>
-                        <label>Production per kWp (kWh/year)</label>
+                        <label>ייצור לקוט״ש (קוט״ש/שנה)</label>
                         <input type="number" id="productionPerKwp" step="0.01" required>
                     </div>
                     <div>
-                        <label>Tariff Rate (₪/kWh)</label>
+                        <label>תעריף (₪/קוט״ש)</label>
                         <input type="number" id="tariffRate" step="0.01" required>
                     </div>
                     <div>
-                        <label>Trees Multiplier</label>
+                        <label>מכפיל עצים</label>
                         <input type="number" id="treesMultiplier" step="0.01" value="0.05">
                     </div>
                     <div>
-                        <label>VAT Rate (%)</label>
+                        <label>שיעור מע״מ (%)</label>
                         <input type="number" id="vatRate" step="0.01" value="17">
                     </div>
                 </div>
-                <button type="submit" class="btn-calculate">Update Pricing</button>
+                <button type="submit" class="btn-calculate">עדכן תמחור</button>
             </form>
         </div>
 
         <div class="quote-form" style="margin-top: 20px;">
-            <h3>Company Settings</h3>
+            <h3>הגדרות חברה</h3>
             <form id="companyForm">
                 <div class="form-grid">
-                    <input type="text" id="companyName" placeholder="Company Name" required>
-                    <input type="tel" id="companyPhone" placeholder="Phone">
-                    <input type="email" id="companyEmail" placeholder="Email">
-                    <input type="text" id="companyAddress" placeholder="Address">
+                    <input type="text" id="companyName" placeholder="שם החברה" required>
+                    <input type="tel" id="companyPhone" placeholder="טלפון">
+                    <input type="email" id="companyEmail" placeholder="אימייל">
+                    <input type="text" id="companyAddress" placeholder="כתובת">
                 </div>
-                <button type="submit" class="btn-calculate">Update Company Info</button>
+                <button type="submit" class="btn-calculate">עדכן פרטי חברה</button>
             </form>
         </div>
 
         <div class="quote-form" style="margin-top: 20px;">
-            <h3>Company Logo</h3>
+            <h3>לוגו חברה</h3>
             <div id="logoPreview" style="margin-bottom: 15px; text-align: center;">
-                <img id="logoImage" src="" alt="Company Logo" style="max-width: 300px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
-                <p id="noLogo" style="color: #999; font-style: italic;">No logo uploaded yet</p>
+                <img id="logoImage" src="" alt="לוגו חברה" style="max-width: 300px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                <p id="noLogo" style="color: #999; font-style: italic;">עדיין לא הועלה לוגו</p>
             </div>
             <form id="logoForm">
                 <div style="margin-bottom: 15px;">
-                    <label for="logoFile" style="display: block; margin-bottom: 5px; font-weight: 600;">Upload Logo (PNG, JPG, or SVG)</label>
+                    <label for="logoFile" style="display: block; margin-bottom: 5px; font-weight: 600;">העלה לוגו (PNG, JPG, או SVG)</label>
                     <input type="file" id="logoFile" name="logo" accept="image/png,image/jpeg,image/jpg,image/svg+xml" required>
-                    <p style="font-size: 12px; color: #666; margin-top: 5px;">Recommended size: 300x100 pixels</p>
+                    <p style="font-size: 12px; color: #666; margin-top: 5px;">גודל מומלץ: 300x100 פיקסלים</p>
                 </div>
-                <button type="submit" class="btn-calculate">Upload Logo</button>
-                <button type="button" id="deleteLogo" class="btn-calculate" style="background: #dc3545; margin-left: 10px; display: none;">Delete Logo</button>
+                <button type="submit" class="btn-calculate">העלה לוגו</button>
+                <button type="button" id="deleteLogo" class="btn-calculate" style="background: #dc3545; margin-right: 10px; display: none;">מחק לוגו</button>
             </form>
         </div>
     </div>
 
     <script>
-        // Load current settings
+        // טעינת הגדרות נוכחיות
         async function loadSettings() {
             const pricingResponse = await fetch('/api/pricing');
             const pricing = await pricingResponse.json();
@@ -104,7 +104,7 @@
             document.getElementById('companyEmail').value = company.company_email || '';
             document.getElementById('companyAddress').value = company.company_address || '';
 
-            // Load logo if exists
+            // טעינת לוגו אם קיים
             if (company.company_logo) {
                 document.getElementById('logoImage').src = company.company_logo;
                 document.getElementById('logoImage').style.display = 'block';
@@ -117,7 +117,7 @@
             }
         }
 
-        // Update pricing
+        // עדכון תמחור
         document.getElementById('pricingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -135,17 +135,17 @@
                 });
 
                 if (response.ok) {
-                    alert('Pricing updated successfully!');
+                    alert('התמחור עודכן בהצלחה!');
                 } else {
-                    alert('Error updating pricing');
+                    alert('שגיאה בעדכון התמחור');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error updating pricing');
+                alert('שגיאה בעדכון התמחור');
             }
         });
 
-        // Update company
+        // עדכון פרטי חברה
         document.getElementById('companyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -162,17 +162,17 @@
                 });
 
                 if (response.ok) {
-                    alert('Company settings updated successfully!');
+                    alert('פרטי החברה עודכנו בהצלחה!');
                 } else {
-                    alert('Error updating company settings');
+                    alert('שגיאה בעדכון פרטי החברה');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error updating company settings');
+                alert('שגיאה בעדכון פרטי החברה');
             }
         });
 
-        // Upload logo
+        // העלאת לוגו
         document.getElementById('logoForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -180,7 +180,7 @@
             const file = fileInput.files[0];
 
             if (!file) {
-                alert('Please select a file');
+                alert('נא לבחור קובץ');
                 return;
             }
 
@@ -194,22 +194,22 @@
                 });
 
                 if (response.ok) {
-                    alert('Logo uploaded successfully!');
-                    loadSettings(); // Reload to show new logo
-                    fileInput.value = ''; // Clear file input
+                    alert('הלוגו הועלה בהצלחה!');
+                    loadSettings(); // טעינה מחדש להצגת הלוגו החדש
+                    fileInput.value = ''; // ניקוי שדה הקובץ
                 } else {
                     const error = await response.json();
-                    alert('Error uploading logo: ' + (error.detail || 'Unknown error'));
+                    alert('שגיאה בהעלאת הלוגו: ' + (error.detail || 'שגיאה לא ידועה'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error uploading logo');
+                alert('שגיאה בהעלאת הלוגו');
             }
         });
 
-        // Delete logo
+        // מחיקת לוגו
         document.getElementById('deleteLogo').addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to delete the logo?')) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק את הלוגו?')) {
                 return;
             }
 
@@ -219,14 +219,14 @@
                 });
 
                 if (response.ok) {
-                    alert('Logo deleted successfully!');
-                    loadSettings(); // Reload to hide logo
+                    alert('הלוגו נמחק בהצלחה!');
+                    loadSettings(); // טעינה מחדש להסתרת הלוגו
                 } else {
-                    alert('Error deleting logo');
+                    alert('שגיאה במחיקת הלוגו');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error deleting logo');
+                alert('שגיאה במחיקת הלוגו');
             }
         });
 

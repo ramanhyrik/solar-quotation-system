@@ -4,7 +4,7 @@ async function calculateQuote() {
     const systemSize = parseFloat(document.getElementById('systemSize').value);
 
     if (!systemSize || systemSize <= 0) {
-        alert('Please enter a valid system size');
+        alert('נא להזין גודל מערכת תקין');
         return;
     }
 
@@ -19,7 +19,7 @@ async function calculateQuote() {
 
         const data = await response.json();
 
-        // Store for later use
+        // שמירה לשימוש מאוחר יותר
         currentQuoteData = {
             total_price: data.total_price,
             annual_revenue: data.annual_revenue,
@@ -27,16 +27,16 @@ async function calculateQuote() {
             annual_production: data.annual_production
         };
 
-        // Update UI
+        // עדכון ממשק
         document.getElementById('totalPrice').textContent = `₪${data.total_price.toLocaleString()}`;
         document.getElementById('annualRevenue').textContent = `₪${data.annual_revenue.toLocaleString()}`;
-        document.getElementById('paybackPeriod').textContent = `${data.payback_period} years`;
+        document.getElementById('paybackPeriod').textContent = `${data.payback_period} שנים`;
 
         document.getElementById('calculations').style.display = 'grid';
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error calculating quote');
+        alert('שגיאה בחישוב הצעה');
     }
 }
 
@@ -45,12 +45,12 @@ async function saveQuote() {
     const systemSize = parseFloat(document.getElementById('systemSize').value);
 
     if (!customerName || !systemSize) {
-        alert('Please fill in required fields (Customer Name and System Size)');
+        alert('נא למלא שדות חובה (שם לקוח וגודל מערכת)');
         return;
     }
 
     if (!currentQuoteData.total_price) {
-        alert('Please calculate the quote first');
+        alert('נא לחשב את ההצעה קודם');
         return;
     }
 
@@ -83,17 +83,17 @@ async function saveQuote() {
         });
 
         if (response.ok) {
-            alert('Quote saved successfully!');
-            // Clear form
+            alert('ההצעה נשמרה בהצלחה!');
+            // ניקוי טופס
             document.querySelectorAll('input').forEach(input => input.value = '');
             document.getElementById('calculations').style.display = 'none';
             currentQuoteData = {};
         } else {
-            alert('Error saving quote');
+            alert('שגיאה בשמירת הצעה');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error saving quote');
+        alert('שגיאה בשמירת הצעה');
     }
 }
 
@@ -110,12 +110,12 @@ async function loadQuoteHistory() {
             row.innerHTML = `
                 <td>${quote.quote_number}</td>
                 <td>${quote.customer_name}</td>
-                <td>${quote.system_size} kWp</td>
+                <td>${quote.system_size} קוט״ש</td>
                 <td>₪${quote.total_price.toLocaleString()}</td>
-                <td>${new Date(quote.created_at).toLocaleDateString()}</td>
+                <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
-                    <button onclick="downloadPDF(${quote.id})" style="background: #667eea; color: white; margin-right: 8px;">Download PDF</button>
-                    <button onclick="deleteQuote(${quote.id})" class="delete">Delete</button>
+                    <button onclick="downloadPDF(${quote.id})" style="background: #667eea; color: white; margin-left: 8px;">הורד PDF</button>
+                    <button onclick="deleteQuote(${quote.id})" class="delete">מחק</button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -126,12 +126,12 @@ async function loadQuoteHistory() {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error loading quote history');
+        alert('שגיאה בטעינת היסטוריית הצעות');
     }
 }
 
 async function deleteQuote(id) {
-    if (!confirm('Are you sure you want to delete this quote?')) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק הצעה זו?')) {
         return;
     }
 
@@ -143,11 +143,11 @@ async function deleteQuote(id) {
         if (response.ok) {
             loadQuoteHistory();
         } else {
-            alert('Error deleting quote');
+            alert('שגיאה במחיקת הצעה');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error deleting quote');
+        alert('שגיאה במחיקת הצעה');
     }
 }
 
@@ -160,16 +160,16 @@ async function generatePDF() {
     const systemSize = parseFloat(document.getElementById('systemSize').value);
 
     if (!customerName || !systemSize) {
-        alert('Please fill in required fields (Customer Name and System Size) and calculate first');
+        alert('נא למלא שדות חובה (שם לקוח וגודל מערכת) ולחשב קודם');
         return;
     }
 
     if (!currentQuoteData.total_price) {
-        alert('Please calculate the quote first');
+        alert('נא לחשב את ההצעה קודם');
         return;
     }
 
-    // First, save the quote
+    // קודם, שמור את ההצעה
     const quoteData = {
         customer_name: customerName,
         customer_phone: document.getElementById('customerPhone').value,
@@ -190,7 +190,7 @@ async function generatePDF() {
     };
 
     try {
-        // Save quote first
+        // שמירת הצעה קודם
         const response = await fetch('/api/quotes', {
             method: 'POST',
             headers: {
@@ -200,19 +200,19 @@ async function generatePDF() {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to save quote');
+            throw new Error('נכשל בשמירת הצעה');
         }
 
         const result = await response.json();
         const quoteId = result.quote_id;
 
-        // Generate and download PDF
+        // יצירת והורדת PDF
         window.location.href = `/api/quotes/${quoteId}/pdf`;
 
-        alert('PDF generated and downloading!');
+        alert('ה-PDF נוצר ומוריד!');
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Error generating PDF. Please try again.');
+        alert('שגיאה ביצירת PDF. נסה שוב.');
     }
 }

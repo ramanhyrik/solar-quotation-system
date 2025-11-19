@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Solar Energy Quotation System</title>
+    <title>התחברות - מערכת הצעות מחיר לאנרגיה סולארית</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -15,6 +15,7 @@
             align-items: center;
             justify-content: center;
             padding: 30px;
+            direction: rtl;
         }
 
         .login-container {
@@ -62,7 +63,7 @@
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 30px;
-            border-left: 4px solid #667eea;
+            border-right: 4px solid #667eea;
         }
 
         .demo-info-title {
@@ -98,6 +99,7 @@
             font-size: 16px;
             transition: all 0.3s;
             background: #f7fafc;
+            text-align: right;
         }
 
         input:focus {
@@ -185,38 +187,38 @@
     <div class="login-container">
         <div class="logo-section">
             <h1>☀️</h1>
-            <p><strong>Solar Energy Solutions</strong></p>
-            <p style="font-size: 0.95em; margin-top: 5px;">Professional Quotation System</p>
+            <p><strong>פתרונות אנרגיה סולארית</strong></p>
+            <p style="font-size: 0.95em; margin-top: 5px;">מערכת הצעות מחיר מקצועית</p>
         </div>
 
-        <h2 class="login-title">Welcome Back</h2>
-        <p class="login-subtitle">Sign in to access your dashboard</p>
+        <h2 class="login-title">ברוכים השבים</h2>
+        <p class="login-subtitle">התחבר כדי לגשת ללוח הבקרה שלך</p>
 
         <div class="demo-info">
-            <div class="demo-info-title">Demo Access Credentials</div>
-            <p><strong>Email:</strong> admin@solar.com</p>
-            <p><strong>Password:</strong> admin123</p>
+            <div class="demo-info-title">פרטי גישה להדגמה</div>
+            <p><strong>אימייל:</strong> admin@solar.com</p>
+            <p><strong>סיסמה:</strong> admin123</p>
         </div>
 
         <form action="/api/login" method="POST">
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email" required autofocus>
+                <label for="email">כתובת אימייל</label>
+                <input type="email" id="email" name="email" placeholder="הזן את האימייל שלך" required autofocus>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <label for="password">סיסמה</label>
+                <input type="password" id="password" name="password" placeholder="הזן את הסיסמה שלך" required>
             </div>
 
-            <button type="submit">Sign In to Dashboard</button>
+            <button type="submit">התחבר ללוח הבקרה</button>
         </form>
 
         <div class="divider">
-            <span>OR</span>
+            <span>או</span>
         </div>
 
-        <a href="/" class="back-link">← Back to Calculator</a>
+        <a href="/" class="back-link">חזרה למחשבון ←</a>
     </div>
 </body>
 </html>

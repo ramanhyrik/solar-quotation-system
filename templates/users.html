@@ -1,73 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - Solar Quotation</title>
+    <title>ניהול משתמשים - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
     <div class="sidebar">
-        <h2>☀️ Solar Energy</h2>
+        <h2>☀️ אנרגיה סולארית</h2>
         <nav>
-            <a href="/dashboard">New Quote</a>
-            <a href="/admin">Admin Panel</a>
-            <a href="/users" class="active">Manage Users</a>
-            <a href="/logout">Logout</a>
+            <a href="/dashboard">הצעה חדשה</a>
+            <a href="/admin">לוח ניהול</a>
+            <a href="/users" class="active">ניהול משתמשים</a>
+            <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
             <p>{{ user.email }}</p>
-            <p><small>ADMIN</small></p>
+            <p><small>מנהל</small></p>
         </div>
     </div>
 
     <div class="main-content">
-        <h1>User Management</h1>
+        <h1>ניהול משתמשים</h1>
 
         <div class="quote-form">
-            <h3>Create New User</h3>
+            <h3>יצירת משתמש חדש</h3>
             <form id="createUserForm">
                 <div class="form-grid">
                     <div>
-                        <label>Full Name</label>
-                        <input type="text" id="userName" placeholder="John Doe" required>
+                        <label>שם מלא</label>
+                        <input type="text" id="userName" placeholder="ישראל ישראלי" required>
                     </div>
                     <div>
-                        <label>Email</label>
-                        <input type="email" id="userEmail" placeholder="john@example.com" required>
+                        <label>אימייל</label>
+                        <input type="email" id="userEmail" placeholder="israel@example.com" required>
                     </div>
                     <div>
-                        <label>Password</label>
-                        <input type="password" id="userPassword" placeholder="Minimum 8 characters" minlength="8" required>
+                        <label>סיסמה</label>
+                        <input type="password" id="userPassword" placeholder="מינימום 8 תווים" minlength="8" required>
                     </div>
                     <div>
-                        <label>Role</label>
+                        <label>תפקיד</label>
                         <select id="userRole" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
-                            <option value="SALES_REP">Sales Representative</option>
-                            <option value="ADMIN">Administrator</option>
+                            <option value="SALES_REP">נציג מכירות</option>
+                            <option value="ADMIN">מנהל</option>
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="btn-calculate">Create User</button>
+                <button type="submit" class="btn-calculate">צור משתמש</button>
             </form>
         </div>
 
         <div class="quote-form" style="margin-top: 20px;">
-            <h3>Existing Users</h3>
+            <h3>משתמשים קיימים</h3>
             <div class="quote-history">
                 <table>
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Created</th>
-                            <th>Actions</th>
+                            <th>שם</th>
+                            <th>אימייל</th>
+                            <th>תפקיד</th>
+                            <th>נוצר</th>
+                            <th>פעולות</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; color: #999;">Loading users...</td>
+                            <td colspan="5" style="text-align: center; color: #999;">טוען משתמשים...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -75,34 +75,34 @@
         </div>
     </div>
 
-    <!-- Edit User Modal -->
+    <!-- חלון עריכת משתמש -->
     <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
         <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-            <h3 style="margin-bottom: 20px;">Edit User</h3>
+            <h3 style="margin-bottom: 20px;">עריכת משתמש</h3>
             <form id="editUserForm">
                 <input type="hidden" id="editUserId">
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Full Name</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם מלא</label>
                     <input type="text" id="editUserName" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
                 </div>
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל</label>
                     <input type="email" id="editUserEmail" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
                 </div>
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">New Password (leave blank to keep current)</label>
-                    <input type="password" id="editUserPassword" placeholder="Optional" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">סיסמה חדשה (השאר ריק לשמירת הנוכחית)</label>
+                    <input type="password" id="editUserPassword" placeholder="אופציונלי" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Role</label>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">תפקיד</label>
                     <select id="editUserRole" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
-                        <option value="SALES_REP">Sales Representative</option>
-                        <option value="ADMIN">Administrator</option>
+                        <option value="SALES_REP">נציג מכירות</option>
+                        <option value="ADMIN">מנהל</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn-calculate" style="flex: 1;">Save Changes</button>
-                    <button type="button" onclick="closeEditModal()" class="btn-calculate" style="flex: 1; background: #999;">Cancel</button>
+                    <button type="submit" class="btn-calculate" style="flex: 1;">שמור שינויים</button>
+                    <button type="button" onclick="closeEditModal()" class="btn-calculate" style="flex: 1; background: #999;">ביטול</button>
                 </div>
             </form>
         </div>
@@ -111,7 +111,7 @@
     <script>
         let users = [];
 
-        // Load users
+        // טעינת משתמשים
         async function loadUsers() {
             try {
                 const response = await fetch('/api/users');
@@ -119,37 +119,37 @@
                     users = await response.json();
                     displayUsers();
                 } else {
-                    console.error('Error loading users');
+                    console.error('שגיאה בטעינת משתמשים');
                 }
             } catch (error) {
                 console.error('Error:', error);
             }
         }
 
-        // Display users in table
+        // הצגת משתמשים בטבלה
         function displayUsers() {
             const tbody = document.getElementById('usersTableBody');
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No users found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">לא נמצאו משתמשים</td></tr>';
                 return;
             }
 
             tbody.innerHTML = users.map(user => `
                 <tr>
-                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.name || 'לא זמין'}</td>
                     <td>${user.email}</td>
-                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#667eea' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role}</span></td>
-                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#667eea' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role === 'ADMIN' ? 'מנהל' : 'נציג מכירות'}</span></td>
+                    <td>${new Date(user.created_at).toLocaleDateString('he-IL')}</td>
                     <td>
-                        <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Edit</button>
-                        <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+                        <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">ערוך</button>
+                        <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">מחק</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        // Create user
+        // יצירת משתמש
         document.getElementById('createUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -166,20 +166,20 @@
                 });
 
                 if (response.ok) {
-                    alert('User created successfully!');
+                    alert('המשתמש נוצר בהצלחה!');
                     document.getElementById('createUserForm').reset();
                     loadUsers();
                 } else {
                     const error = await response.json();
-                    alert('Error creating user: ' + (error.detail || 'Unknown error'));
+                    alert('שגיאה ביצירת משתמש: ' + (error.detail || 'שגיאה לא ידועה'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error creating user');
+                alert('שגיאה ביצירת משתמש');
             }
         });
 
-        // Edit user
+        // עריכת משתמש
         function editUser(userId) {
             const user = users.find(u => u.id === userId);
             if (!user) return;
@@ -197,7 +197,7 @@
             document.getElementById('editModal').style.display = 'none';
         }
 
-        // Update user
+        // עדכון משתמש
         document.getElementById('editUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -219,22 +219,22 @@
                 });
 
                 if (response.ok) {
-                    alert('User updated successfully!');
+                    alert('המשתמש עודכן בהצלחה!');
                     closeEditModal();
                     loadUsers();
                 } else {
                     const error = await response.json();
-                    alert('Error updating user: ' + (error.detail || 'Unknown error'));
+                    alert('שגיאה בעדכון משתמש: ' + (error.detail || 'שגיאה לא ידועה'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error updating user');
+                alert('שגיאה בעדכון משתמש');
             }
         });
 
-        // Delete user
+        // מחיקת משתמש
         async function deleteUser(userId, userEmail) {
-            if (!confirm(`Are you sure you want to delete user "${userEmail}"?`)) {
+            if (!confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${userEmail}"?`)) {
                 return;
             }
 
@@ -244,15 +244,15 @@
                 });
 
                 if (response.ok) {
-                    alert('User deleted successfully!');
+                    alert('המשתמש נמחק בהצלחה!');
                     loadUsers();
                 } else {
                     const error = await response.json();
-                    alert('Error deleting user: ' + (error.detail || 'Unknown error'));
+                    alert('שגיאה במחיקת משתמש: ' + (error.detail || 'שגיאה לא ידועה'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error deleting user');
+                alert('שגיאה במחיקת משתמש');
             }
         }
 

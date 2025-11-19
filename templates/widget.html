@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Calculator Widget</title>
+    <title>ווידג'ט מחשבון סולארי</title>
     <style>
         * {
             margin: 0;
@@ -19,6 +19,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            direction: rtl;
         }
 
         .widget-container {
@@ -63,6 +64,7 @@
             border-radius: 8px;
             font-size: 16px;
             transition: all 0.3s ease;
+            text-align: right;
         }
 
         input[type="number"]:focus {
@@ -158,7 +160,7 @@
             padding: 15px;
             background: #e8f5e9;
             border-radius: 8px;
-            border-left: 4px solid #52c41a;
+            border-right: 4px solid #52c41a;
         }
 
         .environmental-title {
@@ -211,47 +213,47 @@
 </head>
 <body>
     <div class="widget-container">
-        <h2>Solar Energy Calculator</h2>
-        <p class="subtitle">Calculate your solar system cost and savings</p>
+        <h2>מחשבון אנרגיה סולארית</h2>
+        <p class="subtitle">חשב את עלות המערכת הסולארית והחיסכון שלך</p>
 
         <div class="input-group">
-            <label for="systemSize">System Size (kWp)</label>
-            <input type="number" id="systemSize" placeholder="Enter kWp (e.g., 15)" min="1" max="1000" step="0.1" value="15">
+            <label for="systemSize">גודל מערכת (קוט״ש)</label>
+            <input type="number" id="systemSize" placeholder="הזן קוט״ש (לדוגמה: 15)" min="1" max="1000" step="0.1" value="15">
         </div>
 
-        <button class="calculate-btn" onclick="calculate()">Calculate</button>
+        <button class="calculate-btn" onclick="calculate()">חשב</button>
 
         <div id="results" class="results">
             <div class="result-item">
-                <div class="result-label">Total Investment</div>
+                <div class="result-label">סך ההשקעה</div>
                 <div class="result-value price" id="totalPrice">₪0</div>
             </div>
 
             <div class="result-item">
-                <div class="result-label">Annual Energy Production</div>
-                <div class="result-value" id="annualProduction">0 kWh</div>
+                <div class="result-label">ייצור אנרגיה שנתי</div>
+                <div class="result-value" id="annualProduction">0 קוט״ש</div>
             </div>
 
             <div class="result-item">
-                <div class="result-label">Estimated Annual Revenue</div>
+                <div class="result-label">הכנסה שנתית משוערת</div>
                 <div class="result-value revenue" id="annualRevenue">₪0</div>
             </div>
 
             <div class="result-item">
-                <div class="result-label">Payback Period</div>
-                <div class="result-value payback" id="paybackPeriod">0 years</div>
+                <div class="result-label">תקופת החזר</div>
+                <div class="result-value payback" id="paybackPeriod">0 שנים</div>
             </div>
 
             <div class="environmental">
-                <div class="environmental-title">Environmental Impact</div>
+                <div class="environmental-title">השפעה סביבתית</div>
                 <div class="environmental-text" id="environmentalText">
-                    Your solar system will help protect the environment.
+                    המערכת הסולארית שלך תעזור להגן על הסביבה.
                 </div>
             </div>
         </div>
 
         <div class="powered-by">
-            Powered by <a href="/" target="_top">Solar Energy Solutions</a>
+            מופעל על ידי <a href="/" target="_top">פתרונות אנרגיה סולארית</a>
         </div>
     </div>
 
@@ -260,7 +262,7 @@
             const systemSize = parseFloat(document.getElementById('systemSize').value);
 
             if (!systemSize || systemSize <= 0) {
-                alert('Please enter a valid system size');
+                alert('נא להזין גודל מערכת תקין');
                 return;
             }
 
@@ -276,28 +278,28 @@
                 if (response.ok) {
                     const data = await response.json();
 
-                    // Update results
+                    // עדכון תוצאות
                     document.getElementById('totalPrice').textContent = `₪${data.total_price.toLocaleString()}`;
-                    document.getElementById('annualProduction').textContent = `${data.annual_production.toLocaleString()} kWh`;
+                    document.getElementById('annualProduction').textContent = `${data.annual_production.toLocaleString()} קוט״ש`;
                     document.getElementById('annualRevenue').textContent = `₪${data.annual_revenue.toLocaleString()}`;
-                    document.getElementById('paybackPeriod').textContent = `${data.payback_period} years`;
+                    document.getElementById('paybackPeriod').textContent = `${data.payback_period} שנים`;
 
-                    // Environmental text
-                    const envText = `Equivalent to planting ${data.trees_equivalent.toLocaleString()} trees and reducing CO2 emissions by ${data.co2_reduction.toLocaleString()} kg per year.`;
+                    // טקסט סביבתי
+                    const envText = `שווה ערך לנטיעת ${data.trees_equivalent.toLocaleString()} עצים והפחתת פליטות CO2 ב-${data.co2_reduction.toLocaleString()} ק"ג בשנה.`;
                     document.getElementById('environmentalText').textContent = envText;
 
-                    // Show results with animation
+                    // הצגת תוצאות עם אנימציה
                     document.getElementById('results').classList.add('show');
                 } else {
-                    alert('Error calculating. Please try again.');
+                    alert('שגיאה בחישוב. נסה שוב.');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error calculating. Please check your connection.');
+                alert('שגיאה בחישוב. בדוק את החיבור שלך.');
             }
         }
 
-        // Calculate on Enter key
+        // חישוב בלחיצה על Enter
         document.getElementById('systemSize').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 calculate();

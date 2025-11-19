@@ -99,7 +99,7 @@ def generate_quote_pdf(quote_data, company_info=None):
     title = Paragraph(f"<para align=center><b>{company_name}</b></para>", title_style)
     elements.append(title)
 
-    subtitle_text = "<para align=center>SOLAR ENERGY QUOTATION</para>"
+    subtitle_text = "<para align=center>הצעת מחיר אנרגיה סולארית</para>"
     subtitle = Paragraph(subtitle_text, subtitle_style)
     elements.append(subtitle)
     elements.append(Spacer(1, 0.15*inch))
@@ -109,9 +109,9 @@ def generate_quote_pdf(quote_data, company_info=None):
     valid_until = today + timedelta(days=30)
 
     quote_info = [
-        ['Quote Number:', str(quote_data.get('quote_number', 'N/A'))],
-        ['Date:', today.strftime('%B %d, %Y')],
-        ['Valid Until:', valid_until.strftime('%B %d, %Y')]
+        ['מספר הצעה:', str(quote_data.get('quote_number', 'N/A'))],
+        ['תאריך:', today.strftime('%d/%m/%Y')],
+        ['בתוקף עד:', valid_until.strftime('%d/%m/%Y')]
     ]
 
     quote_table = Table(quote_info, colWidths=[1.5*inch, 2.5*inch])
@@ -128,14 +128,14 @@ def generate_quote_pdf(quote_data, company_info=None):
     elements.append(Spacer(1, 0.15*inch))
 
     # Customer Information
-    customer_heading = Paragraph("Customer Information", heading_style)
+    customer_heading = Paragraph("פרטי לקוח", heading_style)
     elements.append(customer_heading)
 
     customer_data = [
-        ['Name:', str(quote_data.get('customer_name', 'N/A'))],
-        ['Phone:', str(quote_data.get('customer_phone', 'N/A'))],
-        ['Email:', str(quote_data.get('customer_email', 'N/A'))],
-        ['Address:', str(quote_data.get('customer_address', 'N/A'))],
+        ['שם:', str(quote_data.get('customer_name', 'N/A'))],
+        ['טלפון:', str(quote_data.get('customer_phone', 'N/A'))],
+        ['אימייל:', str(quote_data.get('customer_email', 'N/A'))],
+        ['כתובת:', str(quote_data.get('customer_address', 'N/A'))],
     ]
 
     customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
@@ -151,7 +151,7 @@ def generate_quote_pdf(quote_data, company_info=None):
     elements.append(Spacer(1, 0.15*inch))
 
     # System Specifications
-    specs_heading = Paragraph("System Specifications", heading_style)
+    specs_heading = Paragraph("מפרט מערכת", heading_style)
     elements.append(specs_heading)
 
     system_size = quote_data.get('system_size', 0)
@@ -159,15 +159,15 @@ def generate_quote_pdf(quote_data, company_info=None):
     annual_prod = quote_data.get('annual_production', 0)
 
     specs_data = [
-        ['System Size:', f"{system_size} kWp"],
-        ['Roof Area:', f"{roof_area} m²" if roof_area else 'N/A'],
-        ['Annual Production:', f"{int(annual_prod):,} kWh/year" if annual_prod else 'N/A'],
-        ['Panel Type:', str(quote_data.get('panel_type', 'N/A'))],
-        ['Number of Panels:', str(quote_data.get('panel_count', 'N/A'))],
-        ['Inverter Type:', str(quote_data.get('inverter_type', 'N/A'))],
-        ['Direction:', str(quote_data.get('direction', 'N/A')).title()],
-        ['Tilt Angle:', f"{quote_data.get('tilt_angle', 'N/A')}°" if quote_data.get('tilt_angle') else 'N/A'],
-        ['Warranty:', f"{quote_data.get('warranty_years', 25)} years"],
+        ['גודל מערכת:', f"{system_size} קוט״ש"],
+        ['שטח גג:', f"{roof_area} מ״ר" if roof_area else 'לא צוין'],
+        ['ייצור שנתי:', f"{int(annual_prod):,} קוט״ש/שנה" if annual_prod else 'לא צוין'],
+        ['סוג פאנל:', str(quote_data.get('panel_type', 'לא צוין'))],
+        ['מספר פאנלים:', str(quote_data.get('panel_count', 'לא צוין'))],
+        ['סוג ממיר:', str(quote_data.get('inverter_type', 'לא צוין'))],
+        ['כיוון:', str(quote_data.get('direction', 'לא צוין')).title()],
+        ['זווית הטיה:', f"{quote_data.get('tilt_angle', 'לא צוין')}°" if quote_data.get('tilt_angle') else 'לא צוין'],
+        ['אחריות:', f"{quote_data.get('warranty_years', 25)} שנים"],
     ]
 
     specs_table = Table(specs_data, colWidths=[2*inch, 4*inch])
@@ -192,7 +192,7 @@ def generate_quote_pdf(quote_data, company_info=None):
     # Production Charts
     if system_size and annual_prod:
         # Monthly Production Chart
-        chart_heading = Paragraph("Monthly Energy Production", heading_style)
+        chart_heading = Paragraph("ייצור אנרגיה חודשי", heading_style)
         elements.append(chart_heading)
 
         try:
@@ -205,7 +205,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Payback Period Chart
         if total_price and annual_revenue:
-            payback_heading = Paragraph("Investment Payback Analysis", heading_style)
+            payback_heading = Paragraph("ניתוח החזר השקעה", heading_style)
             elements.append(payback_heading)
 
             try:
@@ -217,17 +217,17 @@ def generate_quote_pdf(quote_data, company_info=None):
                 print(f"Error generating payback chart: {e}")
 
     # Financial Summary
-    financial_heading = Paragraph("Financial Summary", heading_style)
+    financial_heading = Paragraph("סיכום פיננסי", heading_style)
     elements.append(financial_heading)
 
     payback = quote_data.get('payback_period', 0)
 
     financial_data = [
-        ['Description', 'Amount'],
-        ['Total Investment', f"₪{int(total_price):,}"],
-        ['Estimated Annual Revenue', f"₪{int(annual_revenue):,}"],
-        ['Payback Period', f"{payback} years"],
-        ['25-Year Total Savings', f"₪{int(annual_revenue * 25):,}"],
+        ['תיאור', 'סכום'],
+        ['סך ההשקעה', f"₪{int(total_price):,}"],
+        ['הכנסה שנתית משוערת', f"₪{int(annual_revenue):,}"],
+        ['תקופת החזר', f"{payback} שנים"],
+        ['חיסכון כולל ל-25 שנה', f"₪{int(annual_revenue * 25):,}"],
     ]
 
     financial_table = Table(financial_data, colWidths=[3.5*inch, 2.5*inch])
@@ -252,15 +252,15 @@ def generate_quote_pdf(quote_data, company_info=None):
     elements.append(Spacer(1, 0.15*inch))
 
     # Environmental Impact
-    env_heading = Paragraph("Environmental Impact", heading_style)
+    env_heading = Paragraph("השפעה סביבתית", heading_style)
     elements.append(env_heading)
 
     trees = int(annual_prod * 0.05) if annual_prod else 0
     co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
-    env_text = f"Your solar system will produce approximately <b>{int(annual_prod):,} kWh</b> of clean energy annually, " \
-                f"equivalent to planting <b>{trees:,} trees</b> and reducing CO2 emissions by <b>{co2_saved:,} kg per year</b>. " \
-                f"Over 25 years, this represents a significant contribution to environmental sustainability."
+    env_text = f"המערכת הסולארית שלך תייצר כ-<b>{int(annual_prod):,} קוט״ש</b> של אנרגיה נקייה בשנה, " \
+                f"שווה ערך לנטיעת <b>{trees:,} עצים</b> והפחתת פליטות CO2 ב-<b>{co2_saved:,} ק״ג בשנה</b>. " \
+                f"במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית."
 
     env_para = Paragraph(env_text, normal_style)
     elements.append(env_para)
@@ -287,8 +287,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             footer_lines.append(f"{company_info['company_address']}")
 
     footer_lines.append("")
-    footer_lines.append("<i>This quotation is valid for 30 days from the date of issue.</i>")
-    footer_lines.append("Thank you for choosing solar energy!")
+    footer_lines.append("<i>הצעה זו בתוקף 30 ימים מתאריך ההנפקה.</i>")
+    footer_lines.append("תודה שבחרתם באנרגיה סולארית!")
 
     footer_text = "<para align=center>" + "<br/>".join(footer_lines) + "</para>"
     footer = Paragraph(footer_text, footer_style)

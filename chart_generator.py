@@ -68,9 +68,9 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
                    edgecolor='#5568d3', linewidth=1, alpha=0.85, width=0.7)
 
     # Customize appearance - smaller, more professional fonts
-    ax.set_xlabel('Month', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_ylabel('Production (kWh)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_title(f'Monthly Solar Production - {system_kwp} kWp System',
+    ax.set_xlabel('חודש', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_ylabel('ייצור (קוט״ש)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_title(f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש',
                  fontsize=10, fontweight='bold', pad=12, color='#2d3748')
 
     # Set x-axis labels (months) - smaller fonts
@@ -94,7 +94,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
 
     # Add total annual production annotation - more subtle
     total_kwh = sum(monthly_production)
-    ax.text(0.98, 0.96, f'Total: {total_kwh:,.0f} kWh/year',
+    ax.text(0.98, 0.96, f'סה״כ: {total_kwh:,.0f} קוט״ש/שנה',
             transform=ax.transAxes, fontsize=8, fontweight='600',
             verticalalignment='top', horizontalalignment='right',
             bbox=dict(boxstyle='round,pad=0.5', facecolor='#f7fafc', edgecolor='#cbd5e0', alpha=0.9))
@@ -217,16 +217,16 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
         ax.axvline(x=payback_years, color='#ef5350', linestyle='--', linewidth=1.2, alpha=0.6)
 
         # Add annotation - smaller, more subtle
-        ax.annotate(f'Breakeven\n{payback_years:.1f} years',
+        ax.annotate(f'נקודת איזון\n{payback_years:.1f} שנים',
                    xy=(payback_years, 0), xytext=(payback_years + 2, price * 0.3),
                    fontsize=8, fontweight='600',
                    arrowprops=dict(arrowstyle='->', color='#ef5350', lw=1.5),
                    bbox=dict(boxstyle='round,pad=0.4', facecolor='#fff3e0', edgecolor='#ef5350', alpha=0.8))
 
     # Labels and title - smaller, professional fonts
-    ax.set_xlabel('Years', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_ylabel('Cumulative Savings (₪)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_title(f'Investment Payback Period & Cumulative Savings',
+    ax.set_xlabel('שנים', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_ylabel('חיסכון מצטבר (₪)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_title(f'תקופת החזר השקעה וחיסכון מצטבר',
                  fontsize=10, fontweight='bold', pad=12, color='#2d3748')
 
     # Format y-axis with currency
@@ -239,7 +239,7 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
 
     # Add legend with final savings - smaller, more subtle
     final_savings = cumulative_savings[-1]
-    ax.text(0.98, 0.02, f'Total Savings ({years} years): ₪{final_savings:,.0f}',
+    ax.text(0.98, 0.02, f'חיסכון כולל ({years} שנים): ₪{final_savings:,.0f}',
             transform=ax.transAxes, fontsize=8, fontweight='600',
             verticalalignment='bottom', horizontalalignment='right',
             bbox=dict(boxstyle='round,pad=0.5', facecolor='#f7fafc', edgecolor='#cbd5e0', alpha=0.9))

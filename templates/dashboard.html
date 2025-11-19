@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Dashboard - Solar Quotation</title>
+    <title>לוח בקרה - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
     <div class="sidebar">
-        <h2>☀️ Solar Energy</h2>
+        <h2>☀️ אנרגיה סולארית</h2>
         <nav>
-            <a href="/dashboard" class="active">New Quote</a>
-            <a href="#" onclick="loadQuoteHistory()">Quote History</a>
+            <a href="/dashboard" class="active">הצעה חדשה</a>
+            <a href="#" onclick="loadQuoteHistory()">היסטוריית הצעות</a>
             {% if user.role == 'ADMIN' %}
-            <a href="/admin">Admin Panel</a>
-            <a href="/users">Manage Users</a>
+            <a href="/admin">לוח ניהול</a>
+            <a href="/users">ניהול משתמשים</a>
             {% endif %}
-            <a href="/logout">Logout</a>
+            <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
             <p>{{ user.email }}</p>
@@ -25,68 +25,68 @@
     </div>
 
     <div class="main-content">
-        <h1>Create New Quote</h1>
+        <h1>יצירת הצעה חדשה</h1>
 
         <div class="quote-form">
-            <h3>Customer Information</h3>
+            <h3>פרטי לקוח</h3>
             <div class="form-grid">
-                <input type="text" id="customerName" placeholder="Customer Name *" required>
-                <input type="tel" id="customerPhone" placeholder="Phone">
-                <input type="email" id="customerEmail" placeholder="Email">
-                <input type="text" id="customerAddress" placeholder="Address">
+                <input type="text" id="customerName" placeholder="שם הלקוח *" required>
+                <input type="tel" id="customerPhone" placeholder="טלפון">
+                <input type="email" id="customerEmail" placeholder="אימייל">
+                <input type="text" id="customerAddress" placeholder="כתובת">
             </div>
 
-            <h3>System Specifications</h3>
+            <h3>מפרט מערכת</h3>
             <div class="form-grid">
-                <input type="number" id="systemSize" placeholder="System Size (kWp) *" step="0.1" required>
-                <input type="number" id="roofArea" placeholder="Roof Area (m²)" step="0.1">
-                <input type="text" id="panelType" placeholder="Panel Type (e.g., Longi 550W)">
-                <input type="number" id="panelCount" placeholder="Panel Count">
-                <input type="text" id="inverterType" placeholder="Inverter Type">
+                <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
+                <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
+                <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)">
+                <input type="number" id="panelCount" placeholder="מספר פאנלים">
+                <input type="text" id="inverterType" placeholder="סוג ממיר">
                 <select id="direction">
-                    <option value="south">South</option>
-                    <option value="southwest">South-West</option>
-                    <option value="southeast">South-East</option>
-                    <option value="east_west">East-West</option>
+                    <option value="south">דרום</option>
+                    <option value="southwest">דרום-מערב</option>
+                    <option value="southeast">דרום-מזרח</option>
+                    <option value="east_west">מזרח-מערב</option>
                 </select>
-                <input type="number" id="tiltAngle" placeholder="Tilt Angle (°)" step="0.1">
-                <input type="number" id="warrantyYears" placeholder="Warranty (years)" value="25">
+                <input type="number" id="tiltAngle" placeholder="זווית הטיה (°)" step="0.1">
+                <input type="number" id="warrantyYears" placeholder="אחריות (שנים)" value="25">
             </div>
 
-            <button onclick="calculateQuote()" class="btn-calculate">Calculate</button>
+            <button onclick="calculateQuote()" class="btn-calculate">חשב</button>
 
             <div id="calculations" class="calculations" style="display:none;">
                 <div class="calc-box">
-                    <h4>Total Price</h4>
+                    <h4>מחיר כולל</h4>
                     <div class="calc-value" id="totalPrice">₪0</div>
                 </div>
                 <div class="calc-box success">
-                    <h4>Annual Revenue</h4>
+                    <h4>הכנסה שנתית</h4>
                     <div class="calc-value" id="annualRevenue">₪0</div>
                 </div>
                 <div class="calc-box info">
-                    <h4>Payback Period</h4>
-                    <div class="calc-value" id="paybackPeriod">0 years</div>
+                    <h4>תקופת החזר</h4>
+                    <div class="calc-value" id="paybackPeriod">0 שנים</div>
                 </div>
             </div>
 
             <div class="actions">
-                <button onclick="saveQuote()" class="btn-primary">Save Quote</button>
-                <button onclick="generatePDF()" class="btn-secondary">Generate PDF</button>
+                <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
+                <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
             </div>
         </div>
 
         <div id="quoteHistory" style="display:none;">
-            <h1>Quote History</h1>
+            <h1>היסטוריית הצעות</h1>
             <table id="quotesTable">
                 <thead>
                     <tr>
-                        <th>Quote #</th>
-                        <th>Customer</th>
-                        <th>System Size</th>
-                        <th>Price</th>
-                        <th>Date</th>
-                        <th>Actions</th>
+                        <th>מס׳ הצעה</th>
+                        <th>לקוח</th>
+                        <th>גודל מערכת</th>
+                        <th>מחיר</th>
+                        <th>תאריך</th>
+                        <th>פעולות</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

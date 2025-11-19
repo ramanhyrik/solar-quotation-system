@@ -6,6 +6,7 @@ body {
     height: 100vh;
     background: #f7fafc;
     overflow: hidden;
+    direction: rtl;
 }
 
 .sidebar {
@@ -16,11 +17,11 @@ body {
     padding: 30px 25px;
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     flex-shrink: 0;
     position: fixed;
-    left: 0;
+    right: 0;
     top: 0;
 }
 
@@ -51,7 +52,7 @@ body {
 .sidebar nav a:hover,
 .sidebar nav a.active {
     background: rgba(255, 255, 255, 0.25);
-    transform: translateX(5px);
+    transform: translateX(-5px);
 }
 
 .user-info {
@@ -72,7 +73,7 @@ body {
     overflow-y: auto;
     background: #f7fafc;
     height: 100vh;
-    margin-left: 280px;
+    margin-right: 280px;
 }
 
 .main-content h1 {
@@ -239,7 +240,7 @@ table thead {
 table th,
 table td {
     padding: 18px;
-    text-align: left;
+    text-align: right;
     font-size: 15px;
 }
 
@@ -264,7 +265,7 @@ table button {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    margin-right: 8px;
+    margin-left: 8px;
     font-weight: 600;
     font-size: 14px;
     transition: all 0.3s;
@@ -303,7 +304,7 @@ label {
         overflow-y: hidden;
         position: relative;
         top: auto;
-        left: auto;
+        right: auto;
     }
 
     .sidebar nav {
@@ -324,7 +325,7 @@ label {
         padding: 25px 20px;
         height: auto;
         flex: 1;
-        margin-left: 0;
+        margin-right: 0;
     }
 
     .actions {
