@@ -64,7 +64,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     fig.patch.set_facecolor('white')
 
     # Create bars with gradient color
-    bars = ax.bar(range(12), monthly_production, color='#667eea',
+    bars = ax.bar(range(12), monthly_production, color='#00358A',
                    edgecolor='#5568d3', linewidth=1, alpha=0.85, width=0.7)
 
     # Customize appearance - smaller, more professional fonts
@@ -194,7 +194,7 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
     fig.patch.set_facecolor('white')
 
     # Plot cumulative savings - thinner line, smaller markers
-    ax.plot(year_range, cumulative_savings, linewidth=2, color='#667eea', marker='o', markersize=3)
+    ax.plot(year_range, cumulative_savings, linewidth=2, color='#00358A', marker='o', markersize=3)
 
     # Fill area below zero (investment period) in red
     ax.fill_between(year_range, cumulative_savings, 0,
@@ -204,7 +204,7 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
     # Fill area above zero (profit period) in purple
     ax.fill_between(year_range, cumulative_savings, 0,
                      where=(cumulative_savings >= 0),
-                     color='#667eea', alpha=0.15, interpolate=True)
+                     color='#00358A', alpha=0.15, interpolate=True)
 
     # Add zero line
     ax.axhline(y=0, color='#4a5568', linestyle='-', linewidth=1, alpha=0.4)

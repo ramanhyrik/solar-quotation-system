@@ -23,7 +23,6 @@ async def lifespan(app: FastAPI):
     init_database()
     print("[*] Solar Quotation System started!")
     print("[*] Visit: http://localhost:8000")
-    print("[*] Login: admin@solar.com / admin123")
     yield
     # Shutdown (if needed)
     print("[*] Shutting down...")

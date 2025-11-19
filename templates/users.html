@@ -139,7 +139,7 @@
                 <tr>
                     <td>${user.name || 'לא זמין'}</td>
                     <td>${user.email}</td>
-                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#667eea' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role === 'ADMIN' ? 'מנהל' : 'נציג מכירות'}</span></td>
+                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#00358A' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role === 'ADMIN' ? 'מנהל' : 'נציג מכירות'}</span></td>
                     <td>${new Date(user.created_at).toLocaleDateString('he-IL')}</td>
                     <td>
                         <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">ערוך</button>

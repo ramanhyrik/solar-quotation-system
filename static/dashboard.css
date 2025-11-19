@@ -12,7 +12,7 @@ body {
 .sidebar {
     width: 280px;
     height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
     padding: 30px 25px;
     display: flex;
@@ -93,7 +93,7 @@ body {
 
 .quote-form h3 {
     margin: 25px 0 20px 0;
-    color: #667eea;
+    color: #00358A;
     font-size: 20px;
     font-weight: 700;
 }
@@ -118,7 +118,7 @@ body {
 .form-grid input:focus,
 .form-grid select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #00358A;
     background: white;
     box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
@@ -126,7 +126,7 @@ body {
 .btn-calculate {
     width: 100%;
     padding: 18px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
     border: none;
     border-radius: 12px;
@@ -152,7 +152,7 @@ body {
 }
 
 .calc-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
     padding: 30px;
     border-radius: 12px;
@@ -202,7 +202,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
@@ -214,14 +214,14 @@ body {
 
 .btn-secondary {
     background: white;
-    color: #667eea;
-    border: 2px solid #667eea;
+    color: #00358A;
+    border: 2px solid #00358A;
 }
 
 .btn-secondary:hover {
-    background: #667eea;
+    background: #00358A;
     color: white;
-    border-color: #667eea;
+    border-color: #00358A;
 }
 
 table {
@@ -233,7 +233,7 @@ table {
 }
 
 table thead {
-    background: #667eea;
+    background: #00358A;
     color: white;
 }
 

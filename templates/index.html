@@ -13,15 +13,11 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
             min-height: 100vh;
-            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
             direction: rtl;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
         }
 
         .top-nav {
@@ -42,258 +38,148 @@
         .logo-nav {
             font-size: 24px;
             font-weight: 700;
-            color: #667eea;
+            color: #00358A;
         }
 
         .login-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00358A 0%, #004CAD 100%);
             color: white;
             padding: 12px 32px;
             border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
             font-size: 16px;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 53, 138, 0.3);
             transition: all 0.3s ease;
         }
 
         .login-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.4);
         }
 
-        header {
+        .hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 20px 60px;
             text-align: center;
-            color: white;
-            margin-bottom: 60px;
-            margin-top: 100px;
         }
 
-        header h1 {
-            font-size: 4em;
-            margin-bottom: 20px;
-            font-weight: 700;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            letter-spacing: -1px;
-        }
-
-        header p {
-            font-size: 1.6em;
-            opacity: 0.95;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-        }
-
-        .calculator-card {
-            background: white;
+        .hero-content {
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 24px;
-            padding: 50px;
-            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
-            margin-bottom: 40px;
+            padding: 60px;
+            max-width: 700px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
         }
 
-        .card-title {
-            font-size: 2.6em;
-            margin-bottom: 30px;
+        .hero h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
             color: #2d3748;
             font-weight: 700;
         }
 
-        .form-group {
-            margin-bottom: 30px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 12px;
-            font-weight: 600;
+        .hero p {
+            font-size: 1.3em;
             color: #4a5568;
-            font-size: 18px;
+            margin-bottom: 40px;
+            line-height: 1.6;
         }
 
-        input {
-            width: 100%;
-            padding: 18px 20px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 18px;
-            transition: all 0.3s;
-            background: #f7fafc;
-            text-align: right;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-
-        .calculate-btn {
-            width: 100%;
-            padding: 22px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 20px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-            letter-spacing: 0.5px;
-        }
-
-        .calculate-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
-        }
-
-        .calculate-btn:active {
-            transform: translateY(-1px);
-        }
-
-        .results {
-            display: none;
-            margin-top: 40px;
-            animation: fadeIn 0.5s;
-        }
-
-        .results.show {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 35px;
-        }
-
-        .result-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 35px;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        }
-
-        .result-box.success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .result-box.info {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .result-box-label {
-            font-size: 16px;
-            opacity: 0.9;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
-        }
-
-        .result-box-value {
-            font-size: 42px;
-            font-weight: 800;
-            margin: 10px 0;
-        }
-
-        .result-box-subtext {
-            font-size: 14px;
-            opacity: 0.85;
-            margin-top: 10px;
-        }
-
-        .environmental-box {
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            border: 3px solid #4caf50;
-            padding: 35px;
-            border-radius: 16px;
-        }
-
-        .environmental-box h3 {
-            color: #1b5e20;
-            margin-bottom: 25px;
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .env-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        .cta-buttons {
+            display: flex;
             gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        .env-item {
-            background: white;
-            padding: 25px;
+        .cta-btn {
+            padding: 18px 40px;
             border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, #00358A 0%, #004CAD 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.3);
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 53, 138, 0.4);
+        }
+
+        .cta-secondary {
+            background: white;
+            color: #00358A;
+            border: 2px solid #00358A;
+        }
+
+        .cta-secondary:hover {
+            background: #00358A;
+            color: white;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .feature {
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
         }
 
-        .env-value {
-            font-size: 32px;
-            font-weight: 800;
-            color: #2e7d32;
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
         }
 
-        .env-label {
-            color: #666;
-            font-size: 15px;
-            margin-top: 8px;
-            font-weight: 500;
+        .feature h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .feature p {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 0;
         }
 
         footer {
             text-align: center;
-            color: white;
-            margin-top: 50px;
-            opacity: 0.9;
-            font-size: 15px;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
             padding: 30px;
-            font-size: 18px;
-            color: #667eea;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        small {
-            color: #718096;
-            font-size: 15px;
-            margin-top: 8px;
-            display: block;
+            color: white;
+            background: rgba(0, 0, 0, 0.1);
         }
 
         @media (max-width: 768px) {
-            header h1 {
-                font-size: 2.5em;
+            .hero h1 {
+                font-size: 2em;
             }
 
-            .calculator-card {
-                padding: 30px 20px;
+            .hero-content {
+                padding: 40px 20px;
             }
 
-            .login-btn {
-                position: static;
-                display: inline-block;
-                margin-bottom: 20px;
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .cta-btn {
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -301,133 +187,41 @@
 <body>
     <nav class="top-nav">
         <div class="logo-nav">☀️ פתרונות אנרגיה סולארית</div>
-        <a href="/login" class="login-btn">התחבר ללוח הבקרה</a>
+        <a href="/login" class="login-btn">התחבר למערכת</a>
     </nav>
 
-    <div class="container">
-        <header>
-            <h1>☀️ פתרונות אנרגיה סולארית</h1>
-            <p>מערכת הצעות מחיר מקצועית</p>
-        </header>
+    <main class="hero">
+        <div class="hero-content">
+            <h1>☀️ אנרגיה סולארית חכמה</h1>
+            <p>מערכת מתקדמת להצעות מחיר מקצועיות לאנרגיה סולארית. חשב הכנסות, צור הצעות והפק מסמכי PDF באופן אוטומטי.</p>
 
-        <div class="calculator-card">
-            <h2 class="card-title">מחשבון השקעה סולארית</h2>
-
-            <form id="calculatorForm">
-                <div class="form-group">
-                    <label for="systemSize">גודל המערכת (קילוואט שיא)</label>
-                    <input type="number" id="systemSize" step="0.1" placeholder="הזן גודל מערכת (לדוגמה: 15)" required>
-                    <small>1 קילוואט שיא דורש כ-6 מ"ר שטח גג</small>
-                </div>
-
-                <button type="submit" class="calculate-btn">חשב השקעה</button>
-            </form>
-
-            <div class="loading" id="loading">
-                <p>⏳ מחשב את ההשקעה הסולארית שלך...</p>
+            <div class="cta-buttons">
+                <a href="/login" class="cta-btn cta-primary">כניסה למערכת</a>
+                <a href="/widget" class="cta-btn cta-secondary">נסה את המחשבון</a>
             </div>
 
-            <div class="results" id="results">
-                <h3 style="margin-bottom: 30px; color: #2d3748; font-size: 24px; font-weight: 700;">ניתוח השקעה</h3>
-
-                <div class="result-grid">
-                    <div class="result-box">
-                        <div class="result-box-label">סך ההשקעה</div>
-                        <div class="result-box-value" id="totalPrice">₪0</div>
-                        <div class="result-box-subtext" id="priceFormula"></div>
-                    </div>
-
-                    <div class="result-box success">
-                        <div class="result-box-label">הכנסה שנתית</div>
-                        <div class="result-box-value" id="annualRevenue">₪0</div>
-                        <div class="result-box-subtext" id="productionInfo"></div>
-                    </div>
-
-                    <div class="result-box info">
-                        <div class="result-box-label">תקופת החזר</div>
-                        <div class="result-box-value" id="paybackPeriod">0 שנים</div>
-                        <div class="result-box-subtext" id="roiInfo"></div>
-                    </div>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <h3>מחשבון מתקדם</h3>
+                    <p>חשב השקעה והחזר בדיוק</p>
                 </div>
-
-                <div class="environmental-box">
-                    <h3>🌱 ניתוח השפעה סביבתית</h3>
-                    <div class="env-grid">
-                        <div class="env-item">
-                            <div class="env-value" id="annualProduction">0</div>
-                            <div class="env-label">ייצור שנתי (קוט"ש)</div>
-                        </div>
-                        <div class="env-item">
-                            <div class="env-value" id="trees">0</div>
-                            <div class="env-label">שווה ערך לנטיעת עצים</div>
-                        </div>
-                        <div class="env-item">
-                            <div class="env-value" id="co2Saved">0</div>
-                            <div class="env-label">הפחתת CO₂ (ק"ג/שנה)</div>
-                        </div>
-                        <div class="env-item">
-                            <div class="env-value" id="totalSavings">₪0</div>
-                            <div class="env-label">חיסכון כולל ל-25 שנה</div>
-                        </div>
-                    </div>
+                <div class="feature">
+                    <div class="feature-icon">📄</div>
+                    <h3>הצעות PDF</h3>
+                    <p>מסמכים מקצועיים בעברית</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">💰</div>
+                    <h3>מודלים שונים</h3>
+                    <p>רכישה או ליסינג</p>
                 </div>
             </div>
         </div>
+    </main>
 
-        <footer>
-            <p>&copy; 2024 פתרונות אנרגיה סולארית. כל הזכויות שמורות.</p>
-        </footer>
-    </div>
-
-    <script>
-        const form = document.getElementById('calculatorForm');
-        const loading = document.getElementById('loading');
-        const results = document.getElementById('results');
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const systemSize = parseFloat(document.getElementById('systemSize').value);
-
-            if (!systemSize || systemSize <= 0) {
-                alert('נא להזין גודל מערכת תקין');
-                return;
-            }
-
-            loading.classList.add('show');
-            results.classList.remove('show');
-
-            try {
-                const formData = new FormData();
-                formData.append('system_size', systemSize);
-
-                const response = await fetch('/api/calculate', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                document.getElementById('totalPrice').textContent = `₪${data.total_price.toLocaleString()}`;
-                document.getElementById('annualRevenue').textContent = `₪${data.annual_revenue.toLocaleString()}`;
-                document.getElementById('paybackPeriod').textContent = `${data.payback_period} שנים`;
-                document.getElementById('priceFormula').textContent = `${systemSize} קוט"ש × ₪4,130`;
-                document.getElementById('productionInfo').textContent = `${data.annual_production.toLocaleString()} קוט"ש/שנה`;
-                document.getElementById('roiInfo').textContent = `תשואה ${((1 / data.payback_period) * 100).toFixed(1)}%`;
-                document.getElementById('annualProduction').textContent = data.annual_production.toLocaleString();
-                document.getElementById('trees').textContent = data.environmental_impact.trees;
-                document.getElementById('co2Saved').textContent = data.environmental_impact.co2_saved.toLocaleString();
-                document.getElementById('totalSavings').textContent = `₪${(data.annual_revenue * 25).toLocaleString()}`;
-
-                loading.classList.remove('show');
-                results.classList.add('show');
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('שגיאה בחישוב ההצעה. נסה שוב.');
-                loading.classList.remove('show');
-            }
-        });
-    </script>
+    <footer>
+        <p>&copy; 2024 פתרונות אנרגיה סולארית. כל הזכויות שמורות.</p>
+    </footer>
 </body>
 </html>

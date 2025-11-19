@@ -5,13 +5,285 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>לוח בקרה - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
+    <style>
+        /* Calculator Styles */
+        .calculator-section {
+            display: none;
+        }
+
+        .calculator-section.active {
+            display: block;
+        }
+
+        .model-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .model-tab {
+            flex: 1;
+            padding: 18px 30px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            color: #4a5568;
+        }
+
+        .model-tab:first-child {
+            border-radius: 12px 0 0 12px;
+        }
+
+        .model-tab:last-child {
+            border-radius: 0 12px 12px 0;
+        }
+
+        .model-tab.active {
+            background: #D9FF0D;
+            color: #00358A;
+        }
+
+        .model-tab:hover:not(.active) {
+            background: #f7fafc;
+        }
+
+        .calculator-input {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+
+        .calculator-input label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .calculator-input input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .calculator-input input:focus {
+            outline: none;
+            border-color: #00358A;
+            box-shadow: 0 0 0 4px rgba(0, 53, 138, 0.1);
+        }
+
+        .calculator-input small {
+            display: block;
+            margin-top: 8px;
+            color: #718096;
+        }
+
+        .calculator-results {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .results-header h3 {
+            color: #2d3748;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .results-header p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .income-forecast {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .income-box {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .income-box.highlight {
+            background: linear-gradient(135deg, #00358A 0%, #004CAD 100%);
+            color: white;
+            border: none;
+        }
+
+        .income-box .value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .income-box .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .income-box .currency {
+            font-size: 16px;
+            margin-right: 5px;
+        }
+
+        .system-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: linear-gradient(135deg, #D9FF0D 0%, #b8e600 100%);
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .system-info .icon {
+            font-size: 30px;
+        }
+
+        .system-info .details {
+            text-align: right;
+        }
+
+        .system-info .size {
+            font-size: 28px;
+            font-weight: 800;
+            color: #00358A;
+        }
+
+        .system-info .label {
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .environmental-impact {
+            text-align: center;
+            padding: 25px;
+            background: #e8f5e9;
+            border-radius: 12px;
+            border: 2px solid #4caf50;
+        }
+
+        .environmental-impact .message {
+            color: #1b5e20;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .trees-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .trees-icon {
+            font-size: 40px;
+        }
+
+        .trees-count {
+            font-size: 36px;
+            font-weight: 800;
+            color: #2e7d32;
+        }
+
+        .trees-label {
+            font-size: 14px;
+            color: #388e3c;
+        }
+
+        .calc-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .calc-actions button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-recalculate {
+            background: white;
+            color: #00358A;
+            border: 2px solid #00358A !important;
+        }
+
+        .btn-recalculate:hover {
+            background: #00358A;
+            color: white;
+        }
+
+        .btn-contact {
+            background: #D9FF0D;
+            color: #00358A;
+        }
+
+        .btn-contact:hover {
+            background: #c4e600;
+        }
+
+        /* Leasing specific styles */
+        .leasing-terms {
+            background: #fff3e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-right: 4px solid #ff9800;
+        }
+
+        .leasing-terms h4 {
+            color: #e65100;
+            margin-bottom: 10px;
+        }
+
+        .leasing-terms ul {
+            margin: 0;
+            padding-right: 20px;
+            color: #795548;
+        }
+
+        .leasing-terms li {
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="sidebar">
         <h2>☀️ אנרגיה סולארית</h2>
         <nav>
-            <a href="/dashboard" class="active">הצעה חדשה</a>
-            <a href="#" onclick="loadQuoteHistory()">היסטוריית הצעות</a>
+            <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
+            <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
+            <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
             {% if user.role == 'ADMIN' %}
             <a href="/admin">לוח ניהול</a>
             <a href="/users">ניהול משתמשים</a>
@@ -25,58 +297,140 @@
     </div>
 
     <div class="main-content">
-        <h1>יצירת הצעה חדשה</h1>
+        <!-- Calculator Section -->
+        <div id="calculatorSection" class="calculator-section">
+            <h1>מחשבון אנרגיה סולארית</h1>
 
-        <div class="quote-form">
-            <h3>פרטי לקוח</h3>
-            <div class="form-grid">
-                <input type="text" id="customerName" placeholder="שם הלקוח *" required>
-                <input type="tel" id="customerPhone" placeholder="טלפון">
-                <input type="email" id="customerEmail" placeholder="אימייל">
-                <input type="text" id="customerAddress" placeholder="כתובת">
+            <div class="model-tabs">
+                <button class="model-tab" onclick="setModel('leasing')" id="tab-leasing">מודל ליסינג</button>
+                <button class="model-tab active" onclick="setModel('purchase')" id="tab-purchase">מודל רכישה</button>
             </div>
 
-            <h3>מפרט מערכת</h3>
-            <div class="form-grid">
-                <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
-                <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
-                <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)">
-                <input type="number" id="panelCount" placeholder="מספר פאנלים">
-                <input type="text" id="inverterType" placeholder="סוג ממיר">
-                <select id="direction">
-                    <option value="south">דרום</option>
-                    <option value="southwest">דרום-מערב</option>
-                    <option value="southeast">דרום-מזרח</option>
-                    <option value="east_west">מזרח-מערב</option>
-                </select>
-                <input type="number" id="tiltAngle" placeholder="זווית הטיה (°)" step="0.1">
-                <input type="number" id="warrantyYears" placeholder="אחריות (שנים)" value="25">
+            <div class="calculator-input">
+                <label for="calcSystemSize">גודל המערכת (קילוואט שיא)</label>
+                <input type="number" id="calcSystemSize" step="0.1" placeholder="הזן גודל מערכת (לדוגמה: 22.5)" value="22.5">
+                <small>1 קילוואט שיא דורש כ-6 מ"ר שטח גג</small>
+                <button onclick="calculateModel()" class="btn-calculate" style="margin-top: 20px;">חשב</button>
             </div>
 
-            <button onclick="calculateQuote()" class="btn-calculate">חשב</button>
+            <div id="calcResults" class="calculator-results" style="display: none;">
+                <div class="results-header">
+                    <h3>צפי הכנסות</h3>
+                    <p id="modelDescription">מודל רכישה - בעלות מלאה על המערכת</p>
+                </div>
 
-            <div id="calculations" class="calculations" style="display:none;">
-                <div class="calc-box">
-                    <h4>מחיר כולל</h4>
-                    <div class="calc-value" id="totalPrice">₪0</div>
+                <div class="income-forecast">
+                    <div class="income-box highlight">
+                        <div class="value"><span class="currency">₪</span><span id="calcAnnualRevenue">0</span></div>
+                        <div class="label">בשנה</div>
+                    </div>
+                    <div class="income-box">
+                        <div class="value"><span class="currency">₪</span><span id="calcTotalRevenue">0</span></div>
+                        <div class="label">ב-25 שנים</div>
+                    </div>
                 </div>
-                <div class="calc-box success">
-                    <h4>הכנסה שנתית</h4>
-                    <div class="calc-value" id="annualRevenue">₪0</div>
-                </div>
-                <div class="calc-box info">
-                    <h4>תקופת החזר</h4>
-                    <div class="calc-value" id="paybackPeriod">0 שנים</div>
-                </div>
-            </div>
 
-            <div class="actions">
-                <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
-                <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
+                <div id="purchaseDetails">
+                    <div class="income-box" style="margin-bottom: 20px;">
+                        <div class="value" style="font-size: 24px;"><span class="currency">₪</span><span id="calcTotalPrice">0</span></div>
+                        <div class="label">עלות מערכת</div>
+                    </div>
+                </div>
+
+                <div id="leasingDetails" style="display: none;">
+                    <div class="leasing-terms">
+                        <h4>תנאי ליסינג</h4>
+                        <ul>
+                            <li>ללא עלות התקנה ראשונית</li>
+                            <li>תשלום חודשי קבוע: <strong id="monthlyPayment">₪0</strong></li>
+                            <li>תחזוקה ואחריות כלולים</li>
+                            <li>חוזה ל-25 שנים</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="system-info">
+                    <div class="icon">⚡</div>
+                    <div class="details">
+                        <div class="size" id="calcSystemSizeDisplay">22.5kW</div>
+                        <div class="label">גודל מערכת</div>
+                    </div>
+                </div>
+
+                <div class="environmental-impact">
+                    <div class="message">כדור הארץ אומר תודה! החיסכון האנרגטי שווה ערך ל:</div>
+                    <div class="trees-display">
+                        <div class="trees-icon">🌳🌳🌳</div>
+                        <div>
+                            <div class="trees-count" id="calcTrees">0</div>
+                            <div class="trees-label">עצים שנטעו</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calc-actions">
+                    <button class="btn-recalculate" onclick="resetCalculator()">חשב שוב ↻</button>
+                    <button class="btn-contact" onclick="showSection('quote')">דברו איתי</button>
+                </div>
             </div>
         </div>
 
-        <div id="quoteHistory" style="display:none;">
+        <!-- Quote Form Section -->
+        <div id="quoteSection" class="quote-form-section">
+            <h1>יצירת הצעה חדשה</h1>
+
+            <div class="quote-form">
+                <h3>פרטי לקוח</h3>
+                <div class="form-grid">
+                    <input type="text" id="customerName" placeholder="שם הלקוח *" required>
+                    <input type="tel" id="customerPhone" placeholder="טלפון">
+                    <input type="email" id="customerEmail" placeholder="אימייל">
+                    <input type="text" id="customerAddress" placeholder="כתובת">
+                </div>
+
+                <h3>מפרט מערכת</h3>
+                <div class="form-grid">
+                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
+                    <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
+                    <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)">
+                    <input type="number" id="panelCount" placeholder="מספר פאנלים">
+                    <input type="text" id="inverterType" placeholder="סוג ממיר">
+                    <select id="direction">
+                        <option value="south">דרום</option>
+                        <option value="southwest">דרום-מערב</option>
+                        <option value="southeast">דרום-מזרח</option>
+                        <option value="east_west">מזרח-מערב</option>
+                    </select>
+                    <input type="number" id="tiltAngle" placeholder="זווית הטיה (°)" step="0.1">
+                    <input type="number" id="warrantyYears" placeholder="אחריות (שנים)" value="25">
+                </div>
+
+                <button onclick="calculateQuote()" class="btn-calculate">חשב</button>
+
+                <div id="calculations" class="calculations" style="display:none;">
+                    <div class="calc-box">
+                        <h4>מחיר כולל</h4>
+                        <div class="calc-value" id="totalPrice">₪0</div>
+                    </div>
+                    <div class="calc-box success">
+                        <h4>הכנסה שנתית</h4>
+                        <div class="calc-value" id="annualRevenue">₪0</div>
+                    </div>
+                    <div class="calc-box info">
+                        <h4>תקופת החזר</h4>
+                        <div class="calc-value" id="paybackPeriod">0 שנים</div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
+                    <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quote History Section -->
+        <div id="historySection" style="display:none;">
             <h1>היסטוריית הצעות</h1>
             <table id="quotesTable">
                 <thead>
@@ -95,5 +449,111 @@
     </div>
 
     <script src="/static/dashboard.js"></script>
+    <script>
+        let currentModel = 'purchase';
+
+        function showSection(section) {
+            // Hide all sections
+            document.getElementById('calculatorSection').style.display = 'none';
+            document.getElementById('quoteSection').style.display = 'none';
+            document.getElementById('historySection').style.display = 'none';
+
+            // Remove active class from all nav items
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+
+            // Show selected section
+            if (section === 'calculator') {
+                document.getElementById('calculatorSection').style.display = 'block';
+                document.getElementById('calculatorSection').classList.add('active');
+                document.getElementById('nav-calculator').classList.add('active');
+            } else if (section === 'quote') {
+                document.getElementById('quoteSection').style.display = 'block';
+                document.getElementById('nav-quote').classList.add('active');
+            } else if (section === 'history') {
+                document.getElementById('historySection').style.display = 'block';
+                document.getElementById('nav-history').classList.add('active');
+                loadQuoteHistory();
+            }
+        }
+
+        function setModel(model) {
+            currentModel = model;
+
+            // Update tab styles
+            document.getElementById('tab-leasing').classList.remove('active');
+            document.getElementById('tab-purchase').classList.remove('active');
+
+            if (model === 'leasing') {
+                document.getElementById('tab-leasing').classList.add('active');
+                document.getElementById('modelDescription').textContent = 'מודל ליסינג - ללא עלות התקנה';
+                document.getElementById('purchaseDetails').style.display = 'none';
+                document.getElementById('leasingDetails').style.display = 'block';
+            } else {
+                document.getElementById('tab-purchase').classList.add('active');
+                document.getElementById('modelDescription').textContent = 'מודל רכישה - בעלות מלאה על המערכת';
+                document.getElementById('purchaseDetails').style.display = 'block';
+                document.getElementById('leasingDetails').style.display = 'none';
+            }
+
+            // Recalculate if results are visible
+            if (document.getElementById('calcResults').style.display !== 'none') {
+                calculateModel();
+            }
+        }
+
+        async function calculateModel() {
+            const systemSize = parseFloat(document.getElementById('calcSystemSize').value);
+
+            if (!systemSize || systemSize <= 0) {
+                alert('נא להזין גודל מערכת תקין');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('system_size', systemSize);
+
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                let annualRevenue = data.annual_revenue;
+                let totalRevenue = annualRevenue * 25;
+
+                // Adjust for leasing model
+                if (currentModel === 'leasing') {
+                    // Leasing takes about 30% of revenue as payment
+                    const monthlyPayment = Math.round(annualRevenue * 0.3 / 12);
+                    const yearlyPayment = monthlyPayment * 12;
+                    annualRevenue = data.annual_revenue - yearlyPayment;
+                    totalRevenue = annualRevenue * 25;
+                    document.getElementById('monthlyPayment').textContent = `₪${monthlyPayment.toLocaleString()}`;
+                }
+
+                // Update display
+                document.getElementById('calcAnnualRevenue').textContent = annualRevenue.toLocaleString();
+                document.getElementById('calcTotalRevenue').textContent = totalRevenue.toLocaleString();
+                document.getElementById('calcTotalPrice').textContent = data.total_price.toLocaleString();
+                document.getElementById('calcSystemSizeDisplay').textContent = `${systemSize}kW`;
+                document.getElementById('calcTrees').textContent = data.environmental_impact.trees.toLocaleString();
+
+                // Show results
+                document.getElementById('calcResults').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('שגיאה בחישוב');
+            }
+        }
+
+        function resetCalculator() {
+            document.getElementById('calcResults').style.display = 'none';
+            document.getElementById('calcSystemSize').value = '';
+            document.getElementById('calcSystemSize').focus();
+        }
+    </script>
 </body>
 </html>

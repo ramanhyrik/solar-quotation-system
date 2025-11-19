@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
             padding: 20px;
             min-height: 100vh;
             display: flex;
@@ -32,7 +32,7 @@
         }
 
         h2 {
-            color: #667eea;
+            color: #00358A;
             margin-bottom: 10px;
             font-size: 24px;
             text-align: center;
@@ -69,14 +69,14 @@
 
         input[type="number"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #00358A;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .calculate-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -144,7 +144,7 @@
         }
 
         .result-value.price {
-            color: #667eea;
+            color: #00358A;
         }
 
         .result-value.revenue {
@@ -186,7 +186,7 @@
         }
 
         .powered-by a {
-            color: #667eea;
+            color: #00358A;
             text-decoration: none;
             font-weight: 600;
         }
@@ -285,7 +285,7 @@
                     document.getElementById('paybackPeriod').textContent = `${data.payback_period} שנים`;
 
                     // טקסט סביבתי
-                    const envText = `שווה ערך לנטיעת ${data.trees_equivalent.toLocaleString()} עצים והפחתת פליטות CO2 ב-${data.co2_reduction.toLocaleString()} ק"ג בשנה.`;
+                    const envText = `שווה ערך לנטיעת ${data.environmental_impact.trees.toLocaleString()} עצים והפחתת פליטות CO2 ב-${data.environmental_impact.co2_saved.toLocaleString()} ק"ג בשנה.`;
                     document.getElementById('environmentalText').textContent = envText;
 
                     // הצגת תוצאות עם אנימציה

@@ -83,8 +83,8 @@ def init_database():
                 company_email TEXT,
                 company_address TEXT,
                 company_logo TEXT,
-                primary_color TEXT DEFAULT '#667eea',
-                secondary_color TEXT DEFAULT '#764ba2',
+                primary_color TEXT DEFAULT '#00358A',
+                secondary_color TEXT DEFAULT '#D9FF0D',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -107,7 +107,7 @@ def init_database():
             cursor.execute('''
                 INSERT INTO company_settings
                 (company_name, company_email, primary_color, secondary_color)
-                VALUES ('Solar Pro', 'info@solar.com', '#667eea', '#764ba2')
+                VALUES ('Solar Pro', 'info@solar.com', '#00358A', '#D9FF0D')
             ''')
             conn.commit()
 

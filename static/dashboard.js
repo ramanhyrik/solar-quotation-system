@@ -114,7 +114,7 @@ async function loadQuoteHistory() {
                 <td>₪${quote.total_price.toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
-                    <button onclick="downloadPDF(${quote.id})" style="background: #667eea; color: white; margin-left: 8px;">הורד PDF</button>
+                    <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; margin-left: 8px;">הורד PDF</button>
                     <button onclick="deleteQuote(${quote.id})" class="delete">מחק</button>
                 </td>
             `;
