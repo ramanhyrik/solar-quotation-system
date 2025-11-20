@@ -227,6 +227,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Customer Information
         customer_heading = Paragraph(reshape_hebrew("פרטי לקוח"), heading_style)
         elements.append(customer_heading)
+        elements.append(Spacer(1, 0.1*inch))
 
         customer_name_val = safe_get(quote_data, 'customer_name', '')
         customer_phone_val = safe_get(quote_data, 'customer_phone', '')
@@ -257,6 +258,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         # System Specifications
         specs_heading = Paragraph(reshape_hebrew("מפרט מערכת"), heading_style)
         elements.append(specs_heading)
+        elements.append(Spacer(1, 0.1*inch))
 
         system_size = quote_data.get('system_size', 0) or 0
         roof_area = quote_data.get('roof_area')
@@ -293,45 +295,54 @@ def generate_quote_pdf(quote_data, company_info=None):
         total_price = quote_data.get('total_price', 0) or 0
         annual_revenue = quote_data.get('annual_revenue', 0) or 0
 
-        # Production Charts
+        # Production Charts Section
         if system_size and annual_prod:
+            elements.append(Spacer(1, 0.2*inch))
+
+            # Monthly Production Chart
             chart_heading = Paragraph(reshape_hebrew("ייצור אנרגיה חודשי"), heading_style)
             elements.append(chart_heading)
+            elements.append(Spacer(1, 0.1*inch))
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.4*inch)
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.5*inch)
                 elements.append(monthly_chart_img)
-                elements.append(Spacer(1, 0.15*inch))
+                elements.append(Spacer(1, 0.25*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating monthly chart: {e}")
 
-            # Directional Production Chart
+            # Directional Production Chart - maintain square aspect ratio
             try:
                 directional_heading = Paragraph(reshape_hebrew("ייצור לפי כיוון גג"), heading_style)
                 elements.append(directional_heading)
+                elements.append(Spacer(1, 0.1*inch))
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=6.5*inch, height=2.8*inch)
+                # Use square aspect ratio for the compass chart
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.5*inch, height=4.5*inch)
                 elements.append(directional_chart_img)
-                elements.append(Spacer(1, 0.15*inch))
+                elements.append(Spacer(1, 0.25*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating directional chart: {e}")
 
+            # Payback Chart
             if total_price and annual_revenue:
                 payback_heading = Paragraph(reshape_hebrew("ניתוח החזר השקעה"), heading_style)
                 elements.append(payback_heading)
+                elements.append(Spacer(1, 0.1*inch))
 
                 try:
                     payback_chart_bytes = generate_payback_chart(total_price, annual_revenue)
-                    payback_chart_img = Image(BytesIO(payback_chart_bytes), width=6.5*inch, height=2.6*inch)
+                    payback_chart_img = Image(BytesIO(payback_chart_bytes), width=6.8*inch, height=2.7*inch)
                     elements.append(payback_chart_img)
-                    elements.append(Spacer(1, 0.15*inch))
+                    elements.append(Spacer(1, 0.25*inch))
                 except Exception as e:
                     print(f"[ERROR] Error generating payback chart: {e}")
 
         # Financial Summary
         financial_heading = Paragraph(reshape_hebrew("סיכום פיננסי"), heading_style)
         elements.append(financial_heading)
+        elements.append(Spacer(1, 0.1*inch))
 
         payback = quote_data.get('payback_period', 0) or 0
 
@@ -365,6 +376,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Environmental Impact
         env_heading = Paragraph(reshape_hebrew("השפעה סביבתית"), heading_style)
         elements.append(env_heading)
+        elements.append(Spacer(1, 0.1*inch))
 
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
