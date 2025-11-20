@@ -143,7 +143,7 @@
             justify-content: space-between;
         }
 
-        .shading-toggle label {
+        .shading-toggle .shading-label {
             font-weight: 600;
             color: #4a5568;
             display: flex;
@@ -446,14 +446,14 @@
             </div>
 
             <div class="shading-toggle">
-                <label>
+                <span class="shading-label">
                     <span class="sun-icon">☀️</span>
                     ללא הצללה
-                </label>
-                <div class="toggle-switch">
+                </span>
+                <label class="toggle-switch">
                     <input type="checkbox" id="noShading" checked onchange="updateShading()">
                     <span class="toggle-slider"></span>
-                </div>
+                </label>
             </div>
 
             <button onclick="calculateModel()" class="btn-calculate" style="width: 100%; margin-bottom: 20px;">חשב</button>
