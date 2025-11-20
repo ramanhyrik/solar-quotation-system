@@ -155,6 +155,7 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     # Create figure
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
     fig.patch.set_facecolor('white')
+    ax.set_facecolor('#fafbfc')
 
     # Calculate production for each direction
     directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -167,33 +168,52 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     angles = np.concatenate((angles, [angles[0]]))
     production_values.append(production_values[0])
 
-    # Plot
-    ax.plot(angles, production_values, 'o-', linewidth=2, color='#52c41a', markersize=8)
-    ax.fill(angles, production_values, alpha=0.25, color='#52c41a')
+    # Add 3D depth effect - shadow layer beneath main plot
+    shadow_values = [v * 0.95 for v in production_values]
+    ax.fill(angles, shadow_values, alpha=0.08, color='#001d3d', zorder=1)
+    ax.plot(angles, shadow_values, linewidth=1, color='#001d3d', alpha=0.15, zorder=1)
 
-    # Set direction labels
+    # Add gradient-like layers for depth (multiple fills with decreasing alpha)
+    for i, alpha_val in enumerate([0.15, 0.25, 0.35]):
+        layer_values = [v * (0.4 + i * 0.2) for v in production_values]
+        ax.fill(angles, layer_values, alpha=alpha_val, color='#00358A', zorder=2 + i)
+
+    # Main plot with professional styling
+    ax.plot(angles, production_values, 'o-', linewidth=3, color='#00358A',
+            markersize=10, markeredgecolor='#1a4d8f', markeredgewidth=2,
+            zorder=5, label='Production')
+
+    # Main fill with gradient effect
+    ax.fill(angles, production_values, alpha=0.3, color='#4a7bc8', zorder=4)
+
+    # Set direction labels with better styling
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(directions, fontsize=12, fontweight='bold')
+    ax.set_xticklabels(directions, fontsize=13, fontweight='bold', color='#2d3748')
 
-    # Set radial labels
+    # Set radial labels with professional formatting
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x/1000)}k'))
+    ax.tick_params(axis='y', labelsize=10, colors='#4a5568')
 
-    # Add grid
-    ax.grid(True, linestyle='--', alpha=0.5)
+    # Add professional grid
+    ax.grid(True, linestyle='--', alpha=0.3, linewidth=1, color='#94a3b8')
 
-    # Title
+    # Set radial axis limits for better appearance
+    ax.set_ylim(0, max(production_values) * 1.1)
+
+    # Title with brand color
     ax.set_title(f'Annual Production by Roof Direction\n{system_kwp} kWp System',
-                 fontsize=14, fontweight='bold', pad=20, y=1.08)
+                 fontsize=14, fontweight='bold', pad=20, y=1.08, color='#00358A')
 
-    # Add center annotation
-    max_production = max(production_values)
-    ax.text(0, 0, f'South:\n{int(annual_production):,}\nkWh/year',
+    # Add center annotation with brand styling
+    ax.text(0, 0, f'South\n{int(annual_production):,}\nkWh/year',
             ha='center', va='center', fontsize=11, fontweight='bold',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+            color='#2d3748',
+            bbox=dict(boxstyle='round,pad=0.8', facecolor='#f1f5f9',
+                     edgecolor='#00358A', linewidth=2, alpha=0.95))
 
-    # Save to bytes
+    # Save to bytes with higher DPI
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='white')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='white')
     buf.seek(0)
     plt.close(fig)
 
