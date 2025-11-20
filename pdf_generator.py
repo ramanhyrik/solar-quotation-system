@@ -8,7 +8,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 from datetime import datetime, timedelta
-from chart_generator import generate_monthly_production_chart, generate_payback_chart
+from chart_generator import generate_monthly_production_chart, generate_payback_chart, generate_directional_production_chart
 import os
 import traceback
 
@@ -305,6 +305,17 @@ def generate_quote_pdf(quote_data, company_info=None):
                 elements.append(Spacer(1, 0.15*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating monthly chart: {e}")
+
+            # Directional Production Chart
+            try:
+                directional_heading = Paragraph(reshape_hebrew("ייצור לפי כיוון גג"), heading_style)
+                elements.append(directional_heading)
+                directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=6.5*inch, height=2.8*inch)
+                elements.append(directional_chart_img)
+                elements.append(Spacer(1, 0.15*inch))
+            except Exception as e:
+                print(f"[ERROR] Error generating directional chart: {e}")
 
             if total_price and annual_revenue:
                 payback_heading = Paragraph(reshape_hebrew("ניתוח החזר השקעה"), heading_style)
