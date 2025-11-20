@@ -201,11 +201,11 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.set_ylim(0, max(production_values) * 1.1)
 
     # Title with brand color
-    ax.set_title(f'Annual Production by Roof Direction\n{system_kwp} kWp System',
+    ax.set_title(f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש',
                  fontsize=14, fontweight='bold', pad=20, y=1.08, color='#00358A')
 
     # Add center annotation with brand styling
-    ax.text(0, 0, f'South\n{int(annual_production):,}\nkWh/year',
+    ax.text(0, 0, f'דרום\n{int(annual_production):,}\nקוט״ש/שנה',
             ha='center', va='center', fontsize=11, fontweight='bold',
             color='#2d3748',
             bbox=dict(boxstyle='round,pad=0.8', facecolor='#f1f5f9',
