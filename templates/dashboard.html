@@ -12,46 +12,42 @@
             display: flex;
             gap: 0;
             margin-bottom: 30px;
-            border-radius: 12px;
+            border-radius: 50px;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            background: #f0f0f0;
+            padding: 4px;
         }
 
         .model-tab {
             flex: 1;
-            padding: 18px 30px;
+            padding: 14px 30px;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            background: white;
+            background: transparent;
             color: #4a5568;
-        }
-
-        .model-tab:first-child {
-            border-radius: 12px 0 0 12px;
-        }
-
-        .model-tab:last-child {
-            border-radius: 0 12px 12px 0;
+            border-radius: 50px;
         }
 
         .model-tab.active {
             background: #D9FF0D;
             color: #00358A;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .model-tab:hover:not(.active) {
-            background: #f7fafc;
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .calculator-input {
             background: white;
             border-radius: 16px;
-            padding: 30px;
+            padding: 25px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .calculator-input label {
@@ -80,6 +76,128 @@
             display: block;
             margin-top: 8px;
             color: #718096;
+        }
+
+        /* Direction Selector */
+        .direction-selector {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .direction-selector label {
+            display: block;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .direction-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .direction-btn {
+            padding: 12px 8px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .direction-btn:hover {
+            border-color: #00358A;
+            background: #f7fafc;
+        }
+
+        .direction-btn.active {
+            background: #00358A;
+            color: white;
+            border-color: #00358A;
+        }
+
+        .direction-btn .icon {
+            font-size: 20px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Shading Toggle */
+        .shading-toggle {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .shading-toggle label {
+            font-weight: 600;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shading-toggle .sun-icon {
+            font-size: 24px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 32px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e2e8f0;
+            transition: 0.3s;
+            border-radius: 32px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #D9FF0D;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(28px);
         }
 
         .calculator-results {
@@ -303,8 +421,42 @@
                 <label for="calcSystemSize">גודל המערכת (קילוואט שיא)</label>
                 <input type="number" id="calcSystemSize" step="0.1" placeholder="הזן גודל מערכת (לדוגמה: 22.5)" value="22.5">
                 <small>1 קילוואט שיא דורש כ-6 מ"ר שטח גג</small>
-                <button onclick="calculateModel()" class="btn-calculate" style="margin-top: 20px;">חשב</button>
             </div>
+
+            <div class="direction-selector">
+                <label>כיוון הגג</label>
+                <div class="direction-buttons">
+                    <button type="button" class="direction-btn active" onclick="setDirection('south')" id="dir-south">
+                        <span class="icon">⬇️</span>
+                        דרום
+                    </button>
+                    <button type="button" class="direction-btn" onclick="setDirection('southeast')" id="dir-southeast">
+                        <span class="icon">↘️</span>
+                        דרום-מזרח
+                    </button>
+                    <button type="button" class="direction-btn" onclick="setDirection('southwest')" id="dir-southwest">
+                        <span class="icon">↙️</span>
+                        דרום-מערב
+                    </button>
+                    <button type="button" class="direction-btn" onclick="setDirection('east_west')" id="dir-east_west">
+                        <span class="icon">↔️</span>
+                        מזרח-מערב
+                    </button>
+                </div>
+            </div>
+
+            <div class="shading-toggle">
+                <label>
+                    <span class="sun-icon">☀️</span>
+                    ללא הצללה
+                </label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="noShading" checked onchange="updateShading()">
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+
+            <button onclick="calculateModel()" class="btn-calculate" style="width: 100%; margin-bottom: 20px;">חשב</button>
 
             <div id="calcResults" class="calculator-results" style="display: none;">
                 <div class="results-header">
@@ -444,6 +596,40 @@
     <script src="/static/dashboard.js"></script>
     <script>
         let currentModel = 'purchase';
+        let currentDirection = 'south';
+        let noShading = true;
+
+        // Direction efficiency factors (south = 100%)
+        const directionFactors = {
+            'south': 1.0,
+            'southeast': 0.95,
+            'southwest': 0.95,
+            'east_west': 0.85
+        };
+
+        function setDirection(direction) {
+            currentDirection = direction;
+
+            // Update button styles
+            document.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById('dir-' + direction).classList.add('active');
+
+            // Recalculate if results are visible
+            if (document.getElementById('calcResults').style.display !== 'none') {
+                calculateModel();
+            }
+        }
+
+        function updateShading() {
+            noShading = document.getElementById('noShading').checked;
+
+            // Recalculate if results are visible
+            if (document.getElementById('calcResults').style.display !== 'none') {
+                calculateModel();
+            }
+        }
 
         function showSection(section) {
             // Hide all sections
@@ -512,7 +698,16 @@
 
                 const data = await response.json();
 
-                let annualRevenue = data.annual_revenue;
+                // Apply direction factor
+                const directionFactor = directionFactors[currentDirection];
+
+                // Apply shading factor (15% reduction if there's shading)
+                const shadingFactor = noShading ? 1.0 : 0.85;
+
+                // Combined efficiency factor
+                const efficiencyFactor = directionFactor * shadingFactor;
+
+                let annualRevenue = Math.round(data.annual_revenue * efficiencyFactor);
                 let totalRevenue = annualRevenue * 25;
 
                 // Adjust for leasing model
@@ -520,17 +715,21 @@
                     // Leasing takes about 30% of revenue as payment
                     const monthlyPayment = Math.round(annualRevenue * 0.3 / 12);
                     const yearlyPayment = monthlyPayment * 12;
-                    annualRevenue = data.annual_revenue - yearlyPayment;
+                    annualRevenue = data.annual_revenue * efficiencyFactor - yearlyPayment;
+                    annualRevenue = Math.round(annualRevenue);
                     totalRevenue = annualRevenue * 25;
                     document.getElementById('monthlyPayment').textContent = `₪${monthlyPayment.toLocaleString()}`;
                 }
+
+                // Adjust trees for efficiency
+                const adjustedTrees = Math.round(data.environmental_impact.trees * efficiencyFactor);
 
                 // Update display
                 document.getElementById('calcAnnualRevenue').textContent = annualRevenue.toLocaleString();
                 document.getElementById('calcTotalRevenue').textContent = totalRevenue.toLocaleString();
                 document.getElementById('calcTotalPrice').textContent = data.total_price.toLocaleString();
                 document.getElementById('calcSystemSizeDisplay').textContent = `${systemSize}kW`;
-                document.getElementById('calcTrees').textContent = data.environmental_impact.trees.toLocaleString();
+                document.getElementById('calcTrees').textContent = adjustedTrees.toLocaleString();
 
                 // Show results
                 document.getElementById('calcResults').style.display = 'block';
