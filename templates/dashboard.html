@@ -477,9 +477,15 @@
                 </div>
 
                 <div id="purchaseDetails">
-                    <div class="income-box" style="margin-bottom: 20px;">
-                        <div class="value" style="font-size: 24px;"><span class="currency">₪</span><span id="calcTotalPrice">0</span></div>
-                        <div class="label">עלות מערכת</div>
+                    <div class="income-forecast" style="margin-bottom: 20px;">
+                        <div class="income-box">
+                            <div class="value" style="font-size: 24px;"><span class="currency">₪</span><span id="calcTotalPrice">0</span></div>
+                            <div class="label">עלות מערכת</div>
+                        </div>
+                        <div class="income-box highlight">
+                            <div class="value" style="font-size: 24px;"><span id="calcRoi">0</span><span style="font-size: 16px; margin-right: 3px;">%</span></div>
+                            <div class="label">תשואה שנתית</div>
+                        </div>
                     </div>
                 </div>
 
@@ -725,10 +731,14 @@
                 // Adjust trees for efficiency
                 const adjustedTrees = Math.round(data.environmental_impact.trees * efficiencyFactor);
 
+                // Calculate ROI percentage (Annual Return / System Cost * 100)
+                const roiPercentage = ((annualRevenue / data.total_price) * 100).toFixed(1);
+
                 // Update display
                 document.getElementById('calcAnnualRevenue').textContent = annualRevenue.toLocaleString();
                 document.getElementById('calcTotalRevenue').textContent = totalRevenue.toLocaleString();
                 document.getElementById('calcTotalPrice').textContent = data.total_price.toLocaleString();
+                document.getElementById('calcRoi').textContent = roiPercentage;
                 document.getElementById('calcSystemSizeDisplay').textContent = `${systemSize}kW`;
                 document.getElementById('calcTrees').textContent = adjustedTrees.toLocaleString();
 
