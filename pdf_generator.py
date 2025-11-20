@@ -207,18 +207,19 @@ def generate_quote_pdf(quote_data, company_info=None):
         today = datetime.now()
         valid_until = today + timedelta(days=30)
 
+        # RTL: Value first (right), Label second (left)
         quote_info = [
-            [reshape_hebrew('מספר הצעה:'), str(safe_get(quote_data, 'quote_number', 'N/A'))],
-            [reshape_hebrew('תאריך:'), today.strftime('%d/%m/%Y')],
-            [reshape_hebrew('בתוקף עד:'), valid_until.strftime('%d/%m/%Y')]
+            [str(safe_get(quote_data, 'quote_number', 'N/A')), reshape_hebrew('מספר הצעה:')],
+            [today.strftime('%d/%m/%Y'), reshape_hebrew('תאריך:')],
+            [valid_until.strftime('%d/%m/%Y'), reshape_hebrew('בתוקף עד:')]
         ]
 
-        quote_table = Table(quote_info, colWidths=[1.5*inch, 2.5*inch])
+        quote_table = Table(quote_info, colWidths=[2.5*inch, 1.5*inch])
         quote_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
+            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),  # Labels on left
             ('TOPPADDING', (0, 0), (-1, -1), 2),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ]))
@@ -237,19 +238,20 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         not_specified = reshape_hebrew('לא צוין')
 
+        # RTL: Value first (right), Label second (left)
         customer_data = [
-            [reshape_hebrew('שם:'), customer_name_val if customer_name_val else not_specified],
-            [reshape_hebrew('טלפון:'), customer_phone_val if customer_phone_val else not_specified],
-            [reshape_hebrew('אימייל:'), customer_email_val if customer_email_val else not_specified],
-            [reshape_hebrew('כתובת:'), customer_address_val if customer_address_val else not_specified],
+            [customer_name_val if customer_name_val else not_specified, reshape_hebrew('שם:')],
+            [customer_phone_val if customer_phone_val else not_specified, reshape_hebrew('טלפון:')],
+            [customer_email_val if customer_email_val else not_specified, reshape_hebrew('אימייל:')],
+            [customer_address_val if customer_address_val else not_specified, reshape_hebrew('כתובת:')],
         ]
 
-        customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
+        customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
         customer_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),  # Values
+            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2d3748')),  # Labels (darker)
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
@@ -269,27 +271,28 @@ def generate_quote_pdf(quote_data, company_info=None):
         roof_area = quote_data.get('roof_area')
         annual_prod = quote_data.get('annual_production', 0) or 0
 
+        # RTL: Value first (right), Label second (left)
         specs_data = [
-            [reshape_hebrew('גודל מערכת:'), reshape_hebrew(f"{system_size} " + 'קוט״ש')],
-            [reshape_hebrew('שטח גג:'), reshape_hebrew(f"{roof_area} " + 'מ״ר') if roof_area else not_specified],
-            [reshape_hebrew('ייצור שנתי:'), reshape_hebrew(f"{format_number(annual_prod)} " + 'קוט״ש/שנה') if annual_prod else not_specified],
-            [reshape_hebrew('סוג פאנל:'), safe_get(quote_data, 'panel_type') or not_specified],
-            [reshape_hebrew('מספר פאנלים:'), str(safe_get(quote_data, 'panel_count')) if safe_get(quote_data, 'panel_count') else not_specified],
-            [reshape_hebrew('סוג ממיר:'), safe_get(quote_data, 'inverter_type') or not_specified],
-            [reshape_hebrew('כיוון:'), safe_get(quote_data, 'direction') or not_specified],
-            [reshape_hebrew('זווית הטיה:'), f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified],
-            [reshape_hebrew('אחריות:'), reshape_hebrew(f"{quote_data.get('warranty_years', 25)} " + 'שנים')],
+            [reshape_hebrew(f"{system_size} " + 'קוט״ש'), reshape_hebrew('גודל מערכת:')],
+            [reshape_hebrew(f"{roof_area} " + 'מ״ר') if roof_area else not_specified, reshape_hebrew('שטח גג:')],
+            [reshape_hebrew(f"{format_number(annual_prod)} " + 'קוט״ש/שנה') if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
+            [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
+            [str(safe_get(quote_data, 'panel_count')) if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
+            [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
+            [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
+            [f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
+            [reshape_hebrew(f"{quote_data.get('warranty_years', 25)} " + 'שנים'), reshape_hebrew('אחריות:')],
         ]
 
-        specs_table = Table(specs_data, colWidths=[2.2*inch, 3.8*inch])
+        specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
         specs_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),  # Values
+            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2d3748')),  # Labels (darker)
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
-            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f7fafc')),
+            ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#f7fafc')),  # Labels column background
             ('TOPPADDING', (0, 0), (-1, -1), 5),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -340,15 +343,16 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         payback = quote_data.get('payback_period', 0) or 0
 
+        # RTL: Value first (right), Label second (left)
         financial_data = [
-            [reshape_hebrew('תיאור'), reshape_hebrew('סכום')],
-            [reshape_hebrew('סך ההשקעה'), f"₪{format_number(total_price)}"],
-            [reshape_hebrew('הכנסה שנתית משוערת'), f"₪{format_number(annual_revenue)}"],
-            [reshape_hebrew('תקופת החזר'), reshape_hebrew(f"{payback} " + 'שנים')],
-            [reshape_hebrew('חיסכון כולל ל-25 שנה'), f"₪{format_number(annual_revenue * 25)}"],
+            [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
+            [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
+            [f"₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
+            [reshape_hebrew(f"{payback} " + 'שנים'), reshape_hebrew('תקופת החזר')],
+            [f"₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
-        financial_table = Table(financial_data, colWidths=[3.5*inch, 2.5*inch])
+        financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
         financial_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00358A')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
