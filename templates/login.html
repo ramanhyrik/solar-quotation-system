@@ -179,22 +179,92 @@
         .energy-orb {
             position: absolute;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(217, 255, 13, 0.6) 0%, rgba(217, 255, 13, 0) 70%);
             animation: orb-float 20s infinite ease-in-out;
         }
 
-        .energy-orb:nth-child(1) { top: 15%; left: 8%; width: 30px; height: 30px; animation-delay: 0s; animation-duration: 25s; }
-        .energy-orb:nth-child(2) { top: 65%; left: 5%; width: 20px; height: 20px; animation-delay: -5s; animation-duration: 22s; }
-        .energy-orb:nth-child(3) { top: 40%; left: 12%; width: 15px; height: 15px; animation-delay: -10s; animation-duration: 28s; }
-        .energy-orb:nth-child(4) { top: 80%; right: 8%; width: 25px; height: 25px; animation-delay: -15s; animation-duration: 24s; }
-        .energy-orb:nth-child(5) { top: 25%; right: 25%; width: 18px; height: 18px; animation-delay: -8s; animation-duration: 26s; }
-        .energy-orb:nth-child(6) { top: 55%; right: 12%; width: 22px; height: 22px; animation-delay: -12s; animation-duration: 23s; }
+        /* Blue orbs for top-left (dark blue area) */
+        .energy-orb:nth-child(1) {
+            top: 15%; left: 8%; width: 35px; height: 35px;
+            background: radial-gradient(circle, rgba(100, 150, 255, 0.7) 0%, rgba(0, 53, 138, 0.3) 50%, transparent 70%);
+            animation: orb-float-pulse 8s infinite ease-in-out;
+        }
+        .energy-orb:nth-child(2) {
+            top: 35%; left: 5%; width: 25px; height: 25px;
+            background: radial-gradient(circle, rgba(120, 180, 255, 0.6) 0%, rgba(0, 53, 138, 0.2) 50%, transparent 70%);
+            animation: orb-float-drift 12s infinite ease-in-out;
+            animation-delay: -3s;
+        }
+        .energy-orb:nth-child(3) {
+            top: 60%; left: 10%; width: 20px; height: 20px;
+            background: radial-gradient(circle, rgba(150, 200, 100, 0.6) 0%, rgba(100, 180, 50, 0.2) 50%, transparent 70%);
+            animation: orb-float-pulse 10s infinite ease-in-out;
+            animation-delay: -5s;
+        }
 
-        @keyframes orb-float {
-            0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
-            25% { transform: translateY(-15px) scale(1.1); opacity: 0.6; }
-            50% { transform: translateY(0) scale(1); opacity: 0.4; }
-            75% { transform: translateY(15px) scale(0.9); opacity: 0.5; }
+        /* Yellow-green orbs for bottom-right (bright area) */
+        .energy-orb:nth-child(4) {
+            top: 75%; right: 8%; width: 30px; height: 30px;
+            background: radial-gradient(circle, rgba(217, 255, 13, 0.8) 0%, rgba(180, 230, 0, 0.3) 50%, transparent 70%);
+            animation: orb-float-drift 9s infinite ease-in-out;
+            animation-delay: -2s;
+        }
+        .energy-orb:nth-child(5) {
+            top: 50%; right: 6%; width: 22px; height: 22px;
+            background: radial-gradient(circle, rgba(200, 255, 50, 0.7) 0%, rgba(150, 220, 30, 0.3) 50%, transparent 70%);
+            animation: orb-float-pulse 11s infinite ease-in-out;
+            animation-delay: -7s;
+        }
+        .energy-orb:nth-child(6) {
+            top: 85%; right: 20%; width: 28px; height: 28px;
+            background: radial-gradient(circle, rgba(230, 255, 100, 0.7) 0%, rgba(217, 255, 13, 0.3) 50%, transparent 70%);
+            animation: orb-float-drift 14s infinite ease-in-out;
+            animation-delay: -4s;
+        }
+
+        @keyframes orb-float-pulse {
+            0%, 100% {
+                transform: translateY(0) translateX(0) scale(1);
+                opacity: 0.5;
+                filter: blur(0px);
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) scale(1.3);
+                opacity: 0.8;
+                filter: blur(1px);
+            }
+            50% {
+                transform: translateY(-5px) translateX(-5px) scale(1.1);
+                opacity: 0.6;
+                filter: blur(0px);
+            }
+            75% {
+                transform: translateY(15px) translateX(8px) scale(0.9);
+                opacity: 0.7;
+                filter: blur(2px);
+            }
+        }
+
+        @keyframes orb-float-drift {
+            0%, 100% {
+                transform: translateY(0) translateX(0) scale(1) rotate(0deg);
+                opacity: 0.4;
+            }
+            20% {
+                transform: translateY(-25px) translateX(15px) scale(1.2) rotate(90deg);
+                opacity: 0.7;
+            }
+            40% {
+                transform: translateY(-10px) translateX(-10px) scale(1.4);
+                opacity: 0.9;
+            }
+            60% {
+                transform: translateY(10px) translateX(20px) scale(1.1) rotate(180deg);
+                opacity: 0.6;
+            }
+            80% {
+                transform: translateY(20px) translateX(-5px) scale(0.8) rotate(270deg);
+                opacity: 0.5;
+            }
         }
 
         /* Pulsing Sun */
