@@ -152,7 +152,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             textColor=colors.HexColor('#00358A'),
             spaceAfter=8,
             spaceBefore=12,
-            fontName=FONT_NAME_BOLD
+            fontName=FONT_NAME_BOLD,
+            alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
 
         normal_style = ParagraphStyle(
@@ -160,7 +161,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             parent=styles['Normal'],
             fontSize=9,
             spaceAfter=4,
-            fontName=FONT_NAME
+            fontName=FONT_NAME,
+            alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
 
         subtitle_style = ParagraphStyle(
@@ -213,8 +215,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         quote_table = Table(quote_info, colWidths=[1.5*inch, 2.5*inch])
         quote_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
@@ -249,6 +250,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
@@ -285,6 +287,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f7fafc')),
             ('TOPPADDING', (0, 0), (-1, -1), 5),
@@ -349,7 +352,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         financial_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00358A')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
