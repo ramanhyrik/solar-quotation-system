@@ -419,9 +419,9 @@
             </div>
 
             <div class="calculator-input">
-                <label for="calcSystemSize">גודל המערכת (קילוואט שיא)</label>
-                <input type="number" id="calcSystemSize" step="0.1" placeholder="הזן גודל מערכת (לדוגמה: 22.5)" value="22.5">
-                <small>1 קילוואט שיא דורש כ-6 מ"ר שטח גג</small>
+                <label for="calcRoofArea">שטח הגג (מ"ר)</label>
+                <input type="number" id="calcRoofArea" step="1" placeholder="הזן שטח גג (לדוגמה: 135)" value="135">
+                <small>כל 6 מ"ר גג = 1 קילוואט שיא</small>
             </div>
 
             <div class="direction-selector">
@@ -687,12 +687,15 @@
         }
 
         async function calculateModel() {
-            const systemSize = parseFloat(document.getElementById('calcSystemSize').value);
+            const roofArea = parseFloat(document.getElementById('calcRoofArea').value);
 
-            if (!systemSize || systemSize <= 0) {
-                alert('נא להזין גודל מערכת תקין');
+            if (!roofArea || roofArea <= 0) {
+                alert('נא להזין שטח גג תקין');
                 return;
             }
+
+            // Calculate system size from roof area (6 sqm per kWp)
+            const systemSize = roofArea / 6;
 
             try {
                 const formData = new FormData();
@@ -739,7 +742,7 @@
                 document.getElementById('calcTotalRevenue').textContent = totalRevenue.toLocaleString();
                 document.getElementById('calcTotalPrice').textContent = data.total_price.toLocaleString();
                 document.getElementById('calcRoi').textContent = roiPercentage;
-                document.getElementById('calcSystemSizeDisplay').textContent = `${systemSize}kW`;
+                document.getElementById('calcSystemSizeDisplay').textContent = `${systemSize.toFixed(1)}kW`;
                 document.getElementById('calcTrees').textContent = adjustedTrees.toLocaleString();
 
                 // Show results
@@ -753,8 +756,8 @@
 
         function resetCalculator() {
             document.getElementById('calcResults').style.display = 'none';
-            document.getElementById('calcSystemSize').value = '';
-            document.getElementById('calcSystemSize').focus();
+            document.getElementById('calcRoofArea').value = '';
+            document.getElementById('calcRoofArea').focus();
         }
 
         // Check URL parameter on page load
