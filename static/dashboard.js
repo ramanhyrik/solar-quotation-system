@@ -121,9 +121,6 @@ async function loadQuoteHistory() {
             tbody.appendChild(row);
         });
 
-        document.querySelector('.quote-form').style.display = 'none';
-        document.getElementById('quoteHistory').style.display = 'block';
-
     } catch (error) {
         console.error('Error:', error);
         alert('שגיאה בטעינת היסטוריית הצעות');

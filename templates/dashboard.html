@@ -7,13 +7,6 @@
     <link rel="stylesheet" href="/static/dashboard.css">
     <style>
         /* Calculator Styles */
-        .calculator-section {
-            display: none;
-        }
-
-        .calculator-section.active {
-            display: block;
-        }
 
         .model-tabs {
             display: flex;
@@ -298,7 +291,7 @@
 
     <div class="main-content">
         <!-- Calculator Section -->
-        <div id="calculatorSection" class="calculator-section">
+        <div id="calculatorSection" style="display: none;">
             <h1>מחשבון אנרגיה סולארית</h1>
 
             <div class="model-tabs">
@@ -464,7 +457,6 @@
             // Show selected section
             if (section === 'calculator') {
                 document.getElementById('calculatorSection').style.display = 'block';
-                document.getElementById('calculatorSection').classList.add('active');
                 document.getElementById('nav-calculator').classList.add('active');
             } else if (section === 'quote') {
                 document.getElementById('quoteSection').style.display = 'block';
