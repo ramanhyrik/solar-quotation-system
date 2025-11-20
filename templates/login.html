@@ -26,6 +26,7 @@
             box-shadow: 0 30px 90px rgba(0, 0, 0, 0.4);
             width: 100%;
             max-width: 580px;
+            max-height: 90vh;
         }
 
         .logo-section {
@@ -46,6 +47,11 @@
             font-weight: 400;
         }
 
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
         .login-title {
             font-size: 1.8em;
             margin-bottom: 8px;
@@ -55,7 +61,7 @@
 
         .login-subtitle {
             color: #718096;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             font-size: 15px;
         }
 
@@ -165,14 +171,15 @@
 </head>
 <body>
     <div class="login-container">
+        <div class="welcome-message">
+            <h2 class="login-title">ברוכים השבים!</h2>
+            <p class="login-subtitle">התחבר כדי לגשת ללוח הבקרה שלך</p>
+        </div>
+
         <div class="logo-section">
             <h1>☀️</h1>
             <p><strong>פתרונות אנרגיה סולארית</strong></p>
-            <p style="font-size: 0.95em; margin-top: 5px;">מערכת הצעות מחיר מקצועית</p>
         </div>
-
-        <h2 class="login-title">ברוכים השבים</h2>
-        <p class="login-subtitle">התחבר כדי לגשת ללוח הבקרה שלך</p>
 
         <form action="/api/login" method="POST">
             <div class="form-group">
