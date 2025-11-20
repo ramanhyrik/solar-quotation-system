@@ -158,6 +158,190 @@
             font-size: 14px;
         }
 
+        /* Solar Animation Styles */
+        .solar-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Floating Solar Panels */
+        .solar-panel {
+            position: absolute;
+            width: 60px;
+            height: 40px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 4px;
+            opacity: 0.3;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .solar-panel::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            background:
+                linear-gradient(90deg, transparent 48%, rgba(255,255,255,0.3) 50%, transparent 52%),
+                linear-gradient(0deg, transparent 48%, rgba(255,255,255,0.3) 50%, transparent 52%),
+                linear-gradient(135deg, #0066cc 0%, #004499 100%);
+            border-radius: 2px;
+        }
+
+        .solar-panel:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; animation-duration: 25s; }
+        .solar-panel:nth-child(2) { top: 60%; left: 8%; animation-delay: -5s; animation-duration: 22s; width: 50px; height: 35px; }
+        .solar-panel:nth-child(3) { top: 30%; right: 10%; animation-delay: -10s; animation-duration: 28s; width: 70px; height: 45px; }
+        .solar-panel:nth-child(4) { top: 75%; right: 5%; animation-delay: -15s; animation-duration: 24s; }
+        .solar-panel:nth-child(5) { top: 85%; left: 15%; animation-delay: -8s; animation-duration: 26s; width: 55px; height: 38px; }
+        .solar-panel:nth-child(6) { top: 15%; right: 20%; animation-delay: -12s; animation-duration: 23s; width: 45px; height: 30px; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-20px) rotate(2deg); }
+            50% { transform: translateY(0) rotate(0deg); }
+            75% { transform: translateY(20px) rotate(-2deg); }
+        }
+
+        /* Pulsing Sun */
+        .sun {
+            position: absolute;
+            top: 8%;
+            right: 8%;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #D9FF0D 0%, #ffcc00 50%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 4s infinite ease-in-out;
+            opacity: 0.6;
+        }
+
+        .sun::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(217, 255, 13, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse-glow 4s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.5; }
+        }
+
+        /* Sun Rays */
+        .sun-rays {
+            position: absolute;
+            top: 8%;
+            right: 8%;
+            width: 80px;
+            height: 80px;
+        }
+
+        .ray {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, #D9FF0D, transparent);
+            transform-origin: 0 50%;
+            opacity: 0.4;
+            animation: ray-rotate 20s infinite linear;
+        }
+
+        .ray:nth-child(1) { transform: rotate(0deg); animation-delay: 0s; }
+        .ray:nth-child(2) { transform: rotate(45deg); animation-delay: -2.5s; }
+        .ray:nth-child(3) { transform: rotate(90deg); animation-delay: -5s; }
+        .ray:nth-child(4) { transform: rotate(135deg); animation-delay: -7.5s; }
+        .ray:nth-child(5) { transform: rotate(180deg); animation-delay: -10s; }
+        .ray:nth-child(6) { transform: rotate(225deg); animation-delay: -12.5s; }
+        .ray:nth-child(7) { transform: rotate(270deg); animation-delay: -15s; }
+        .ray:nth-child(8) { transform: rotate(315deg); animation-delay: -17.5s; }
+
+        @keyframes ray-rotate {
+            0% { opacity: 0.2; }
+            50% { opacity: 0.6; }
+            100% { opacity: 0.2; }
+        }
+
+        /* Energy Particles */
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #D9FF0D;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particle-float 8s infinite ease-in-out;
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 20%; animation-delay: -1s; }
+        .particle:nth-child(3) { left: 30%; animation-delay: -2s; }
+        .particle:nth-child(4) { left: 70%; animation-delay: -3s; }
+        .particle:nth-child(5) { left: 80%; animation-delay: -4s; }
+        .particle:nth-child(6) { left: 90%; animation-delay: -5s; }
+        .particle:nth-child(7) { left: 15%; animation-delay: -6s; }
+        .particle:nth-child(8) { left: 85%; animation-delay: -7s; }
+
+        @keyframes particle-float {
+            0% {
+                bottom: -10px;
+                opacity: 0;
+                transform: translateX(0) scale(0.5);
+            }
+            10% {
+                opacity: 0.8;
+            }
+            90% {
+                opacity: 0.8;
+            }
+            100% {
+                bottom: 110%;
+                opacity: 0;
+                transform: translateX(20px) scale(1);
+            }
+        }
+
+        /* Electric Flow Lines */
+        .flow-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #D9FF0D, transparent);
+            opacity: 0.3;
+            animation: flow 6s infinite linear;
+        }
+
+        .flow-line:nth-child(1) { top: 20%; width: 200px; left: -200px; animation-delay: 0s; }
+        .flow-line:nth-child(2) { top: 40%; width: 150px; right: -150px; animation-delay: -2s; animation-direction: reverse; }
+        .flow-line:nth-child(3) { top: 70%; width: 180px; left: -180px; animation-delay: -4s; }
+
+        @keyframes flow {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(100vw + 200px)); }
+        }
+
         @media (max-width: 600px) {
             .login-container {
                 padding: 40px 30px;
@@ -166,10 +350,61 @@
             .logo-section h1 {
                 font-size: 2.2em;
             }
+
+            .solar-panel {
+                width: 40px;
+                height: 28px;
+            }
+
+            .sun {
+                width: 50px;
+                height: 50px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Solar Energy Background Animations -->
+    <div class="solar-background">
+        <!-- Floating Solar Panels -->
+        <div class="solar-panel"></div>
+        <div class="solar-panel"></div>
+        <div class="solar-panel"></div>
+        <div class="solar-panel"></div>
+        <div class="solar-panel"></div>
+        <div class="solar-panel"></div>
+
+        <!-- Pulsing Sun -->
+        <div class="sun"></div>
+
+        <!-- Sun Rays -->
+        <div class="sun-rays">
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+        </div>
+
+        <!-- Energy Particles -->
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+
+        <!-- Electric Flow Lines -->
+        <div class="flow-line"></div>
+        <div class="flow-line"></div>
+        <div class="flow-line"></div>
+    </div>
+
     <div class="login-container">
         <div class="welcome-message">
             <h2 class="login-title">ברוכים השבים!</h2>
