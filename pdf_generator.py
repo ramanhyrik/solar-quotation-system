@@ -8,7 +8,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 from datetime import datetime, timedelta
-from chart_generator import generate_monthly_production_chart, generate_payback_chart, generate_directional_production_chart
+from chart_generator import generate_monthly_production_chart, generate_directional_production_chart
 import os
 import traceback
 
@@ -222,12 +222,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ]))
         elements.append(quote_table)
-        elements.append(Spacer(1, 0.15*inch))
+        elements.append(Spacer(1, 0.12*inch))
 
         # Customer Information
         customer_heading = Paragraph(reshape_hebrew("פרטי לקוח"), heading_style)
         elements.append(customer_heading)
-        elements.append(Spacer(1, 0.1*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         customer_name_val = safe_get(quote_data, 'customer_name', '')
         customer_phone_val = safe_get(quote_data, 'customer_phone', '')
@@ -246,19 +246,22 @@ def generate_quote_pdf(quote_data, company_info=None):
         customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
         customer_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e2e8f0')),
+            ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#cbd5e0')),
         ]))
         elements.append(customer_table)
-        elements.append(Spacer(1, 0.15*inch))
+        elements.append(Spacer(1, 0.12*inch))
 
         # System Specifications
         specs_heading = Paragraph(reshape_hebrew("מפרט מערכת"), heading_style)
         elements.append(specs_heading)
-        elements.append(Spacer(1, 0.1*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         system_size = quote_data.get('system_size', 0) or 0
         roof_area = quote_data.get('roof_area')
@@ -276,20 +279,22 @@ def generate_quote_pdf(quote_data, company_info=None):
             [reshape_hebrew('אחריות:'), reshape_hebrew(f"{quote_data.get('warranty_years', 25)} " + 'שנים')],
         ]
 
-        specs_table = Table(specs_data, colWidths=[2*inch, 4*inch])
+        specs_table = Table(specs_data, colWidths=[2.2*inch, 3.8*inch])
         specs_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),
+            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f7fafc')),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LEFTPADDING', (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(specs_table)
-        elements.append(Spacer(1, 0.15*inch))
+        elements.append(Spacer(1, 0.12*inch))
 
         # Get financial data
         total_price = quote_data.get('total_price', 0) or 0
@@ -297,18 +302,18 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Production Charts Section
         if system_size and annual_prod:
-            elements.append(Spacer(1, 0.2*inch))
+            elements.append(Spacer(1, 0.12*inch))
 
             # Monthly Production Chart
             chart_heading = Paragraph(reshape_hebrew("ייצור אנרגיה חודשי"), heading_style)
             elements.append(chart_heading)
-            elements.append(Spacer(1, 0.1*inch))
+            elements.append(Spacer(1, 0.08*inch))
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.5*inch)
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.3*inch)
                 elements.append(monthly_chart_img)
-                elements.append(Spacer(1, 0.25*inch))
+                elements.append(Spacer(1, 0.15*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating monthly chart: {e}")
 
@@ -316,33 +321,19 @@ def generate_quote_pdf(quote_data, company_info=None):
             try:
                 directional_heading = Paragraph(reshape_hebrew("ייצור לפי כיוון גג"), heading_style)
                 elements.append(directional_heading)
-                elements.append(Spacer(1, 0.1*inch))
+                elements.append(Spacer(1, 0.08*inch))
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
                 # Use square aspect ratio for the compass chart
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.5*inch, height=4.5*inch)
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.2*inch, height=4.2*inch)
                 elements.append(directional_chart_img)
-                elements.append(Spacer(1, 0.25*inch))
+                elements.append(Spacer(1, 0.15*inch))
             except Exception as e:
                 print(f"[ERROR] Error generating directional chart: {e}")
-
-            # Payback Chart
-            if total_price and annual_revenue:
-                payback_heading = Paragraph(reshape_hebrew("ניתוח החזר השקעה"), heading_style)
-                elements.append(payback_heading)
-                elements.append(Spacer(1, 0.1*inch))
-
-                try:
-                    payback_chart_bytes = generate_payback_chart(total_price, annual_revenue)
-                    payback_chart_img = Image(BytesIO(payback_chart_bytes), width=6.8*inch, height=2.7*inch)
-                    elements.append(payback_chart_img)
-                    elements.append(Spacer(1, 0.25*inch))
-                except Exception as e:
-                    print(f"[ERROR] Error generating payback chart: {e}")
 
         # Financial Summary
         financial_heading = Paragraph(reshape_hebrew("סיכום פיננסי"), heading_style)
         elements.append(financial_heading)
-        elements.append(Spacer(1, 0.1*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         payback = quote_data.get('payback_period', 0) or 0
 
@@ -360,23 +351,24 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e0')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
             ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f7fafc')),
-            ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#f7fafc')),
+            ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f7fafc')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(financial_table)
-        elements.append(Spacer(1, 0.15*inch))
+        elements.append(Spacer(1, 0.12*inch))
 
         # Environmental Impact
         env_heading = Paragraph(reshape_hebrew("השפעה סביבתית"), heading_style)
         elements.append(env_heading)
-        elements.append(Spacer(1, 0.1*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
