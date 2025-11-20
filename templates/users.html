@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ניהול משתמשים - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="sidebar">
-        <h2>☀️ אנרגיה סולארית</h2>
+        <h2><i data-lucide="sun" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 8px;"></i> אנרגיה סולארית</h2>
         <nav>
             <a href="/dashboard">הצעה חדשה</a>
             <a href="/dashboard?section=history">היסטוריית הצעות</a>
@@ -259,6 +260,7 @@
         }
 
         loadUsers();
+        lucide.createIcons();
     </script>
 </body>
 </html>

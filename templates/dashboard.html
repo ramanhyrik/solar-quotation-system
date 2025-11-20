@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>לוח בקרה - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Calculator Styles */
 
@@ -390,7 +391,7 @@
 </head>
 <body>
     <div class="sidebar">
-        <h2>☀️ אנרגיה סולארית</h2>
+        <h2><i data-lucide="sun" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 8px;"></i> אנרגיה סולארית</h2>
         <nav>
             <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
@@ -427,19 +428,19 @@
                 <label>כיוון הגג</label>
                 <div class="direction-buttons">
                     <button type="button" class="direction-btn active" onclick="setDirection('south')" id="dir-south">
-                        <span class="icon">⬇️</span>
+                        <span class="icon"><i data-lucide="arrow-down"></i></span>
                         דרום
                     </button>
                     <button type="button" class="direction-btn" onclick="setDirection('southeast')" id="dir-southeast">
-                        <span class="icon">↘️</span>
+                        <span class="icon"><i data-lucide="arrow-down-right"></i></span>
                         דרום-מזרח
                     </button>
                     <button type="button" class="direction-btn" onclick="setDirection('southwest')" id="dir-southwest">
-                        <span class="icon">↙️</span>
+                        <span class="icon"><i data-lucide="arrow-down-left"></i></span>
                         דרום-מערב
                     </button>
                     <button type="button" class="direction-btn" onclick="setDirection('east_west')" id="dir-east_west">
-                        <span class="icon">↔️</span>
+                        <span class="icon"><i data-lucide="move-horizontal"></i></span>
                         מזרח-מערב
                     </button>
                 </div>
@@ -447,7 +448,7 @@
 
             <div class="shading-toggle">
                 <span class="shading-label">
-                    <span class="sun-icon">☀️</span>
+                    <span class="sun-icon"><i data-lucide="sun" style="width: 20px; height: 20px;"></i></span>
                     ללא הצללה
                 </span>
                 <label class="toggle-switch">
@@ -495,7 +496,7 @@
                 </div>
 
                 <div class="system-info">
-                    <div class="icon">⚡</div>
+                    <div class="icon"><i data-lucide="zap" style="width: 28px; height: 28px;"></i></div>
                     <div class="details">
                         <div class="size" id="calcSystemSizeDisplay">22.5kW</div>
                         <div class="label">גודל מערכת</div>
@@ -505,7 +506,7 @@
                 <div class="environmental-impact">
                     <div class="message">כדור הארץ אומר תודה! החיסכון האנרגטי שווה ערך ל:</div>
                     <div class="trees-display">
-                        <div class="trees-icon">🌳🌳🌳</div>
+                        <div class="trees-icon"><i data-lucide="trees" style="width: 40px; height: 40px; color: #2e7d32;"></i></div>
                         <div>
                             <div class="trees-count" id="calcTrees">0</div>
                             <div class="trees-label">עצים שנטעו</div>
@@ -748,6 +749,9 @@
 
         // Check URL parameter on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Lucide icons
+            lucide.createIcons();
+
             const urlParams = new URLSearchParams(window.location.search);
             const section = urlParams.get('section');
             if (section === 'calculator' || section === 'history') {
