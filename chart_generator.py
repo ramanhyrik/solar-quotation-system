@@ -59,52 +59,82 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     # Calculate monthly production values
     monthly_production = [(annual_production / 12) * coef for coef in MONTHLY_COEFFICIENTS]
 
-    # Create figure with custom styling - more compact
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # Create figure with increased height for better visibility
+    fig, ax = plt.subplots(figsize=(10, 5.5))
     fig.patch.set_facecolor('white')
 
-    # Create bars with gradient color
-    bars = ax.bar(range(12), monthly_production, color='#00358A',
-                   edgecolor='#5568d3', linewidth=1, alpha=0.85, width=0.7)
+    # Create bars with 3D-like gradient effect
+    bars = ax.bar(range(12), monthly_production,
+                   color='#00358A',
+                   edgecolor='#1a4d8f',
+                   linewidth=1.5,
+                   width=0.75,
+                   zorder=3)
 
-    # Customize appearance - smaller, more professional fonts
-    ax.set_xlabel('חודש', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_ylabel('ייצור (קוט״ש)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_title(f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש',
-                 fontsize=10, fontweight='bold', pad=12, color='#2d3748')
+    # Add 3D depth effect with shadow bars
+    shadow_offset = 0.08
+    ax.bar(range(12), monthly_production,
+           color='#001d3d',
+           alpha=0.15,
+           width=0.75,
+           bottom=-max(monthly_production)*0.02,
+           zorder=1)
 
-    # Set x-axis labels (months) - smaller fonts
-    ax.set_xticks(range(12))
-    ax.set_xticklabels(HEBREW_MONTHS, rotation=45, ha='right', fontsize=8)
-
-    # Add grid for readability - lighter
-    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.5, color='#cbd5e0')
-    ax.set_axisbelow(True)
-
-    # Add value labels on top of bars - smaller fonts
-    for i, (bar, value) in enumerate(zip(bars, monthly_production)):
+    # Add gradient-like effect by overlaying lighter bars
+    for i, bar in enumerate(bars):
+        # Create gradient effect
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-                f'{int(value):,}',
-                ha='center', va='bottom', fontsize=7, fontweight='600', color='#4a5568')
+        gradient = mpatches.Rectangle(
+            (bar.get_x(), height * 0.6),
+            bar.get_width(),
+            height * 0.4,
+            facecolor='#4a7bc8',
+            edgecolor='none',
+            alpha=0.3,
+            zorder=4
+        )
+        ax.add_patch(gradient)
+
+    # Customize appearance - professional fonts
+    ax.set_xlabel('חודש', fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
+    ax.set_ylabel('ייצור (קוט״ש)', fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
+    ax.set_title(f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש',
+                 fontsize=12, fontweight='bold', pad=15, color='#00358A')
+
+    # Set x-axis labels (months)
+    ax.set_xticks(range(12))
+    ax.set_xticklabels(HEBREW_MONTHS, rotation=45, ha='right', fontsize=9, fontweight='500')
+
+    # Add professional grid
+    ax.grid(axis='y', alpha=0.15, linestyle='--', linewidth=0.8, color='#94a3b8', zorder=0)
+    ax.set_axisbelow(True)
 
     # Format y-axis with thousands separator
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
-    ax.tick_params(axis='both', labelsize=8, colors='#4a5568')
+    ax.tick_params(axis='both', labelsize=9, colors='#475569', width=1.2)
 
-    # Add total annual production annotation - more subtle
+    # Add total annual production annotation
     total_kwh = sum(monthly_production)
-    ax.text(0.98, 0.96, f'סה״כ: {total_kwh:,.0f} קוט״ש/שנה',
-            transform=ax.transAxes, fontsize=8, fontweight='600',
+    ax.text(0.98, 0.97, f'סה״כ: {total_kwh:,.0f} קוט״ש/שנה',
+            transform=ax.transAxes, fontsize=9, fontweight='700',
             verticalalignment='top', horizontalalignment='right',
-            bbox=dict(boxstyle='round,pad=0.5', facecolor='#f7fafc', edgecolor='#cbd5e0', alpha=0.9))
+            bbox=dict(boxstyle='round,pad=0.6', facecolor='#f1f5f9',
+                     edgecolor='#cbd5e0', linewidth=1.5, alpha=0.95))
+
+    # Add subtle background
+    ax.set_facecolor('#fafbfc')
+
+    # Style spines
+    for spine in ax.spines.values():
+        spine.set_edgecolor('#cbd5e0')
+        spine.set_linewidth(1.2)
 
     # Tight layout
     plt.tight_layout()
 
-    # Save to bytes
+    # Save to bytes with higher DPI for better quality
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='white')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='white')
     buf.seek(0)
     plt.close(fig)
 

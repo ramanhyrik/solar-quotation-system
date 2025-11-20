@@ -317,7 +317,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.3*inch)
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=3.0*inch)
                 elements.append(monthly_chart_img)
                 elements.append(Spacer(1, 0.15*inch))
             except Exception as e:
