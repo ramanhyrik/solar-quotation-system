@@ -546,6 +546,15 @@
             document.getElementById('calcSystemSize').value = '';
             document.getElementById('calcSystemSize').focus();
         }
+
+        // Check URL parameter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const section = urlParams.get('section');
+            if (section === 'calculator' || section === 'history') {
+                showSection(section);
+            }
+        });
     </script>
 </body>
 </html>
