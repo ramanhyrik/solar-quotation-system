@@ -274,13 +274,13 @@
     <div class="sidebar">
         <h2>☀️ אנרגיה סולארית</h2>
         <nav>
-            <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
             <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
             {% if user.role == 'ADMIN' %}
             <a href="/admin">לוח ניהול</a>
             <a href="/users">ניהול משתמשים</a>
             {% endif %}
+            <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
             <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
