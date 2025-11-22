@@ -234,7 +234,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
         # Add company logo from uploads directory
-        logo_path = 'static/uploads/logo.png'
+        logo_path = 'static/images/logo.png'
 
         if os.path.exists(logo_path):
             try:
