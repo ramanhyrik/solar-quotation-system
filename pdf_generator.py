@@ -28,9 +28,22 @@ def reshape_hebrew(text):
     """Reshape Hebrew text for proper RTL display in PDF"""
     if text is None:
         return ''
+
+    # Ensure text is a string
     text_str = str(text)
     if text_str == 'None' or text_str == '':
         return ''
+
+    # Ensure text is properly encoded as UTF-8
+    try:
+        # If it's bytes, decode it
+        if isinstance(text_str, bytes):
+            text_str = text_str.decode('utf-8')
+        # Ensure it can be encoded/decoded properly
+        text_str = text_str.encode('utf-8', errors='ignore').decode('utf-8')
+    except Exception as e:
+        print(f"[WARNING] Text encoding error: {e}")
+
     if BIDI_AVAILABLE:
         try:
             # Apply bidi algorithm to properly display RTL text
@@ -95,10 +108,19 @@ FONT_NAME_BOLD = 'Hebrew-Bold' if HEBREW_FONT_AVAILABLE else 'Helvetica-Bold'
 print(f"[INFO] Using font: {FONT_NAME}, Bold: {FONT_NAME_BOLD}")
 
 def safe_get(data, key, default=''):
-    """Safely get a value from dictionary, handling None values"""
+    """Safely get a value from dictionary, handling None values and encoding"""
     value = data.get(key)
     if value is None or str(value) == 'None' or value == '':
         return default
+
+    # Ensure proper UTF-8 encoding for string values
+    if isinstance(value, str):
+        try:
+            # Clean and ensure UTF-8 encoding
+            value = value.encode('utf-8', errors='ignore').decode('utf-8')
+        except Exception as e:
+            print(f"[WARNING] Encoding error for key '{key}': {e}")
+
     return value
 
 def format_number(num):
@@ -107,6 +129,33 @@ def format_number(num):
         return f"{int(num):,}"
     except:
         return str(num)
+
+def escape_for_paragraph(text):
+    """
+    Escape text for use in ReportLab Paragraph with proper encoding.
+    This prevents latin-1 encoding errors.
+    """
+    if text is None:
+        return ''
+
+    text_str = str(text)
+
+    # Ensure UTF-8 encoding
+    try:
+        if isinstance(text_str, bytes):
+            text_str = text_str.decode('utf-8', errors='replace')
+        # Normalize the text to ensure compatibility
+        text_str = text_str.encode('utf-8', errors='replace').decode('utf-8')
+    except Exception as e:
+        print(f"[WARNING] Text escape error: {e}")
+        return ''
+
+    # Escape XML special characters that Paragraph uses
+    text_str = text_str.replace('&', '&amp;')
+    text_str = text_str.replace('<', '&lt;')
+    text_str = text_str.replace('>', '&gt;')
+
+    return text_str
 
 def generate_quote_pdf(quote_data, company_info=None):
     """
@@ -194,12 +243,14 @@ def generate_quote_pdf(quote_data, company_info=None):
                     print(f"[ERROR] Error loading logo: {e}")
 
         # Title
-        title = Paragraph(f"<para align=center><b>{company_name}</b></para>", title_style)
+        safe_company_name = escape_for_paragraph(company_name)
+        title = Paragraph(f"<para align=center><b>{safe_company_name}</b></para>", title_style)
         elements.append(title)
 
         # Subtitle in Hebrew
         subtitle_hebrew = reshape_hebrew('הצעת מחיר אנרגיה סולארית')
-        subtitle = Paragraph(f"<para align=center>{subtitle_hebrew}</para>", subtitle_style)
+        safe_subtitle = escape_for_paragraph(subtitle_hebrew)
+        subtitle = Paragraph(f"<para align=center>{safe_subtitle}</para>", subtitle_style)
         elements.append(subtitle)
         elements.append(Spacer(1, 0.15*inch))
 
@@ -227,7 +278,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(Spacer(1, 0.12*inch))
 
         # Customer Information
-        customer_heading = Paragraph(reshape_hebrew("פרטי לקוח"), heading_style)
+        customer_heading = Paragraph(escape_for_paragraph(reshape_hebrew("פרטי לקוח")), heading_style)
         elements.append(customer_heading)
         elements.append(Spacer(1, 0.08*inch))
 
@@ -263,7 +314,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(Spacer(1, 0.12*inch))
 
         # System Specifications
-        specs_heading = Paragraph(reshape_hebrew("מפרט מערכת"), heading_style)
+        specs_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מפרט מערכת")), heading_style)
         elements.append(specs_heading)
         elements.append(Spacer(1, 0.08*inch))
 
@@ -311,7 +362,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             elements.append(Spacer(1, 0.12*inch))
 
             # Monthly Production Chart
-            chart_heading = Paragraph(reshape_hebrew("ייצור אנרגיה חודשי"), heading_style)
+            chart_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור אנרגיה חודשי")), heading_style)
             elements.append(chart_heading)
             elements.append(Spacer(1, 0.08*inch))
 
@@ -325,7 +376,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             # Directional Production Chart - maintain square aspect ratio
             try:
-                directional_heading = Paragraph(reshape_hebrew("ייצור לפי כיוון גג"), heading_style)
+                directional_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור לפי כיוון גג")), heading_style)
                 elements.append(directional_heading)
                 elements.append(Spacer(1, 0.08*inch))
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
@@ -337,7 +388,7 @@ def generate_quote_pdf(quote_data, company_info=None):
                 print(f"[ERROR] Error generating directional chart: {e}")
 
         # Financial Summary
-        financial_heading = Paragraph(reshape_hebrew("סיכום פיננסי"), heading_style)
+        financial_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום פיננסי")), heading_style)
         elements.append(financial_heading)
         elements.append(Spacer(1, 0.08*inch))
 
@@ -373,23 +424,27 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(Spacer(1, 0.12*inch))
 
         # Environmental Impact
-        env_heading = Paragraph(reshape_hebrew("השפעה סביבתית"), heading_style)
+        env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
         elements.append(env_heading)
         elements.append(Spacer(1, 0.08*inch))
 
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
+        # Build environmental text with proper encoding
         env_text_parts = [
             reshape_hebrew('המערכת הסולארית שלך תייצר כ-'),
-            format_number(annual_prod),
+            str(format_number(annual_prod)),
             reshape_hebrew(' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת '),
-            format_number(trees),
+            str(format_number(trees)),
             reshape_hebrew(' עצים והפחתת פליטות CO2 ב-'),
-            format_number(co2_saved),
+            str(format_number(co2_saved)),
             reshape_hebrew(' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
         ]
-        env_text = ''.join(env_text_parts)
+
+        # Ensure each part is properly encoded before joining
+        safe_env_parts = [escape_for_paragraph(part) for part in env_text_parts]
+        env_text = ''.join(safe_env_parts)
 
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
@@ -406,19 +461,19 @@ def generate_quote_pdf(quote_data, company_info=None):
             fontName=FONT_NAME
         )
 
-        footer_lines = [f"<b>{company_name}</b>"]
+        footer_lines = [f"<b>{escape_for_paragraph(company_name)}</b>"]
 
         if company_info:
             if company_info.get('company_phone'):
-                footer_lines.append(f"{company_info['company_phone']}")
+                footer_lines.append(escape_for_paragraph(company_info['company_phone']))
             if company_info.get('company_email'):
-                footer_lines.append(f"{company_info['company_email']}")
+                footer_lines.append(escape_for_paragraph(company_info['company_email']))
             if company_info.get('company_address'):
-                footer_lines.append(f"{company_info['company_address']}")
+                footer_lines.append(escape_for_paragraph(company_info['company_address']))
 
         footer_lines.append("")
-        footer_lines.append(f"<i>{reshape_hebrew('הצעה זו בתוקף 30 ימים מתאריך ההנפקה.')}</i>")
-        footer_lines.append(reshape_hebrew('תודה שבחרתם באנרגיה סולארית!'))
+        footer_lines.append(f"<i>{escape_for_paragraph(reshape_hebrew('הצעה זו בתוקף 30 ימים מתאריך ההנפקה.'))}</i>")
+        footer_lines.append(escape_for_paragraph(reshape_hebrew('תודה שבחרתם באנרגיה סולארית!')))
 
         footer_text = "<para align=center>" + "<br/>".join(footer_lines) + "</para>"
         footer = Paragraph(footer_text, footer_style)

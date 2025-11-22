@@ -12,10 +12,27 @@ import json
 import os
 import shutil
 import traceback
+import re
+from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf
 
 # Session store (in-memory for simplicity)
 sessions = {}
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename by removing or replacing non-ASCII characters.
+    This ensures the filename works in HTTP headers.
+    """
+    # Remove non-ASCII characters and replace spaces with underscores
+    sanitized = re.sub(r'[^\x00-\x7F]+', '', filename)
+    sanitized = sanitized.replace(' ', '_')
+    # Remove any remaining problematic characters
+    sanitized = re.sub(r'[<>:"/\\|?*]', '', sanitized)
+    # If filename becomes empty after sanitization, use a default
+    if not sanitized or sanitized == '.pdf':
+        sanitized = 'Quote.pdf'
+    return sanitized
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -570,13 +587,22 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             raise
 
         # Return as downloadable file
-        customer_name = quote_data.get('customer_name', 'Unknown').replace(' ', '_')
-        filename = f"Quote_{quote_data['quote_number']}_{customer_name}.pdf"
+        quote_number = quote_data.get('quote_number', 'N/A')
+        customer_name = quote_data.get('customer_name', 'Customer')
+
+        # Create filename with ASCII-safe characters
+        raw_filename = f"Quote_{quote_number}_{customer_name}.pdf"
+        safe_filename = sanitize_filename(raw_filename)
+
+        # For browsers that support UTF-8 filenames, also provide the encoded version
+        encoded_filename = url_quote(raw_filename)
 
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={safe_filename}; filename*=UTF-8''{encoded_filename}"
+            }
         )
 
     except HTTPException:
