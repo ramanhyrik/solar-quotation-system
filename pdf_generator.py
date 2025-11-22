@@ -12,20 +12,24 @@ from chart_generator import generate_monthly_production_chart, generate_directio
 import os
 import traceback
 
-# Try to import bidi for proper RTL text handling
+# Try to import libraries for proper RTL text handling
 try:
+    import arabic_reshaper
     from bidi.algorithm import get_display
-    BIDI_AVAILABLE = True
-    print("[OK] Bidi library loaded successfully")
-except ImportError:
-    BIDI_AVAILABLE = False
-    print("[WARNING] Bidi library not available - Hebrew text may not display correctly")
-    print("[INFO] Install with: pip install python-bidi")
+    RTL_AVAILABLE = True
+    print("[OK] RTL text libraries loaded for PDF (arabic_reshaper + bidi)")
+except ImportError as e:
+    RTL_AVAILABLE = False
+    print(f"[WARNING] RTL text libraries not available for PDF: {e}")
+    print("[INFO] Install with: pip install arabic-reshaper python-bidi")
     def get_display(text):
         return text
 
 def reshape_hebrew(text):
-    """Reshape Hebrew text for proper RTL display in PDF"""
+    """
+    Reshape Hebrew text for proper RTL display in PDF.
+    Uses two-step process: arabic_reshaper + bidi algorithm.
+    """
     if text is None:
         return ''
 
@@ -44,13 +48,15 @@ def reshape_hebrew(text):
     except Exception as e:
         print(f"[WARNING] Text encoding error: {e}")
 
-    if BIDI_AVAILABLE:
+    if RTL_AVAILABLE:
         try:
-            # Apply bidi algorithm to properly display RTL text
-            result = get_display(text_str)
-            return result
+            # Step 1: Reshape the text (handles character connections)
+            reshaped_text = arabic_reshaper.reshape(text_str)
+            # Step 2: Apply bidi algorithm for proper RTL display
+            bidi_text = get_display(reshaped_text)
+            return bidi_text
         except Exception as e:
-            print(f"[WARNING] Bidi processing error: {e}")
+            print(f"[WARNING] RTL text processing error: {e}")
             return text_str
     return text_str
 
