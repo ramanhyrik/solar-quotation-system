@@ -248,10 +248,10 @@ def generate_quote_pdf(quote_data, company_info=None):
         else:
             print(f"[WARNING] Logo not found at: {logo_path}")
 
-        # Title
-        safe_company_name = escape_for_paragraph(company_name)
-        title = Paragraph(f"<para align=center><b>{safe_company_name}</b></para>", title_style)
-        elements.append(title)
+        # Title - Removed since we have logo now
+        # safe_company_name = escape_for_paragraph(company_name)
+        # title = Paragraph(f"<para align=center><b>{safe_company_name}</b></para>", title_style)
+        # elements.append(title)
 
         # Subtitle in Hebrew
         subtitle_hebrew = reshape_hebrew('הצעת מחיר אנרגיה סולארית')
