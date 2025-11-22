@@ -11,25 +11,41 @@ import numpy as np
 import io
 from PIL import Image
 
-# Try to import bidi for proper RTL text handling in charts
+# Try to import libraries for proper RTL text handling in charts
 try:
+    import arabic_reshaper
     from bidi.algorithm import get_display
-    BIDI_AVAILABLE = True
-except ImportError:
-    BIDI_AVAILABLE = False
-    def get_display(text):
-        return text
+    RTL_AVAILABLE = True
+    print("[OK] RTL text libraries loaded (arabic_reshaper + bidi)")
+except ImportError as e:
+    RTL_AVAILABLE = False
+    print(f"[WARNING] RTL text libraries not available: {e}")
+    print("[INFO] Install with: pip install arabic-reshaper python-bidi")
 
 def reshape_text_for_chart(text):
-    """Reshape Hebrew text for proper display in matplotlib charts"""
+    """
+    Reshape Hebrew/Arabic text for proper RTL display in matplotlib charts.
+    This requires both arabic_reshaper and python-bidi libraries.
+    """
     if text is None:
         return ''
+
     text_str = str(text)
-    if BIDI_AVAILABLE:
+    if not text_str:
+        return ''
+
+    if RTL_AVAILABLE:
         try:
-            return get_display(text_str)
-        except Exception:
+            # Step 1: Reshape the text (handles character connections)
+            reshaped_text = arabic_reshaper.reshape(text_str)
+            # Step 2: Apply bidi algorithm for proper RTL display
+            bidi_text = get_display(reshaped_text)
+            return bidi_text
+        except Exception as e:
+            print(f"[WARNING] RTL text processing error: {e}")
             return text_str
+
+    # Fallback if libraries not available
     return text_str
 
 # Hebrew month names for chart (will be reshaped for RTL display)
