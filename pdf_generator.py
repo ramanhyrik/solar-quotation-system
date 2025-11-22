@@ -233,24 +233,20 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Company header
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
-        # Add company logo if exists
-        logo_path = None
-        if company_info and company_info.get('company_logo'):
-            logo_path = company_info['company_logo']
-            if logo_path.startswith('/'):
-                logo_path = logo_path[1:]
-        else:
-            # Default logo path
-            logo_path = 'static/uploads/logo.png'
+        # Add company logo from uploads directory
+        logo_path = 'static/uploads/logo.png'
 
-        if logo_path and os.path.exists(logo_path):
+        if os.path.exists(logo_path):
             try:
                 logo = Image(logo_path, width=2.5*inch, height=1*inch, kind='proportional')
                 logo.hAlign = 'CENTER'
                 elements.append(logo)
                 elements.append(Spacer(1, 0.2*inch))
+                print(f"[OK] Logo loaded from: {logo_path}")
             except Exception as e:
                 print(f"[ERROR] Error loading logo: {e}")
+        else:
+            print(f"[WARNING] Logo not found at: {logo_path}")
 
         # Title
         safe_company_name = escape_for_paragraph(company_name)
