@@ -11,9 +11,30 @@ import numpy as np
 import io
 from PIL import Image
 
-# Hebrew month names for chart
-HEBREW_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
-                 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+# Try to import bidi for proper RTL text handling in charts
+try:
+    from bidi.algorithm import get_display
+    BIDI_AVAILABLE = True
+except ImportError:
+    BIDI_AVAILABLE = False
+    def get_display(text):
+        return text
+
+def reshape_text_for_chart(text):
+    """Reshape Hebrew text for proper display in matplotlib charts"""
+    if text is None:
+        return ''
+    text_str = str(text)
+    if BIDI_AVAILABLE:
+        try:
+            return get_display(text_str)
+        except Exception:
+            return text_str
+    return text_str
+
+# Hebrew month names for chart (will be reshaped for RTL display)
+HEBREW_MONTHS_RAW = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                     'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
 
 # Monthly production coefficients (relative to annual average)
 # Based on typical solar production patterns in Israel
@@ -95,15 +116,19 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
         )
         ax.add_patch(gradient)
 
-    # Customize appearance - professional fonts
-    ax.set_xlabel('חודש', fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
-    ax.set_ylabel('ייצור (קוט״ש)', fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
-    ax.set_title(f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש',
+    # Customize appearance - professional fonts with proper RTL text
+    ax.set_xlabel(reshape_text_for_chart('חודש'), fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
+    ax.set_ylabel(reshape_text_for_chart('ייצור (קוט״ש)'), fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
+
+    # Title with proper RTL formatting
+    title_text = f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש'
+    ax.set_title(reshape_text_for_chart(title_text),
                  fontsize=12, fontweight='bold', pad=15, color='#00358A')
 
-    # Set x-axis labels (months)
+    # Set x-axis labels (months) with proper RTL text
+    hebrew_months_display = [reshape_text_for_chart(month) for month in HEBREW_MONTHS_RAW]
     ax.set_xticks(range(12))
-    ax.set_xticklabels(HEBREW_MONTHS, rotation=45, ha='right', fontsize=9, fontweight='500')
+    ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500')
 
     # Add professional grid
     ax.grid(axis='y', alpha=0.15, linestyle='--', linewidth=0.8, color='#94a3b8', zorder=0)
@@ -113,9 +138,10 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
     ax.tick_params(axis='both', labelsize=9, colors='#475569', width=1.2)
 
-    # Add total annual production annotation
+    # Add total annual production annotation with proper RTL text
     total_kwh = sum(monthly_production)
-    ax.text(0.98, 0.97, f'סה״כ: {total_kwh:,.0f} קוט״ש/שנה',
+    annotation_text = f'סה״כ: {total_kwh:,.0f} קוט״ש/שנה'
+    ax.text(0.98, 0.97, reshape_text_for_chart(annotation_text),
             transform=ax.transAxes, fontsize=9, fontweight='700',
             verticalalignment='top', horizontalalignment='right',
             bbox=dict(boxstyle='round,pad=0.6', facecolor='#f1f5f9',
@@ -200,12 +226,14 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
-    # Title with brand color
-    ax.set_title(f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש',
+    # Title with brand color and proper RTL text
+    title_text = f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש'
+    ax.set_title(reshape_text_for_chart(title_text),
                  fontsize=14, fontweight='bold', pad=20, y=1.08, color='#00358A')
 
-    # Add center annotation with brand styling
-    ax.text(0, 0, f'דרום\n{int(annual_production):,}\nקוט״ש/שנה',
+    # Add center annotation with brand styling and proper RTL text
+    center_text = f'דרום\n{int(annual_production):,}\nקוט״ש/שנה'
+    ax.text(0, 0, reshape_text_for_chart(center_text),
             ha='center', va='center', fontsize=11, fontweight='bold',
             color='#2d3748',
             bbox=dict(boxstyle='round,pad=0.8', facecolor='#f1f5f9',
@@ -266,17 +294,18 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
                 label=f'Payback: {payback_years:.1f} years', zorder=5)
         ax.axvline(x=payback_years, color='#ef5350', linestyle='--', linewidth=1.2, alpha=0.6)
 
-        # Add annotation - smaller, more subtle
-        ax.annotate(f'נקודת איזון\n{payback_years:.1f} שנים',
+        # Add annotation - smaller, more subtle with proper RTL text
+        annotation_text = f'נקודת איזון\n{payback_years:.1f} שנים'
+        ax.annotate(reshape_text_for_chart(annotation_text),
                    xy=(payback_years, 0), xytext=(payback_years + 2, price * 0.3),
                    fontsize=8, fontweight='600',
                    arrowprops=dict(arrowstyle='->', color='#ef5350', lw=1.5),
                    bbox=dict(boxstyle='round,pad=0.4', facecolor='#fff3e0', edgecolor='#ef5350', alpha=0.8))
 
-    # Labels and title - smaller, professional fonts
-    ax.set_xlabel('שנים', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_ylabel('חיסכון מצטבר (₪)', fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
-    ax.set_title(f'תקופת החזר השקעה וחיסכון מצטבר',
+    # Labels and title - smaller, professional fonts with proper RTL text
+    ax.set_xlabel(reshape_text_for_chart('שנים'), fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_ylabel(reshape_text_for_chart('חיסכון מצטבר (₪)'), fontsize=9, fontweight='600', labelpad=8, color='#4a5568')
+    ax.set_title(reshape_text_for_chart('תקופת החזר השקעה וחיסכון מצטבר'),
                  fontsize=10, fontweight='bold', pad=12, color='#2d3748')
 
     # Format y-axis with currency
@@ -287,9 +316,10 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
     ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5, color='#cbd5e0')
     ax.set_axisbelow(True)
 
-    # Add legend with final savings - smaller, more subtle
+    # Add legend with final savings - smaller, more subtle with proper RTL text
     final_savings = cumulative_savings[-1]
-    ax.text(0.98, 0.02, f'חיסכון כולל ({years} שנים): ₪{final_savings:,.0f}',
+    legend_text = f'חיסכון כולל ({years} שנים): ₪{final_savings:,.0f}'
+    ax.text(0.98, 0.02, reshape_text_for_chart(legend_text),
             transform=ax.transAxes, fontsize=8, fontweight='600',
             verticalalignment='bottom', horizontalalignment='right',
             bbox=dict(boxstyle='round,pad=0.5', facecolor='#f7fafc', edgecolor='#cbd5e0', alpha=0.9))
