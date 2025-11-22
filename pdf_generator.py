@@ -203,10 +203,10 @@ def generate_quote_pdf(quote_data, company_info=None):
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontSize=10,
+            fontSize=11,
             textColor=colors.HexColor('#00358A'),
-            spaceAfter=4,
-            spaceBefore=6,
+            spaceAfter=6,
+            spaceBefore=8,
             fontName=FONT_NAME_BOLD,
             alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
@@ -214,8 +214,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         normal_style = ParagraphStyle(
             'CustomNormal',
             parent=styles['Normal'],
-            fontSize=8,
-            spaceAfter=2,
+            fontSize=9,
+            spaceAfter=3,
             fontName=FONT_NAME,
             alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
@@ -223,9 +223,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         subtitle_style = ParagraphStyle(
             'Subtitle',
             parent=styles['Normal'],
-            fontSize=11,
+            fontSize=12,
             textColor=colors.HexColor('#00358A'),
-            spaceAfter=2,
+            spaceAfter=3,
             alignment=TA_CENTER,
             fontName=FONT_NAME_BOLD
         )
@@ -238,10 +238,10 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         if os.path.exists(logo_path):
             try:
-                logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
+                logo = Image(logo_path, width=2.4*inch, height=1*inch, kind='proportional')
                 logo.hAlign = 'CENTER'
                 elements.append(logo)
-                elements.append(Spacer(1, 0.08*inch))
+                elements.append(Spacer(1, 0.1*inch))
                 print(f"[OK] Logo loaded from: {logo_path}")
             except Exception as e:
                 print(f"[ERROR] Error loading logo: {e}")
@@ -258,7 +258,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         safe_subtitle = escape_for_paragraph(subtitle_hebrew)
         subtitle = Paragraph(f"<para align=center>{safe_subtitle}</para>", subtitle_style)
         elements.append(subtitle)
-        elements.append(Spacer(1, 0.06*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         # Quote number and date
         today = datetime.now()
@@ -277,11 +277,11 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),  # Labels on left
-            ('TOPPADDING', (0, 0), (-1, -1), 1),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
         elements.append(quote_table)
-        elements.append(Spacer(1, 0.05*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         # Customer Information
         customer_heading = Paragraph(escape_for_paragraph(reshape_hebrew("פרטי לקוח")), heading_style)
@@ -311,13 +311,13 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2d3748')),  # Labels (darker)
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e2e8f0')),
             ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#cbd5e0')),
         ]))
         elements.append(customer_table)
-        elements.append(Spacer(1, 0.05*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         # System Specifications
         specs_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מפרט מערכת")), heading_style)
@@ -350,14 +350,14 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
             ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#f7fafc')),  # Labels column background
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(specs_table)
-        elements.append(Spacer(1, 0.05*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         # Get financial data
         total_price = quote_data.get('total_price', 0) or 0
@@ -365,7 +365,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Production Charts Section
         if system_size and annual_prod:
-            elements.append(Spacer(1, 0.05*inch))
+            elements.append(Spacer(1, 0.08*inch))
 
             # Monthly Production Chart
             chart_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור אנרגיה חודשי")), heading_style)
@@ -374,7 +374,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.5*inch)
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.8*inch)
                 elements.append(monthly_chart_img)
                 elements.append(Spacer(1, 0.06*inch))
             except Exception as e:
@@ -387,7 +387,7 @@ def generate_quote_pdf(quote_data, company_info=None):
                 elements.append(Spacer(1, 0.08*inch))
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
                 # Use square aspect ratio for the compass chart
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=3.6*inch, height=3.6*inch)
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.0*inch, height=4.0*inch)
                 elements.append(directional_chart_img)
                 elements.append(Spacer(1, 0.06*inch))
             except Exception as e:
@@ -418,8 +418,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e0')),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 10),
             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
             ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f7fafc')),
@@ -427,7 +427,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(financial_table)
-        elements.append(Spacer(1, 0.05*inch))
+        elements.append(Spacer(1, 0.08*inch))
 
         # Environmental Impact
         env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
