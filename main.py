@@ -11,6 +11,7 @@ from datetime import datetime
 import json
 import os
 import shutil
+import traceback
 from pdf_generator import generate_quote_pdf
 
 # Session store (in-memory for simplicity)
@@ -531,39 +532,61 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    with get_db() as conn:
-        cursor = conn.cursor()
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
 
-        # Get quote data
-        cursor.execute('''
-            SELECT q.*, u.name as created_by_name, u.email as created_by_email
-            FROM quotes q
-            LEFT JOIN users u ON q.created_by = u.id
-            WHERE q.id = ?
-        ''', (quote_id,))
-        quote = cursor.fetchone()
+            # Get quote data
+            cursor.execute('''
+                SELECT q.*, u.name as created_by_name, u.email as created_by_email
+                FROM quotes q
+                LEFT JOIN users u ON q.created_by = u.id
+                WHERE q.id = ?
+            ''', (quote_id,))
+            quote = cursor.fetchone()
 
-        if not quote:
-            raise HTTPException(status_code=404, detail="Quote not found")
+            if not quote:
+                raise HTTPException(status_code=404, detail="Quote not found")
 
-        # Get company settings
-        cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
-        company = cursor.fetchone()
+            # Get company settings
+            cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
+            company = cursor.fetchone()
 
-        # Convert to dict
-        quote_data = dict(quote)
-        company_info = dict(company) if company else None
+            # Convert to dict
+            quote_data = dict(quote)
+            company_info = dict(company) if company else None
+
+        print(f"[PDF] Generating PDF for quote #{quote_data.get('quote_number')}")
+        print(f"[PDF] Customer: {quote_data.get('customer_name')}")
+        print(f"[PDF] System size: {quote_data.get('system_size')}, Annual production: {quote_data.get('annual_production')}")
 
         # Generate PDF
-        pdf_buffer = generate_quote_pdf(quote_data, company_info)
+        try:
+            pdf_buffer = generate_quote_pdf(quote_data, company_info)
+            print(f"[PDF] Successfully generated PDF for quote #{quote_data.get('quote_number')}")
+        except Exception as pdf_error:
+            print(f"[ERROR] PDF generation failed: {type(pdf_error).__name__}: {str(pdf_error)}")
+            traceback.print_exc()
+            raise
 
         # Return as downloadable file
-        filename = f"Quote_{quote_data['quote_number']}_{quote_data['customer_name'].replace(' ', '_')}.pdf"
+        customer_name = quote_data.get('customer_name', 'Unknown').replace(' ', '_')
+        filename = f"Quote_{quote_data['quote_number']}_{customer_name}.pdf"
 
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in PDF endpoint: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate PDF: {str(e)}"
         )
 
 if __name__ == "__main__":
