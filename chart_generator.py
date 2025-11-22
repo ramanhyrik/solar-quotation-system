@@ -1,6 +1,7 @@
 """
 Chart Generator for Solar Energy Quotation System
 Generates production charts for PDF reports
+Supports Hebrew RTL text rendering with arabic-reshaper and python-bidi
 """
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for server-side rendering
