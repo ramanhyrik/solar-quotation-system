@@ -190,16 +190,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         styles = getSampleStyleSheet()
 
         # Custom styles
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            textColor=colors.HexColor('#2d3748'),
-            spaceAfter=6,
-            alignment=TA_CENTER,
-            fontName=FONT_NAME_BOLD
-        )
-
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
@@ -247,11 +237,6 @@ def generate_quote_pdf(quote_data, company_info=None):
                 print(f"[ERROR] Error loading logo: {e}")
         else:
             print(f"[WARNING] Logo not found at: {logo_path}")
-
-        # Title - Removed since we have logo now
-        # safe_company_name = escape_for_paragraph(company_name)
-        # title = Paragraph(f"<para align=center><b>{safe_company_name}</b></para>", title_style)
-        # elements.append(title)
 
         # Subtitle in Hebrew
         subtitle_hebrew = reshape_hebrew('הצעת מחיר אנרגיה סולארית')

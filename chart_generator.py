@@ -351,34 +351,3 @@ def generate_payback_chart(price: float, annual_revenue: float, years: int = 25)
     plt.close(fig)
 
     return buf.getvalue()
-
-
-# For testing
-if __name__ == "__main__":
-    # Test chart generation
-    test_kwp = 15
-    test_annual = 20400  # 15 kWp × 1360 kWh/kWp
-    test_price = 61950   # 15 kWp × 4130 ILS/kWp
-    test_revenue = 9792  # 20400 × 0.48 ILS/kWh
-
-    print("Generating test charts...")
-
-    # Generate monthly chart
-    monthly_chart = generate_monthly_production_chart(test_kwp, test_annual)
-    with open('test_monthly_chart.png', 'wb') as f:
-        f.write(monthly_chart)
-    print("[OK] Monthly chart saved to test_monthly_chart.png")
-
-    # Generate directional chart
-    directional_chart = generate_directional_production_chart(test_kwp, test_annual)
-    with open('test_directional_chart.png', 'wb') as f:
-        f.write(directional_chart)
-    print("[OK] Directional chart saved to test_directional_chart.png")
-
-    # Generate payback chart
-    payback_chart = generate_payback_chart(test_price, test_revenue)
-    with open('test_payback_chart.png', 'wb') as f:
-        f.write(payback_chart)
-    print("[OK] Payback chart saved to test_payback_chart.png")
-
-    print("\nAll test charts generated successfully!")
