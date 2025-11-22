@@ -465,7 +465,13 @@
         </div>
 
         <div class="logo-section">
-            <img src="/static/uploads/logo.png" alt="Logo" style="max-width: 200px; max-height: 100px; margin-bottom: 10px;">
+            <img id="logo-img" src="/static/uploads/logo.png" alt="Company Logo"
+                 style="max-width: 200px; max-height: 100px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; border: 2px solid transparent;"
+                 onload="console.log('Logo loaded successfully')"
+                 onerror="console.error('Logo failed to load'); this.style.display='none'; document.getElementById('logo-error').style.display='block';">
+            <div id="logo-error" style="display: none; color: red; font-size: 12px; text-align: center; margin-bottom: 10px; padding: 10px; background: #fee; border-radius: 5px;">
+                ⚠️ Logo image not found
+            </div>
             <p><strong>פתרונות אנרגיה סולארית</strong></p>
         </div>
 
