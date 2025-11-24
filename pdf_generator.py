@@ -241,8 +241,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             parent=styles['Heading2'],
             fontSize=11,
             textColor=colors.white,  # White text for blue background
-            spaceAfter=6,
-            spaceBefore=8,
+            spaceAfter=4,  # Reduced from 6
+            spaceBefore=6,  # Reduced from 8
             fontName=FONT_NAME_BOLD,
             alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
@@ -251,7 +251,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'CustomNormal',
             parent=styles['Normal'],
             fontSize=9,
-            spaceAfter=3,
+            spaceAfter=2,  # Reduced from 3
             textColor=colors.white,  # White text for blue background
             fontName=FONT_NAME,
             alignment=TA_RIGHT  # RTL alignment for Hebrew
@@ -350,7 +350,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
             elements.append(title_para)
 
-        elements.append(Spacer(1, 0.15*inch))
+        elements.append(Spacer(1, 0.1*inch))  # Reduced spacing
 
         # Quote number and date
         today = datetime.now()
@@ -373,12 +373,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
         elements.append(quote_table)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         # Customer Information
         customer_heading = Paragraph(escape_for_paragraph(reshape_hebrew("פרטי לקוח")), heading_style)
         elements.append(customer_heading)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         customer_name_val = safe_get(quote_data, 'customer_name', '')
         customer_phone_val = safe_get(quote_data, 'customer_phone', '')
@@ -414,12 +414,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         elements.append(customer_table)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         # System Specifications
         specs_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מפרט מערכת")), heading_style)
         elements.append(specs_heading)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         system_size = quote_data.get('system_size', 0) or 0
         roof_area = quote_data.get('roof_area')
@@ -452,7 +452,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(specs_table)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         # Get financial data
         total_price = quote_data.get('total_price', 0) or 0
@@ -460,18 +460,19 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Production Charts Section
         if system_size and annual_prod:
-            elements.append(Spacer(1, 0.08*inch))
+            elements.append(Spacer(1, 0.05*inch))  # Reduced spacing
 
             # Monthly Production Chart
             chart_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור אנרגיה חודשי")), heading_style)
             elements.append(chart_heading)
-            elements.append(Spacer(1, 0.08*inch))
+            elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.8*inch, height=2.8*inch)
+                # Slightly smaller chart to save space
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.6*inch)
                 elements.append(monthly_chart_img)
-                elements.append(Spacer(1, 0.06*inch))
+                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
             except Exception as e:
                 print(f"[ERROR] Error generating monthly chart: {e}")
 
@@ -479,19 +480,19 @@ def generate_quote_pdf(quote_data, company_info=None):
             try:
                 directional_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור לפי כיוון גג")), heading_style)
                 elements.append(directional_heading)
-                elements.append(Spacer(1, 0.08*inch))
+                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
-                # Use square aspect ratio for the compass chart
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.0*inch, height=4.0*inch)
+                # Slightly smaller chart to save space
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=3.8*inch, height=3.8*inch)
                 elements.append(directional_chart_img)
-                elements.append(Spacer(1, 0.06*inch))
+                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
             except Exception as e:
                 print(f"[ERROR] Error generating directional chart: {e}")
 
         # Financial Summary
         financial_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום פיננסי")), heading_style)
         elements.append(financial_heading)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         payback = quote_data.get('payback_period', 0) or 0
 
@@ -521,12 +522,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(financial_table)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         # Environmental Impact
         env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
         elements.append(env_heading)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
@@ -548,12 +549,12 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
-        # Switch to last page template for footer
+        # Switch to last page template and force footer onto a new page
+        # This ensures the footer always has yellow background
         elements.append(NextPageTemplate('LastPage'))
-        # Use conditional page break - only break if not enough space for footer (1.5 inches needed)
-        elements.append(CondPageBreak(1.5*inch))
+        elements.append(PageBreak())
 
         # Footer text (yellow background is drawn on canvas, full-width)
         footer_style = ParagraphStyle(
@@ -586,7 +587,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         footer_para = Paragraph(footer_text, footer_style)
 
         # Add spacer and footer text (yellow background is drawn on canvas)
-        elements.append(Spacer(1, 0.3*inch))
+        elements.append(Spacer(1, 0.2*inch))  # Reduced spacing for footer
         elements.append(footer_para)
 
         # Build PDF
