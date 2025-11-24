@@ -216,11 +216,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             doc.height,
             id='regular'
         )
+        # LastPage frame with reduced bottom margin to allow content in yellow footer area
         frame_last = Frame(
             doc.leftMargin,
-            doc.bottomMargin,
+            0.25*inch,  # Reduced bottom margin so content sits in yellow footer area
             doc.width,
-            doc.height,
+            doc.height + 0.25*inch,  # Extend height by the margin we removed
             id='last'
         )
 
@@ -553,16 +554,19 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
+
+        # Add flexible spacer to push footer down to yellow area at bottom
+        # This will take up remaining space and push footer to bottom
+        elements.append(Spacer(1, 0.5*inch))  # Add more space to push footer down
 
         # Footer text (yellow background is drawn on canvas on LastPage template, full-width)
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
-            fontSize=9,
+            fontSize=8,  # Slightly smaller to fit in footer area
             textColor=colors.HexColor('#2d3748'),  # Dark gray text on yellow-green
             alignment=TA_RIGHT,
-            leading=12,
+            leading=10,  # Tighter line spacing
             fontName=FONT_NAME
         )
 
@@ -585,8 +589,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         footer_text = "<br/>".join(footer_lines)
         footer_para = Paragraph(footer_text, footer_style)
 
-        # Add spacer and footer text (yellow background is drawn on canvas)
-        elements.append(Spacer(1, 0.2*inch))  # Reduced spacing for footer
+        # Add footer text - it will appear on yellow background due to reduced bottom margin
         elements.append(footer_para)
 
         # Build PDF
