@@ -172,6 +172,20 @@ def add_blue_background(canvas, doc):
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     canvas.restoreState()
 
+def add_yellow_footer(canvas, doc):
+    """Add yellow-green footer bar at bottom of page"""
+    canvas.saveState()
+    # Draw yellow-green rectangle at bottom of page, full width
+    footer_height = 1.2 * inch
+    canvas.setFillColor(colors.HexColor('#A3C939'))  # Yellow-green
+    canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
+    canvas.restoreState()
+
+def add_backgrounds(canvas, doc):
+    """Add both blue background and yellow footer"""
+    add_blue_background(canvas, doc)
+    add_yellow_footer(canvas, doc)
+
 def generate_quote_pdf(quote_data, company_info=None):
     """
     Generate a professional PDF quote with Hebrew support
@@ -196,7 +210,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             rightMargin=0.75*inch
         )
 
-        # Create frame and page template with blue background
+        # Create frame and page template with blue background and yellow footer
         frame = Frame(
             doc.leftMargin,
             doc.bottomMargin,
@@ -204,7 +218,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             doc.height,
             id='normal'
         )
-        template = PageTemplate(id='BlueBackground', frames=frame, onPage=add_blue_background)
+        template = PageTemplate(id='ColoredBackground', frames=frame, onPage=add_backgrounds)
         doc.addPageTemplates([template])
 
         # Container for PDF elements
@@ -257,7 +271,13 @@ def generate_quote_pdf(quote_data, company_info=None):
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
         # Create header with logo on LEFT and title on RIGHT
-        logo_path = 'logo2.png'  # Use logo2.png from root directory
+        # Try multiple logo paths
+        logo_paths = [
+            'logo2.png',  # Root directory
+            'static/images/logo.png',  # Images directory
+            os.path.join(os.path.dirname(__file__), 'logo2.png'),
+            os.path.join(os.path.dirname(__file__), 'static', 'images', 'logo.png')
+        ]
 
         # Title paragraph for header
         title_hebrew = reshape_hebrew('הצעת מחיר')
@@ -269,31 +289,34 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Create title cell content
         title_para = Paragraph(f"<para align=right><b>{safe_title}</b><br/><font size=12>{safe_subtitle}</font></para>", title_style)
 
-        # Create header table with logo and title
-        if os.path.exists(logo_path):
-            try:
-                logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
-                # Header with logo on LEFT, title on RIGHT
-                header_data = [[logo, title_para]]  # Swapped: logo first, title second
-                header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
-                header_table.setStyle(TableStyle([
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Logo aligned left
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),   # Title aligned right
-                    ('TOPPADDING', (0, 0), (-1, -1), 15),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 20),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 20),
-                ]))
-                elements.append(header_table)
-                print(f"[OK] Logo loaded from: {logo_path}")
-            except Exception as e:
-                print(f"[ERROR] Error loading logo: {e}")
-                # Fallback: Just show title
-                title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
-                elements.append(title_para)
-        else:
-            print(f"[WARNING] Logo not found at: {logo_path}")
+        # Try to load logo from multiple paths
+        logo_loaded = False
+        for logo_path in logo_paths:
+            if os.path.exists(logo_path):
+                try:
+                    logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
+                    # Header with logo on LEFT, title on RIGHT
+                    header_data = [[logo, title_para]]
+                    header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
+                    header_table.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Logo aligned left
+                        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),   # Title aligned right
+                        ('TOPPADDING', (0, 0), (-1, -1), 15),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 20),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 20),
+                    ]))
+                    elements.append(header_table)
+                    print(f"[OK] Logo loaded from: {logo_path}")
+                    logo_loaded = True
+                    break
+                except Exception as e:
+                    print(f"[ERROR] Error loading logo from {logo_path}: {e}")
+                    continue
+
+        if not logo_loaded:
+            print(f"[WARNING] Logo not found in any of these paths: {logo_paths}")
             # Fallback: Just show title
             title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
             elements.append(title_para)
@@ -498,7 +521,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(env_para)
         elements.append(Spacer(1, 0.08*inch))
 
-        # Footer with yellow-green background
+        # Footer text (background is drawn on canvas, full-width)
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
@@ -528,18 +551,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         footer_text = "<br/>".join(footer_lines)
         footer_para = Paragraph(footer_text, footer_style)
 
-        # Create footer table with yellow-green background
-        footer_table = Table([[footer_para]], colWidths=[6.5*inch])
-        footer_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#A3C939')),  # Yellow-green
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 20),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
-            ('LEFTPADDING', (0, 0), (-1, -1), 25),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 25),
-        ]))
-        elements.append(Spacer(1, 0.15*inch))
-        elements.append(footer_table)
+        # Add spacer and footer text (yellow background is drawn on canvas)
+        elements.append(Spacer(1, 0.3*inch))
+        elements.append(footer_para)
 
         # Build PDF
         doc.build(elements)
