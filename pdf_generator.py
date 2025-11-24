@@ -213,37 +213,70 @@ def generate_quote_pdf(quote_data, company_info=None):
         subtitle_style = ParagraphStyle(
             'Subtitle',
             parent=styles['Normal'],
-            fontSize=12,
-            textColor=colors.HexColor('#00358A'),
+            fontSize=18,
+            textColor=colors.HexColor('#FFD700'),  # Yellow color for title
             spaceAfter=3,
             alignment=TA_CENTER,
             fontName=FONT_NAME_BOLD
         )
 
-        # Company header
+        title_style = ParagraphStyle(
+            'Title',
+            parent=styles['Normal'],
+            fontSize=24,
+            textColor=colors.HexColor('#FFD700'),  # Yellow/gold color
+            spaceAfter=6,
+            alignment=TA_RIGHT,
+            fontName=FONT_NAME_BOLD
+        )
+
+        # Company header - Blue background with logo and yellow title
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
-        # Add company logo from uploads directory
+        # Create header with dark blue background
         logo_path = 'static/images/logo.png'
 
+        # Title paragraph for header
+        title_hebrew = reshape_hebrew('הצעת מחיר')
+        quote_num = str(safe_get(quote_data, 'quote_number', 'N/A'))
+        subtitle_hebrew = reshape_hebrew(f'הצעת מחיר מספר {quote_num}')
+        safe_title = escape_for_paragraph(title_hebrew)
+        safe_subtitle = escape_for_paragraph(subtitle_hebrew)
+
+        # Create title cell content
+        title_para = Paragraph(f"<para align=right><b>{safe_title}</b><br/><font size=12>{safe_subtitle}</font></para>", title_style)
+
+        # Create header table with logo and title
         if os.path.exists(logo_path):
             try:
-                logo = Image(logo_path, width=2.4*inch, height=1*inch, kind='proportional')
-                logo.hAlign = 'CENTER'
-                elements.append(logo)
-                elements.append(Spacer(1, 0.1*inch))
+                logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
+                # Header with logo on left, title on right (RTL layout)
+                header_data = [[title_para, logo]]
+                header_table = Table(header_data, colWidths=[4*inch, 2.5*inch])
+                header_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#003B7C')),  # Dark blue
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
+                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 15),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 20),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 20),
+                ]))
+                elements.append(header_table)
                 print(f"[OK] Logo loaded from: {logo_path}")
             except Exception as e:
                 print(f"[ERROR] Error loading logo: {e}")
+                # Fallback: Just show title
+                title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
+                elements.append(title_para)
         else:
             print(f"[WARNING] Logo not found at: {logo_path}")
+            # Fallback: Just show title
+            title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
+            elements.append(title_para)
 
-        # Subtitle in Hebrew
-        subtitle_hebrew = reshape_hebrew('הצעת מחיר אנרגיה סולארית')
-        safe_subtitle = escape_for_paragraph(subtitle_hebrew)
-        subtitle = Paragraph(f"<para align=center>{safe_subtitle}</para>", subtitle_style)
-        elements.append(subtitle)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.15*inch))
 
         # Quote number and date
         today = datetime.now()
@@ -280,12 +313,18 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         not_specified = reshape_hebrew('לא צוין')
 
+        # Apply reshape_hebrew to customer values for proper RTL display
+        customer_name_display = reshape_hebrew(customer_name_val) if customer_name_val else not_specified
+        customer_phone_display = customer_phone_val if customer_phone_val else not_specified  # Phone numbers don't need reshaping
+        customer_email_display = customer_email_val if customer_email_val else not_specified  # Email doesn't need reshaping
+        customer_address_display = reshape_hebrew(customer_address_val) if customer_address_val else not_specified
+
         # RTL: Value first (right), Label second (left)
         customer_data = [
-            [customer_name_val if customer_name_val else not_specified, reshape_hebrew('שם:')],
-            [customer_phone_val if customer_phone_val else not_specified, reshape_hebrew('טלפון:')],
-            [customer_email_val if customer_email_val else not_specified, reshape_hebrew('אימייל:')],
-            [customer_address_val if customer_address_val else not_specified, reshape_hebrew('כתובת:')],
+            [customer_name_display, reshape_hebrew('שם:')],
+            [customer_phone_display, reshape_hebrew('טלפון:')],
+            [customer_email_display, reshape_hebrew('אימייל:')],
+            [customer_address_display, reshape_hebrew('כתובת:')],
         ]
 
         customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
@@ -441,34 +480,48 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(env_para)
         elements.append(Spacer(1, 0.08*inch))
 
-        # Footer
+        # Footer with yellow-green background
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
-            fontSize=7,
-            textColor=colors.HexColor('#718096'),
-            alignment=TA_CENTER,
-            leading=10,
+            fontSize=9,
+            textColor=colors.HexColor('#2d3748'),  # Dark gray text on yellow-green
+            alignment=TA_RIGHT,
+            leading=12,
             fontName=FONT_NAME
         )
 
-        footer_lines = [f"<b>{escape_for_paragraph(company_name)}</b>"]
+        footer_lines = []
+        footer_lines.append(f"<b>{escape_for_paragraph(company_name)}</b>")
 
         if company_info:
             if company_info.get('company_phone'):
-                footer_lines.append(escape_for_paragraph(company_info['company_phone']))
+                footer_lines.append(escape_for_paragraph(reshape_hebrew('טלפון: ')) + escape_for_paragraph(company_info['company_phone']))
             if company_info.get('company_email'):
-                footer_lines.append(escape_for_paragraph(company_info['company_email']))
+                footer_lines.append(escape_for_paragraph(reshape_hebrew('אימייל: ')) + escape_for_paragraph(company_info['company_email']))
             if company_info.get('company_address'):
-                footer_lines.append(escape_for_paragraph(company_info['company_address']))
+                footer_lines.append(escape_for_paragraph(reshape_hebrew('כתובת: ')) + escape_for_paragraph(reshape_hebrew(company_info['company_address'])))
 
         footer_lines.append("")
-        footer_lines.append(f"<i>{escape_for_paragraph(reshape_hebrew('הצעה זו בתוקף 30 ימים מתאריך ההנפקה.'))}</i>")
-        footer_lines.append(escape_for_paragraph(reshape_hebrew('תודה שבחרתם באנרגיה סולארית!')))
+        footer_lines.append(escape_for_paragraph(reshape_hebrew('כאן לשירותך וזמינה לשאלות ובירורים.')))
+        footer_lines.append("")
+        footer_lines.append(escape_for_paragraph(reshape_hebrew('חתימה: _______________')))
 
-        footer_text = "<para align=center>" + "<br/>".join(footer_lines) + "</para>"
-        footer = Paragraph(footer_text, footer_style)
-        elements.append(footer)
+        footer_text = "<br/>".join(footer_lines)
+        footer_para = Paragraph(footer_text, footer_style)
+
+        # Create footer table with yellow-green background
+        footer_table = Table([[footer_para]], colWidths=[6.5*inch])
+        footer_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#A3C939')),  # Yellow-green
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 20),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+            ('LEFTPADDING', (0, 0), (-1, -1), 25),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 25),
+        ]))
+        elements.append(Spacer(1, 0.15*inch))
+        elements.append(footer_table)
 
         # Build PDF
         doc.build(elements)
