@@ -1,7 +1,7 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate, CondPageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -283,16 +283,26 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Create header with logo on LEFT and title on RIGHT
         # IMPORTANT: Use logo2.png only
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        cwd = os.getcwd()
+
         logo_paths = [
-            'logo2.png',  # Root directory - first priority
-            os.path.join(script_dir, 'logo2.png'),  # Absolute path to logo2.png
-            os.path.abspath('logo2.png'),  # Absolute path attempt
+            # Try static/images/logo2.png first (most reliable for Flask apps)
+            os.path.join(cwd, 'static', 'images', 'logo2.png'),
+            'static/images/logo2.png',
+            os.path.join(script_dir, 'static', 'images', 'logo2.png'),
+            # Then try root directory
+            os.path.join(cwd, 'logo2.png'),
+            'logo2.png',
+            os.path.join(script_dir, 'logo2.png'),
             # Fallback to logo.png only if logo2.png not found anywhere
+            os.path.join(cwd, 'static', 'images', 'logo.png'),
             'static/images/logo.png',
             os.path.join(script_dir, 'static', 'images', 'logo.png')
         ]
 
-        # Debug: Print which paths we're trying
+        # Debug: Print current working directory and which paths we're trying
+        print(f"[DEBUG] Current working directory: {cwd}")
+        print(f"[DEBUG] Script directory: {script_dir}")
         print("[DEBUG] Looking for logo in these paths (in order):")
         for p in logo_paths:
             exists = os.path.exists(p)
@@ -542,7 +552,8 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Switch to last page template for footer
         elements.append(NextPageTemplate('LastPage'))
-        elements.append(PageBreak())  # Force new page with footer template
+        # Use conditional page break - only break if not enough space for footer (1.5 inches needed)
+        elements.append(CondPageBreak(1.5*inch))
 
         # Footer text (yellow background is drawn on canvas, full-width)
         footer_style = ParagraphStyle(
