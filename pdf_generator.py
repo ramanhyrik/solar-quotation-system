@@ -1,7 +1,7 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate, CondPageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate, CondPageBreak, FrameBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -216,19 +216,30 @@ def generate_quote_pdf(quote_data, company_info=None):
             doc.height,
             id='regular'
         )
-        # LastPage frame with reduced bottom margin to allow content in yellow footer area
-        frame_last = Frame(
+
+        # LastPage has TWO frames: one for content, one for footer in yellow area
+        # Frame 1: Main content (same as regular page)
+        frame_last_content = Frame(
             doc.leftMargin,
-            0.25*inch,  # Reduced bottom margin so content sits in yellow footer area
+            1.3*inch,  # Start above yellow footer area (which is 0-1.2")
             doc.width,
-            doc.height + 0.25*inch,  # Extend height by the margin we removed
-            id='last'
+            doc.height - 0.8*inch,  # Reduced height to accommodate footer frame
+            id='last_content'
+        )
+        # Frame 2: Footer frame positioned exactly in yellow area (0.3" to 1.2" from bottom)
+        frame_last_footer = Frame(
+            doc.leftMargin,
+            0.3*inch,  # Position in yellow area
+            doc.width,
+            0.9*inch,  # Height of footer frame to fit in yellow area
+            id='last_footer',
+            showBoundary=0
         )
 
         # Template for regular pages (blue background only)
         template_regular = PageTemplate(id='RegularPage', frames=frame_regular, onPage=add_blue_background_only)
-        # Template for last page (blue background + yellow footer)
-        template_last = PageTemplate(id='LastPage', frames=frame_last, onPage=add_blue_background_with_footer)
+        # Template for last page (blue background + yellow footer) with TWO frames
+        template_last = PageTemplate(id='LastPage', frames=[frame_last_content, frame_last_footer], onPage=add_blue_background_with_footer)
 
         doc.addPageTemplates([template_regular, template_last])
 
@@ -555,11 +566,10 @@ def generate_quote_pdf(quote_data, company_info=None):
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
 
-        # Add flexible spacer to push footer down to yellow area at bottom
-        # This will take up remaining space and push footer to bottom
-        elements.append(Spacer(1, 0.5*inch))  # Add more space to push footer down
+        # Break to footer frame - this moves content to the footer frame positioned in yellow area
+        elements.append(FrameBreak())
 
-        # Footer text (yellow background is drawn on canvas on LastPage template, full-width)
+        # Footer text (will appear in footer frame positioned on yellow background)
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
@@ -589,7 +599,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         footer_text = "<br/>".join(footer_lines)
         footer_para = Paragraph(footer_text, footer_style)
 
-        # Add footer text - it will appear on yellow background due to reduced bottom margin
+        # Add footer text - FrameBreak above ensures it goes into footer frame on yellow background
         elements.append(footer_para)
 
         # Build PDF
