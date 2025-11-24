@@ -1,11 +1,13 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus.frames import Frame
+from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
 from io import BytesIO
 from datetime import datetime, timedelta
 from chart_generator import generate_monthly_production_chart, generate_directional_production_chart
@@ -163,6 +165,13 @@ def escape_for_paragraph(text):
 
     return text_str
 
+def add_blue_background(canvas, doc):
+    """Add blue background to the entire page"""
+    canvas.saveState()
+    canvas.setFillColor(colors.HexColor('#003B7C'))  # Dark blue background
+    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+    canvas.restoreState()
+
 def generate_quote_pdf(quote_data, company_info=None):
     """
     Generate a professional PDF quote with Hebrew support
@@ -176,7 +185,9 @@ def generate_quote_pdf(quote_data, company_info=None):
     """
     try:
         buffer = BytesIO()
-        doc = SimpleDocTemplate(
+
+        # Create document with blue background
+        doc = BaseDocTemplate(
             buffer,
             pagesize=A4,
             topMargin=0.5*inch,
@@ -185,16 +196,27 @@ def generate_quote_pdf(quote_data, company_info=None):
             rightMargin=0.75*inch
         )
 
+        # Create frame and page template with blue background
+        frame = Frame(
+            doc.leftMargin,
+            doc.bottomMargin,
+            doc.width,
+            doc.height,
+            id='normal'
+        )
+        template = PageTemplate(id='BlueBackground', frames=frame, onPage=add_blue_background)
+        doc.addPageTemplates([template])
+
         # Container for PDF elements
         elements = []
         styles = getSampleStyleSheet()
 
-        # Custom styles
+        # Custom styles with white text for blue background
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
             fontSize=11,
-            textColor=colors.HexColor('#00358A'),
+            textColor=colors.white,  # White text for blue background
             spaceAfter=6,
             spaceBefore=8,
             fontName=FONT_NAME_BOLD,
@@ -206,6 +228,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             parent=styles['Normal'],
             fontSize=9,
             spaceAfter=3,
+            textColor=colors.white,  # White text for blue background
             fontName=FONT_NAME,
             alignment=TA_RIGHT  # RTL alignment for Hebrew
         )
@@ -233,8 +256,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Company header - Blue background with logo and yellow title
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
-        # Create header with dark blue background
-        logo_path = 'static/images/logo.png'
+        # Create header with logo on LEFT and title on RIGHT
+        logo_path = 'logo2.png'  # Use logo2.png from root directory
 
         # Title paragraph for header
         title_hebrew = reshape_hebrew('הצעת מחיר')
@@ -250,14 +273,13 @@ def generate_quote_pdf(quote_data, company_info=None):
         if os.path.exists(logo_path):
             try:
                 logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
-                # Header with logo on left, title on right (RTL layout)
-                header_data = [[title_para, logo]]
-                header_table = Table(header_data, colWidths=[4*inch, 2.5*inch])
+                # Header with logo on LEFT, title on RIGHT
+                header_data = [[logo, title_para]]  # Swapped: logo first, title second
+                header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
                 header_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#003B7C')),  # Dark blue
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
-                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Logo aligned left
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),   # Title aligned right
                     ('TOPPADDING', (0, 0), (-1, -1), 15),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
                     ('LEFTPADDING', (0, 0), (-1, -1), 20),
@@ -294,7 +316,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#4a5568')),  # Labels on left
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text for blue background
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
@@ -331,14 +353,13 @@ def generate_quote_pdf(quote_data, company_info=None):
         customer_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),  # Values
-            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2d3748')),  # Labels (darker)
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e2e8f0')),
-            ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#cbd5e0')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         elements.append(customer_table)
         elements.append(Spacer(1, 0.08*inch))
@@ -369,11 +390,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         specs_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4a5568')),  # Values
-            ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2d3748')),  # Labels (darker)
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#e2e8f0')),
-            ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#f7fafc')),  # Labels column background
+            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#4a74a8')),  # Lighter blue grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -435,19 +454,18 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
         financial_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00358A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White header
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),  # Dark text on white header
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),  # White text for data rows
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e0')),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#4a74a8')),  # Lighter blue grid
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 10),
             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f7fafc')),
-            ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f7fafc')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(financial_table)
