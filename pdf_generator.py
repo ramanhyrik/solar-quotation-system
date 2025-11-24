@@ -1,7 +1,7 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -165,26 +165,24 @@ def escape_for_paragraph(text):
 
     return text_str
 
-def add_blue_background(canvas, doc):
-    """Add blue background to the entire page"""
+def add_blue_background_only(canvas, doc):
+    """Add blue background to the entire page (for non-last pages)"""
     canvas.saveState()
     canvas.setFillColor(colors.HexColor('#003B7C'))  # Dark blue background
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     canvas.restoreState()
 
-def add_yellow_footer(canvas, doc):
-    """Add yellow-green footer bar at bottom of page"""
+def add_blue_background_with_footer(canvas, doc):
+    """Add blue background and yellow footer (for last page only)"""
     canvas.saveState()
-    # Draw yellow-green rectangle at bottom of page, full width
+    # Blue background
+    canvas.setFillColor(colors.HexColor('#003B7C'))
+    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+    # Yellow-green footer at bottom
     footer_height = 1.2 * inch
-    canvas.setFillColor(colors.HexColor('#A3C939'))  # Yellow-green
+    canvas.setFillColor(colors.HexColor('#A3C939'))
     canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
     canvas.restoreState()
-
-def add_backgrounds(canvas, doc):
-    """Add both blue background and yellow footer"""
-    add_blue_background(canvas, doc)
-    add_yellow_footer(canvas, doc)
 
 def generate_quote_pdf(quote_data, company_info=None):
     """
@@ -210,16 +208,28 @@ def generate_quote_pdf(quote_data, company_info=None):
             rightMargin=0.75*inch
         )
 
-        # Create frame and page template with blue background and yellow footer
-        frame = Frame(
+        # Create two page templates: one for regular pages, one for last page with footer
+        frame_regular = Frame(
             doc.leftMargin,
             doc.bottomMargin,
             doc.width,
             doc.height,
-            id='normal'
+            id='regular'
         )
-        template = PageTemplate(id='ColoredBackground', frames=frame, onPage=add_backgrounds)
-        doc.addPageTemplates([template])
+        frame_last = Frame(
+            doc.leftMargin,
+            doc.bottomMargin,
+            doc.width,
+            doc.height,
+            id='last'
+        )
+
+        # Template for regular pages (blue background only)
+        template_regular = PageTemplate(id='RegularPage', frames=frame_regular, onPage=add_blue_background_only)
+        # Template for last page (blue background + yellow footer)
+        template_last = PageTemplate(id='LastPage', frames=frame_last, onPage=add_blue_background_with_footer)
+
+        doc.addPageTemplates([template_regular, template_last])
 
         # Container for PDF elements
         elements = []
@@ -271,13 +281,22 @@ def generate_quote_pdf(quote_data, company_info=None):
         company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
 
         # Create header with logo on LEFT and title on RIGHT
-        # Try multiple logo paths
+        # IMPORTANT: Use logo2.png only
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         logo_paths = [
-            'logo2.png',  # Root directory
-            'static/images/logo.png',  # Images directory
-            os.path.join(os.path.dirname(__file__), 'logo2.png'),
-            os.path.join(os.path.dirname(__file__), 'static', 'images', 'logo.png')
+            'logo2.png',  # Root directory - first priority
+            os.path.join(script_dir, 'logo2.png'),  # Absolute path to logo2.png
+            os.path.abspath('logo2.png'),  # Absolute path attempt
+            # Fallback to logo.png only if logo2.png not found anywhere
+            'static/images/logo.png',
+            os.path.join(script_dir, 'static', 'images', 'logo.png')
         ]
+
+        # Debug: Print which paths we're trying
+        print("[DEBUG] Looking for logo in these paths (in order):")
+        for p in logo_paths:
+            exists = os.path.exists(p)
+            print(f"  - {p} {'[EXISTS]' if exists else '[NOT FOUND]'}")
 
         # Title paragraph for header
         title_hebrew = reshape_hebrew('הצעת מחיר')
@@ -521,7 +540,11 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(env_para)
         elements.append(Spacer(1, 0.08*inch))
 
-        # Footer text (background is drawn on canvas, full-width)
+        # Switch to last page template for footer
+        elements.append(NextPageTemplate('LastPage'))
+        elements.append(PageBreak())  # Force new page with footer template
+
+        # Footer text (yellow background is drawn on canvas, full-width)
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
