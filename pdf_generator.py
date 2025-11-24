@@ -460,6 +460,10 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Production Charts Section
         if system_size and annual_prod:
+            # Switch to LastPage template before page 2 starts
+            # This ensures page 2 has the yellow footer at the bottom
+            elements.append(NextPageTemplate('LastPage'))
+
             elements.append(Spacer(1, 0.05*inch))  # Reduced spacing
 
             # Monthly Production Chart
@@ -551,12 +555,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(env_para)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
-        # Switch to last page template and force footer onto a new page
-        # This ensures the footer always has yellow background
-        elements.append(NextPageTemplate('LastPage'))
-        elements.append(PageBreak())
-
-        # Footer text (yellow background is drawn on canvas, full-width)
+        # Footer text (yellow background is drawn on canvas on LastPage template, full-width)
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
