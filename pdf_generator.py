@@ -485,8 +485,8 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                # Increased height to push directional chart heading to page 2
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=3.1*inch)
+                # Increased height slightly to push directional chart heading to page 2
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.85*inch)
                 elements.append(monthly_chart_img)
                 elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
             except Exception as e:
@@ -613,13 +613,13 @@ def generate_quote_pdf(quote_data, company_info=None):
         left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________'))
         left_para = Paragraph(left_text, footer_style_left)
 
-        # Create two-column footer table
-        footer_data = [[right_para, left_para]]
-        footer_table = Table(footer_data, colWidths=[3.5*inch, 2.5*inch])
+        # Create two-column footer table: signature on left, company info on right
+        footer_data = [[left_para, right_para]]
+        footer_table = Table(footer_data, colWidths=[2.5*inch, 3.5*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
-            ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
         ]))
 
         # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background
