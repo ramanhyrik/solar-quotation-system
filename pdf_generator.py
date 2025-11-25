@@ -327,8 +327,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         safe_title = escape_for_paragraph(title_hebrew)
         safe_subtitle = escape_for_paragraph(subtitle_hebrew)
 
-        # Create title cell content
-        title_para = Paragraph(f"<para align=right><b>{safe_title}</b><br/><font size=12>{safe_subtitle}</font></para>", title_style)
+        # Create title cell content with yellow-green main title and white subtitle
+        title_para = Paragraph(f"<para align=right><b><font color='#7FFF00'>{safe_title}</font></b><br/><font size=12 color='white'>{safe_subtitle}</font></para>", title_style)
 
         # Try to load logo from multiple paths
         logo_loaded = False
