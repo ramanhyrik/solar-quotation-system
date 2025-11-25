@@ -1,25 +1,5 @@
 let currentQuoteData = {};
 
-// Function to automatically calculate panel count based on system size and panel type
-function autoCalculatePanelCount() {
-    const systemSize = parseFloat(document.getElementById('systemSize').value);
-    const panelType = document.getElementById('panelType').value;
-
-    if (!systemSize || !panelType) {
-        return;
-    }
-
-    // Extract wattage from panel type (e.g., "Longi 550W" → 550 or "600W" → 600)
-    const wattageMatch = panelType.match(/(\d+)\s*W/i);
-
-    if (wattageMatch) {
-        const panelWattage = parseInt(wattageMatch[1]);
-        // Calculate panel count: system_size (kW) * 1000 / panel_wattage (W)
-        const panelCount = Math.round((systemSize * 1000) / panelWattage);
-        document.getElementById('panelCount').value = panelCount;
-    }
-}
-
 async function calculateQuote() {
     const systemSize = parseFloat(document.getElementById('systemSize').value);
 
