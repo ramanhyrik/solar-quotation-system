@@ -99,12 +99,12 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
 
     # Create figure with increased height for better visibility - PDF theme colors
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    fig.patch.set_facecolor('#003B7C')  # Blue background matching PDF
+    fig.patch.set_facecolor('#000080')  # Blue background matching PDF
 
     # Create bars with 3D-like gradient effect - yellow-green color
     bars = ax.bar(range(12), monthly_production,
-                   color='#A3C939',  # Yellow-green matching PDF footer
-                   edgecolor='#8fb030',
+                   color='#7FFF00',  # Yellow-green matching PDF footer
+                   edgecolor='#66CC00',
                    linewidth=1.5,
                    width=0.75,
                    zorder=3)
@@ -126,7 +126,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
             (bar.get_x(), height * 0.6),
             bar.get_width(),
             height * 0.4,
-            facecolor='#c8e86f',  # Lighter yellow-green
+            facecolor='#CCFF99',  # Lighter yellow-green
             edgecolor='none',
             alpha=0.35,
             zorder=4
@@ -148,7 +148,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500', color='white')
 
     # Add professional grid - lighter blue
-    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='#4a6b9c', zorder=0)
+    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='#4d4dff', zorder=0)
     ax.set_axisbelow(True)
 
     # Format y-axis with thousands separator - white text
@@ -162,15 +162,15 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
             transform=ax.transAxes, fontsize=9, fontweight='700',
             verticalalignment='top', horizontalalignment='right',
             color='#2d3748',
-            bbox=dict(boxstyle='round,pad=0.6', facecolor='#A3C939',
-                     edgecolor='#8fb030', linewidth=1.5, alpha=0.95))
+            bbox=dict(boxstyle='round,pad=0.6', facecolor='#7FFF00',
+                     edgecolor='#66CC00', linewidth=1.5, alpha=0.95))
 
     # Add blue background matching PDF
-    ax.set_facecolor('#003B7C')
+    ax.set_facecolor('#000080')
 
     # Style spines - lighter blue
     for spine in ax.spines.values():
-        spine.set_edgecolor('#4a6b9c')
+        spine.set_edgecolor('#4d4dff')
         spine.set_linewidth(1.2)
 
     # Tight layout
@@ -178,7 +178,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
 
     # Save to bytes with higher DPI for better quality - blue background
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#003B7C')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#000080')
     buf.seek(0)
     plt.close(fig)
 
@@ -198,8 +198,8 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     """
     # Create figure - PDF theme colors
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
-    fig.patch.set_facecolor('#003B7C')  # Blue background matching PDF
-    ax.set_facecolor('#003B7C')
+    fig.patch.set_facecolor('#000080')  # Blue background matching PDF
+    ax.set_facecolor('#000080')
 
     # Calculate production for each direction
     directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -220,15 +220,15 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     # Add gradient-like layers for depth (multiple fills with decreasing alpha)
     for i, alpha_val in enumerate([0.15, 0.25, 0.35]):
         layer_values = [v * (0.4 + i * 0.2) for v in production_values]
-        ax.fill(angles, layer_values, alpha=alpha_val, color='#A3C939', zorder=2 + i)
+        ax.fill(angles, layer_values, alpha=alpha_val, color='#7FFF00', zorder=2 + i)
 
     # Main plot with professional styling - yellow-green
-    ax.plot(angles, production_values, 'o-', linewidth=3, color='#A3C939',
-            markersize=10, markeredgecolor='#8fb030', markeredgewidth=2,
+    ax.plot(angles, production_values, 'o-', linewidth=3, color='#7FFF00',
+            markersize=10, markeredgecolor='#66CC00', markeredgewidth=2,
             zorder=5, label='Production')
 
     # Main fill with gradient effect
-    ax.fill(angles, production_values, alpha=0.35, color='#c8e86f', zorder=4)
+    ax.fill(angles, production_values, alpha=0.35, color='#CCFF99', zorder=4)
 
     # Set direction labels with better styling - white text
     ax.set_xticks(angles[:-1])
@@ -239,13 +239,13 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.tick_params(axis='y', labelsize=10, colors='white')
 
     # Add professional grid - lighter blue
-    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='#4a6b9c')
+    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='#4d4dff')
 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
     # Remove black circular boundary - use theme color
-    ax.spines['polar'].set_edgecolor('#4a6b9c')
+    ax.spines['polar'].set_edgecolor('#4d4dff')
     ax.spines['polar'].set_linewidth(1.5)
 
     # Title with brand color and proper RTL text - yellow
@@ -258,12 +258,12 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.text(0, 0, reshape_text_for_chart(center_text),
             ha='center', va='center', fontsize=11, fontweight='bold',
             color='white',  # Changed to white for better visibility
-            bbox=dict(boxstyle='round,pad=0.8', facecolor='#A3C939',
-                     edgecolor='#8fb030', linewidth=2, alpha=0.95))
+            bbox=dict(boxstyle='round,pad=0.8', facecolor='#7FFF00',
+                     edgecolor='#66CC00', linewidth=2, alpha=0.95))
 
     # Save to bytes with higher DPI - blue background
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#003B7C')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#000080')
     buf.seek(0)
     plt.close(fig)
 

@@ -168,7 +168,7 @@ def escape_for_paragraph(text):
 def add_blue_background_only(canvas, doc):
     """Add blue background to the entire page (for non-last pages)"""
     canvas.saveState()
-    canvas.setFillColor(colors.HexColor('#003B7C'))  # Dark blue background
+    canvas.setFillColor(colors.HexColor('#000080'))  # Blue background
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     canvas.restoreState()
 
@@ -176,11 +176,11 @@ def add_blue_background_with_footer(canvas, doc):
     """Add blue background and yellow footer (for last page only)"""
     canvas.saveState()
     # Blue background
-    canvas.setFillColor(colors.HexColor('#003B7C'))
+    canvas.setFillColor(colors.HexColor('#000080'))
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     # Yellow-green footer at bottom
     footer_height = 1.2 * inch
-    canvas.setFillColor(colors.HexColor('#A3C939'))
+    canvas.setFillColor(colors.HexColor('#7FFF00'))
     canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
     canvas.restoreState()
 
@@ -456,7 +456,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#4a74a8')),  # Lighter blue grid lines
+            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#4d4dff')),  # Lighter blue grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -530,7 +530,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#4a74a8')),  # Lighter blue grid
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#4d4dff')),  # Lighter blue grid
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 10),
