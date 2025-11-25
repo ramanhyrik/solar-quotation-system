@@ -97,14 +97,14 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     # Calculate monthly production values
     monthly_production = [(annual_production / 12) * coef for coef in MONTHLY_COEFFICIENTS]
 
-    # Create figure with increased height for better visibility
+    # Create figure with increased height for better visibility - PDF theme colors
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    fig.patch.set_facecolor('white')
+    fig.patch.set_facecolor('#003B7C')  # Blue background matching PDF
 
-    # Create bars with 3D-like gradient effect
+    # Create bars with 3D-like gradient effect - yellow-green color
     bars = ax.bar(range(12), monthly_production,
-                   color='#00358A',
-                   edgecolor='#1a4d8f',
+                   color='#A3C939',  # Yellow-green matching PDF footer
+                   edgecolor='#8fb030',
                    linewidth=1.5,
                    width=0.75,
                    zorder=3)
@@ -112,8 +112,8 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     # Add 3D depth effect with shadow bars
     shadow_offset = 0.08
     ax.bar(range(12), monthly_production,
-           color='#001d3d',
-           alpha=0.15,
+           color='#1a2a40',
+           alpha=0.25,
            width=0.75,
            bottom=-max(monthly_production)*0.02,
            zorder=1)
@@ -126,34 +126,34 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
             (bar.get_x(), height * 0.6),
             bar.get_width(),
             height * 0.4,
-            facecolor='#4a7bc8',
+            facecolor='#c8e86f',  # Lighter yellow-green
             edgecolor='none',
-            alpha=0.3,
+            alpha=0.35,
             zorder=4
         )
         ax.add_patch(gradient)
 
-    # Customize appearance - professional fonts with proper RTL text
-    ax.set_xlabel(reshape_text_for_chart('חודש'), fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
-    ax.set_ylabel(reshape_text_for_chart('ייצור (קוט״ש)'), fontsize=10, fontweight='700', labelpad=10, color='#2d3748')
+    # Customize appearance - white text for blue background
+    ax.set_xlabel(reshape_text_for_chart('חודש'), fontsize=10, fontweight='700', labelpad=10, color='white')
+    ax.set_ylabel(reshape_text_for_chart('ייצור (קוט״ש)'), fontsize=10, fontweight='700', labelpad=10, color='white')
 
-    # Title with proper RTL formatting
+    # Title with proper RTL formatting - yellow color
     title_text = f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש'
     ax.set_title(reshape_text_for_chart(title_text),
-                 fontsize=12, fontweight='bold', pad=15, color='#00358A')
+                 fontsize=12, fontweight='bold', pad=15, color='#FFD700')
 
-    # Set x-axis labels (months) with proper RTL text
+    # Set x-axis labels (months) with proper RTL text - white
     hebrew_months_display = [reshape_text_for_chart(month) for month in HEBREW_MONTHS_RAW]
     ax.set_xticks(range(12))
-    ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500')
+    ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500', color='white')
 
-    # Add professional grid
-    ax.grid(axis='y', alpha=0.15, linestyle='--', linewidth=0.8, color='#94a3b8', zorder=0)
+    # Add professional grid - lighter blue
+    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='#4a6b9c', zorder=0)
     ax.set_axisbelow(True)
 
-    # Format y-axis with thousands separator
+    # Format y-axis with thousands separator - white text
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
-    ax.tick_params(axis='both', labelsize=9, colors='#475569', width=1.2)
+    ax.tick_params(axis='both', labelsize=9, colors='white', width=1.2)
 
     # Add total annual production annotation with proper RTL text
     total_kwh = sum(monthly_production)
@@ -161,23 +161,24 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.text(0.98, 0.97, reshape_text_for_chart(annotation_text),
             transform=ax.transAxes, fontsize=9, fontweight='700',
             verticalalignment='top', horizontalalignment='right',
-            bbox=dict(boxstyle='round,pad=0.6', facecolor='#f1f5f9',
-                     edgecolor='#cbd5e0', linewidth=1.5, alpha=0.95))
+            color='#2d3748',
+            bbox=dict(boxstyle='round,pad=0.6', facecolor='#A3C939',
+                     edgecolor='#8fb030', linewidth=1.5, alpha=0.95))
 
-    # Add subtle background
-    ax.set_facecolor('#fafbfc')
+    # Add blue background matching PDF
+    ax.set_facecolor('#003B7C')
 
-    # Style spines
+    # Style spines - lighter blue
     for spine in ax.spines.values():
-        spine.set_edgecolor('#cbd5e0')
+        spine.set_edgecolor('#4a6b9c')
         spine.set_linewidth(1.2)
 
     # Tight layout
     plt.tight_layout()
 
-    # Save to bytes with higher DPI for better quality
+    # Save to bytes with higher DPI for better quality - blue background
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='white')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#003B7C')
     buf.seek(0)
     plt.close(fig)
 
@@ -195,10 +196,10 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     Returns:
         PNG image as bytes
     """
-    # Create figure
+    # Create figure - PDF theme colors
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('#fafbfc')
+    fig.patch.set_facecolor('#003B7C')  # Blue background matching PDF
+    ax.set_facecolor('#003B7C')
 
     # Calculate production for each direction
     directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -213,52 +214,52 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
 
     # Add 3D depth effect - shadow layer beneath main plot
     shadow_values = [v * 0.95 for v in production_values]
-    ax.fill(angles, shadow_values, alpha=0.08, color='#001d3d', zorder=1)
-    ax.plot(angles, shadow_values, linewidth=1, color='#001d3d', alpha=0.15, zorder=1)
+    ax.fill(angles, shadow_values, alpha=0.12, color='#1a2a40', zorder=1)
+    ax.plot(angles, shadow_values, linewidth=1, color='#1a2a40', alpha=0.2, zorder=1)
 
     # Add gradient-like layers for depth (multiple fills with decreasing alpha)
     for i, alpha_val in enumerate([0.15, 0.25, 0.35]):
         layer_values = [v * (0.4 + i * 0.2) for v in production_values]
-        ax.fill(angles, layer_values, alpha=alpha_val, color='#00358A', zorder=2 + i)
+        ax.fill(angles, layer_values, alpha=alpha_val, color='#A3C939', zorder=2 + i)
 
-    # Main plot with professional styling
-    ax.plot(angles, production_values, 'o-', linewidth=3, color='#00358A',
-            markersize=10, markeredgecolor='#1a4d8f', markeredgewidth=2,
+    # Main plot with professional styling - yellow-green
+    ax.plot(angles, production_values, 'o-', linewidth=3, color='#A3C939',
+            markersize=10, markeredgecolor='#8fb030', markeredgewidth=2,
             zorder=5, label='Production')
 
     # Main fill with gradient effect
-    ax.fill(angles, production_values, alpha=0.3, color='#4a7bc8', zorder=4)
+    ax.fill(angles, production_values, alpha=0.35, color='#c8e86f', zorder=4)
 
-    # Set direction labels with better styling
+    # Set direction labels with better styling - white text
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(directions, fontsize=13, fontweight='bold', color='#2d3748')
+    ax.set_xticklabels(directions, fontsize=13, fontweight='bold', color='white')
 
-    # Set radial labels with professional formatting
+    # Set radial labels with professional formatting - white text
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x/1000)}k'))
-    ax.tick_params(axis='y', labelsize=10, colors='#4a5568')
+    ax.tick_params(axis='y', labelsize=10, colors='white')
 
-    # Add professional grid
-    ax.grid(True, linestyle='--', alpha=0.3, linewidth=1, color='#94a3b8')
+    # Add professional grid - lighter blue
+    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='#4a6b9c')
 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
-    # Title with brand color and proper RTL text
+    # Title with brand color and proper RTL text - yellow
     title_text = f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש'
     ax.set_title(reshape_text_for_chart(title_text),
-                 fontsize=14, fontweight='bold', pad=20, y=1.08, color='#00358A')
+                 fontsize=14, fontweight='bold', pad=20, y=1.08, color='#FFD700')
 
-    # Add center annotation with brand styling and proper RTL text
+    # Add center annotation with brand styling and proper RTL text - yellow-green box
     center_text = f'דרום\n{int(annual_production):,}\nקוט״ש/שנה'
     ax.text(0, 0, reshape_text_for_chart(center_text),
             ha='center', va='center', fontsize=11, fontweight='bold',
             color='#2d3748',
-            bbox=dict(boxstyle='round,pad=0.8', facecolor='#f1f5f9',
-                     edgecolor='#00358A', linewidth=2, alpha=0.95))
+            bbox=dict(boxstyle='round,pad=0.8', facecolor='#A3C939',
+                     edgecolor='#8fb030', linewidth=2, alpha=0.95))
 
-    # Save to bytes with higher DPI
+    # Save to bytes with higher DPI - blue background
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='white')
+    plt.savefig(buf, format='png', dpi=180, bbox_inches='tight', facecolor='#003B7C')
     buf.seek(0)
     plt.close(fig)
 
