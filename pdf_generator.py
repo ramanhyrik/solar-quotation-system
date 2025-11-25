@@ -283,7 +283,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'Title',
             parent=styles['Normal'],
             fontSize=24,
-            textColor=colors.white,  # White color for consistency
+            textColor=colors.HexColor('#7FFF00'),  # Yellow-green for main heading
             spaceAfter=6,
             alignment=TA_RIGHT,
             fontName=FONT_NAME_BOLD
