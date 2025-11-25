@@ -253,7 +253,7 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     center_text = f'דרום\n{int(annual_production):,}\nקוט״ש/שנה'
     ax.text(0, 0, reshape_text_for_chart(center_text),
             ha='center', va='center', fontsize=11, fontweight='bold',
-            color='#2d3748',
+            color='white',  # Changed to white for better visibility
             bbox=dict(boxstyle='round,pad=0.8', facecolor='#A3C939',
                      edgecolor='#8fb030', linewidth=2, alpha=0.95))
 

@@ -498,8 +498,8 @@ def generate_quote_pdf(quote_data, company_info=None):
                 elements.append(directional_heading)
                 elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
                 directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
-                # Slightly smaller chart to save space
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=3.8*inch, height=3.8*inch)
+                # Increased size for better visibility
+                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.5*inch, height=4.5*inch)
                 elements.append(directional_chart_img)
                 elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
             except Exception as e:
