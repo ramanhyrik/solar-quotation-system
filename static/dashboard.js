@@ -114,6 +114,7 @@ async function loadQuoteHistory() {
                 <td>₪${quote.total_price.toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
+                    <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; margin-left: 8px;">ניתוח פיננסי</button>
                     <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; margin-left: 8px;">הורד PDF</button>
                     <button onclick="deleteQuote(${quote.id})" class="delete">מחק</button>
                 </td>
@@ -150,6 +151,33 @@ async function deleteQuote(id) {
 
 function downloadPDF(quoteId) {
     window.location.href = `/api/quotes/${quoteId}/pdf`;
+}
+
+async function viewQuoteAnalysis(quoteId) {
+    try {
+        // Fetch the specific quote data
+        const response = await fetch(`/api/quotes/${quoteId}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch quote');
+        }
+
+        const quote = await response.json();
+
+        // Call the financial comparison function from dashboard.html
+        if (typeof calculateFinancialComparison === 'function') {
+            await calculateFinancialComparison(quote.system_size, quote.total_price);
+            // Switch to comparison section (defined in dashboard.html)
+            if (typeof showSection === 'function') {
+                showSection('comparison');
+            }
+        } else {
+            alert('פונקציית הניתוח הפיננסי לא זמינה');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה בטעינת ניתוח פיננסי');
+    }
 }
 
 async function generatePDF() {
