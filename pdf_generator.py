@@ -609,17 +609,20 @@ def generate_quote_pdf(quote_data, company_info=None):
         right_text = "<br/>".join(right_lines)
         right_para = Paragraph(right_text, footer_style_right)
 
-        # Left column: Signature line
-        left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________'))
+        # Left column: Signature line (longer underscore)
+        left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________________'))
         left_para = Paragraph(left_text, footer_style_left)
 
         # Create two-column footer table: signature on left, company info on right
         footer_data = [[left_para, right_para]]
         footer_table = Table(footer_data, colWidths=[2.5*inch, 3.5*inch])
         footer_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Signature at bottom
+            ('VALIGN', (1, 0), (1, 0), 'TOP'),      # Company info at top
             ('ALIGN', (0, 0), (0, 0), 'LEFT'),
             ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+            ('LEFTPADDING', (0, 0), (0, 0), 0),     # Remove left padding for signature
+            ('RIGHTPADDING', (1, 0), (1, 0), 0),    # Remove right padding to align with text margin
         ]))
 
         # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background
