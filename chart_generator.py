@@ -148,12 +148,12 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500', color='white')
 
     # Add professional grid - white
-    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='white', zorder=0)
+    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.6, color='white', zorder=0)
     ax.set_axisbelow(True)
 
     # Format y-axis with thousands separator - white text
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
-    ax.tick_params(axis='both', labelsize=9, colors='white', width=1.2)
+    ax.tick_params(axis='both', labelsize=9, colors='white', width=0.9)
 
     # Add total annual production annotation with proper RTL text
     total_kwh = sum(monthly_production)
@@ -171,7 +171,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     # Style spines - white
     for spine in ax.spines.values():
         spine.set_edgecolor('white')
-        spine.set_linewidth(1.2)
+        spine.set_linewidth(0.9)
 
     # Tight layout
     plt.tight_layout()
@@ -239,14 +239,14 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.tick_params(axis='y', labelsize=10, colors='white')
 
     # Add professional grid - white
-    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='white')
+    ax.grid(True, linestyle='--', alpha=0.25, linewidth=0.7, color='white')
 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
     # Use white for circular boundary
     ax.spines['polar'].set_edgecolor('white')
-    ax.spines['polar'].set_linewidth(1.5)
+    ax.spines['polar'].set_linewidth(1.0)
 
     # Title with proper RTL text - white color
     title_text = f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש'

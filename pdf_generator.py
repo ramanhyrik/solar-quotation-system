@@ -456,7 +456,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.75, colors.white),  # White grid lines
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),  # White grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -530,7 +530,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.white),  # White grid lines
+            ('GRID', (0, 0), (-1, -1), 0.7, colors.white),  # White grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 10),
