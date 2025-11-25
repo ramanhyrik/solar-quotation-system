@@ -485,8 +485,8 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             try:
                 monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                # Slightly smaller chart to save space
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.6*inch)
+                # Increased height to push directional chart heading to page 2
+                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=3.1*inch)
                 elements.append(monthly_chart_img)
                 elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
             except Exception as e:
@@ -570,37 +570,60 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(FrameBreak())
 
         # Footer text (will appear in footer frame positioned on yellow background)
-        footer_style = ParagraphStyle(
-            'Footer',
+        # Using two-column layout: company info on right, signature on left
+        footer_style_right = ParagraphStyle(
+            'FooterRight',
             parent=styles['Normal'],
-            fontSize=8,  # Slightly smaller to fit in footer area
+            fontSize=8,
             textColor=colors.HexColor('#2d3748'),  # Dark gray text on yellow-green
             alignment=TA_RIGHT,
-            leading=10,  # Tighter line spacing
+            leading=10,
             fontName=FONT_NAME
         )
 
-        footer_lines = []
-        footer_lines.append(f"<b>{escape_for_paragraph(company_name)}</b>")
+        footer_style_left = ParagraphStyle(
+            'FooterLeft',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.HexColor('#2d3748'),
+            alignment=TA_LEFT,
+            leading=10,
+            fontName=FONT_NAME
+        )
+
+        # Right column: Company information
+        right_lines = []
+        right_lines.append(f"<b>{escape_for_paragraph(company_name)}</b>")
 
         if company_info:
             if company_info.get('company_phone'):
-                footer_lines.append(escape_for_paragraph(reshape_hebrew('טלפון: ')) + escape_for_paragraph(company_info['company_phone']))
+                right_lines.append(escape_for_paragraph(reshape_hebrew('טלפון: ')) + escape_for_paragraph(company_info['company_phone']))
             if company_info.get('company_email'):
-                footer_lines.append(escape_for_paragraph(reshape_hebrew('אימייל: ')) + escape_for_paragraph(company_info['company_email']))
+                right_lines.append(escape_for_paragraph(reshape_hebrew('אימייל: ')) + escape_for_paragraph(company_info['company_email']))
             if company_info.get('company_address'):
-                footer_lines.append(escape_for_paragraph(reshape_hebrew('כתובת: ')) + escape_for_paragraph(reshape_hebrew(company_info['company_address'])))
+                right_lines.append(escape_for_paragraph(reshape_hebrew('כתובת: ')) + escape_for_paragraph(reshape_hebrew(company_info['company_address'])))
 
-        footer_lines.append("")
-        footer_lines.append(escape_for_paragraph(reshape_hebrew('כאן לשירותך וזמינה לשאלות ובירורים.')))
-        footer_lines.append("")
-        footer_lines.append(escape_for_paragraph(reshape_hebrew('חתימה: _______________')))
+        right_lines.append("")
+        right_lines.append(escape_for_paragraph(reshape_hebrew('כאן לשירותך וזמינה לשאלות ובירורים.')))
 
-        footer_text = "<br/>".join(footer_lines)
-        footer_para = Paragraph(footer_text, footer_style)
+        right_text = "<br/>".join(right_lines)
+        right_para = Paragraph(right_text, footer_style_right)
 
-        # Add footer text - FrameBreak above ensures it goes into footer frame on yellow background
-        elements.append(footer_para)
+        # Left column: Signature line
+        left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________'))
+        left_para = Paragraph(left_text, footer_style_left)
+
+        # Create two-column footer table
+        footer_data = [[right_para, left_para]]
+        footer_table = Table(footer_data, colWidths=[3.5*inch, 2.5*inch])
+        footer_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
+            ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+        ]))
+
+        # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background
+        elements.append(footer_table)
 
         # Build PDF
         doc.build(elements)
