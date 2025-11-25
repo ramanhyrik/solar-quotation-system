@@ -244,6 +244,10 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
+    # Remove black circular boundary - use theme color
+    ax.spines['polar'].set_edgecolor('#4a6b9c')
+    ax.spines['polar'].set_linewidth(1.5)
+
     # Title with brand color and proper RTL text - yellow
     title_text = f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש'
     ax.set_title(reshape_text_for_chart(title_text),
