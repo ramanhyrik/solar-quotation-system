@@ -420,8 +420,8 @@
 
             <div class="calculator-input">
                 <label for="calcRoofArea">שטח הגג (מ"ר)</label>
-                <input type="number" id="calcRoofArea" step="1" placeholder="הזן שטח גג (לדוגמה: 135)" value="135">
-                <small>כל 6 מ"ר גג = 1 קילוואט שיא</small>
+<input type="number" id="calcRoofArea" step="1" placeholder="הזן שטח גג (לדוגמה: 135)" value="135">
+                <small>כל 7 מ"ר גג = 1 קילוואט שיא</small>
             </div>
 
             <div class="direction-selector">
@@ -510,7 +510,7 @@
                 </div>
 
                 <div class="environmental-impact">
-                    <div class="message">כדור הארץ אומר תודה! החיסכון האנרגטי שווה ערך ל:</div>
+                    <div class="message">כדור הארץ אומר תודה על 25 שנות חיסכון אנרגטי!</div>
                     <div class="trees-display">
                         <div class="trees-icon"><i data-lucide="trees" style="width: 40px; height: 40px; color: #2e7d32;"></i></div>
                         <div>
@@ -542,10 +542,10 @@
 
                 <h3>מפרט מערכת</h3>
                 <div class="form-grid">
-                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
+                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required oninput="autoCalculatePanelCount()">
                     <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
-                    <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)">
-                    <input type="number" id="panelCount" placeholder="מספר פאנלים">
+                    <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)" oninput="autoCalculatePanelCount()">
+                    <input type="number" id="panelCount" placeholder="מספר פאנלים" readonly>
                     <input type="text" id="inverterType" placeholder="סוג ממיר">
                     <select id="direction">
                         <option value="south">דרום</option>
@@ -694,8 +694,8 @@
                 return;
             }
 
-            // Calculate system size from roof area (6 sqm per kWp)
-            const systemSize = roofArea / 6;
+            // Calculate system size from roof area (7 sqm per kWp)
+            const systemSize = roofArea / 7;
 
             try {
                 const formData = new FormData();
