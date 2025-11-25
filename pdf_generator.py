@@ -226,12 +226,12 @@ def generate_quote_pdf(quote_data, company_info=None):
             doc.height - 0.8*inch,  # Reduced height to accommodate footer frame
             id='last_content'
         )
-        # Frame 2: Footer frame positioned exactly in yellow area (0.3" to 1.2" from bottom)
+        # Frame 2: Footer frame positioned exactly in yellow area (0.2" to 1.2" from bottom)
         frame_last_footer = Frame(
             doc.leftMargin,
-            0.3*inch,  # Position in yellow area
+            0.2*inch,  # Position in yellow area (lower to accommodate more content)
             doc.width,
-            0.9*inch,  # Height of footer frame to fit in yellow area
+            1.0*inch,  # Increased height to fit all footer content including signature
             id='last_footer',
             showBoundary=0
         )
