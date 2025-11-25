@@ -517,11 +517,11 @@
         }
 
         .comparison-table tbody td {
-            padding: 8px;
+            padding: 6px 4px;
             text-align: center;
             border: 1px solid #e2e8f0;
             color: #2d3748;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .comparison-table tbody tr:first-child {
@@ -776,12 +776,14 @@
                             <tr>
                                 <th>שנה</th>
                                 <th>השקעה</th>
-                                <th>הכנסה שנתית</th>
+                                <th>הכנסה</th>
+                                <th>תפעול</th>
+                                <th>רווח נקי</th>
                                 <th>תזרים מצטבר</th>
                             </tr>
                         </thead>
                         <tbody id="comp-table-body">
-                            <tr><td>0</td><td>0</td><td>-</td><td>0</td></tr>
+                            <tr><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>0</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -814,6 +816,14 @@
                         <div class="metric-row">
                             <div class="metric-label">תשואה על הון (IRR)</div>
                             <div class="metric-value" id="comp-equity-irr">0%</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 3px solid #00358A;">
+                        <div style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 8px;">הנחות יסוד</div>
+                        <div style="font-size: 12px; color: #4a5568; line-height: 1.6;">
+                            • ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה<br>
+                            • מחירי תעריפים עפ"י תקנות ייצור פרטי | אחריות: 25 שנה
                         </div>
                     </div>
                 </div>
@@ -1066,27 +1076,38 @@
 
             // Year 0 - Initial investment
             const row0 = document.createElement('tr');
-            row0.innerHTML = `<td>0</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>${(-totalPrice).toLocaleString()}</td>`;
+            row0.innerHTML = `<td>0</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>-</td><td>-</td><td>${(-totalPrice).toLocaleString()}</td>`;
             tbody.appendChild(row0);
 
             // Annual degradation rate (~0.4% per year for production)
             const degradationRate = 0.004;
+            // Operating cost: starts at 0.5% of system cost, increases 2% yearly
+            const baseOperatingCost = totalPrice * 0.005;
+
             let cumulativeCashflow = -totalPrice;
             let totalRevenue = 0;
+            let totalOperatingCost = 0;
+            let totalNetProfit = 0;
 
             // Years 1-25
             for (let year = 1; year <= 25; year++) {
                 const yearlyDegradation = 1 - (degradationRate * (year - 1));
                 const yearRevenue = Math.round(annualRevenue * yearlyDegradation);
+                const yearOperatingCost = Math.round(baseOperatingCost * Math.pow(1.02, year - 1));
+                const yearNetProfit = yearRevenue - yearOperatingCost;
 
                 totalRevenue += yearRevenue;
-                cumulativeCashflow = totalRevenue - totalPrice;
+                totalOperatingCost += yearOperatingCost;
+                totalNetProfit += yearNetProfit;
+                cumulativeCashflow = totalNetProfit - totalPrice;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${year}</td>
                     <td>-</td>
                     <td>${yearRevenue.toLocaleString()}</td>
+                    <td>${yearOperatingCost.toLocaleString()}</td>
+                    <td>${yearNetProfit.toLocaleString()}</td>
                     <td>${cumulativeCashflow.toLocaleString()}</td>
                 `;
                 tbody.appendChild(row);
@@ -1099,6 +1120,8 @@
                 <td>סה"כ</td>
                 <td>${(-totalPrice).toLocaleString()}</td>
                 <td>${totalRevenue.toLocaleString()}</td>
+                <td>${totalOperatingCost.toLocaleString()}</td>
+                <td>${totalNetProfit.toLocaleString()}</td>
                 <td>${cumulativeCashflow.toLocaleString()}</td>
             `;
             tbody.appendChild(totalRow);
