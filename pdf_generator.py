@@ -138,6 +138,41 @@ def format_number(num):
     except:
         return str(num)
 
+def format_rtl_number_text(text_before, number, text_after=''):
+    """
+    Format text with embedded numbers for proper RTL display.
+    Uses Unicode direction marks to ensure numbers stay in correct position.
+
+    Args:
+        text_before: Hebrew text before the number
+        number: The number to embed (will be formatted)
+        text_after: Hebrew text after the number
+
+    Returns:
+        Properly formatted RTL string with embedded number
+    """
+    # RLM (Right-to-Left Mark) U+200F helps maintain RTL flow
+    # LRM (Left-to-Right Mark) U+200E helps isolate LTR content
+    RLM = '\u200F'
+    LRM = '\u200E'
+
+    # Reshape Hebrew text parts
+    reshaped_before = reshape_hebrew(text_before) if text_before else ''
+    reshaped_after = reshape_hebrew(text_after) if text_after else ''
+
+    # Format the number and wrap it with direction marks
+    number_str = str(format_number(number)) if isinstance(number, (int, float)) else str(number)
+
+    # Combine: Hebrew text + RLM + number + LRM + Hebrew text
+    # The RLM before the number keeps it close to the Hebrew text
+    # The LRM after helps separate it from following Hebrew
+    if reshaped_after:
+        result = f"{reshaped_before}{RLM}{number_str}{LRM}{reshaped_after}"
+    else:
+        result = f"{reshaped_before}{RLM}{number_str}"
+
+    return result
+
 def escape_for_paragraph(text):
     """
     Escape text for use in ReportLab Paragraph with proper encoding.
@@ -438,16 +473,18 @@ def generate_quote_pdf(quote_data, company_info=None):
         annual_prod = quote_data.get('annual_production', 0) or 0
 
         # RTL: Value first (right), Label second (left)
+        # Use RLM (Right-to-Left Mark) for proper number alignment
+        RLM = '\u200F'
         specs_data = [
-            [reshape_hebrew(f"{system_size} " + 'קוט״ש'), reshape_hebrew('גודל מערכת:')],
-            [reshape_hebrew(f"{roof_area} " + 'מ״ר') if roof_area else not_specified, reshape_hebrew('שטח גג:')],
-            [reshape_hebrew(f"{format_number(annual_prod)} " + 'קוט״ש/שנה') if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
+            [f"{RLM}{system_size} {reshape_hebrew('קוט״ש')}", reshape_hebrew('גודל מערכת:')],
+            [f"{RLM}{roof_area} {reshape_hebrew('מ״ר')}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
+            [f"{RLM}{format_number(annual_prod)} {reshape_hebrew('קוט״ש/שנה')}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
             [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
-            [str(safe_get(quote_data, 'panel_count')) if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
+            [f"{RLM}{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
             [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
             [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
-            [f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
-            [reshape_hebrew(f"{quote_data.get('warranty_years', 25)} " + 'שנים'), reshape_hebrew('אחריות:')],
+            [f"{RLM}{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
+            [f"{RLM}{quote_data.get('warranty_years', 25)} {reshape_hebrew('שנים')}", reshape_hebrew('אחריות:')],
         ]
 
         specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
@@ -513,12 +550,14 @@ def generate_quote_pdf(quote_data, company_info=None):
         payback = quote_data.get('payback_period', 0) or 0
 
         # RTL: Value first (right), Label second (left)
+        # Use RLM for proper currency and number alignment
+        RLM = '\u200F'
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
-            [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
-            [reshape_hebrew(f"{payback} " + 'שנים'), reshape_hebrew('תקופת החזר')],
-            [f"₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
+            [f"{RLM}₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
+            [f"{RLM}₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
+            [f"{RLM}{payback} {reshape_hebrew('שנים')}", reshape_hebrew('תקופת החזר')],
+            [f"{RLM}₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
         financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
@@ -548,23 +587,168 @@ def generate_quote_pdf(quote_data, company_info=None):
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
-        # Build environmental text with proper encoding
-        env_text_parts = [
-            reshape_hebrew('המערכת הסולארית שלך תייצר כ-'),
-            str(format_number(annual_prod)),
-            reshape_hebrew(' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת '),
-            str(format_number(trees)),
-            reshape_hebrew(' עצים והפחתת פליטות CO2 ב-'),
-            str(format_number(co2_saved)),
-            reshape_hebrew(' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
-        ]
+        # Build environmental text with proper RTL formatting for numbers
+        # Using RLM (Right-to-Left Mark) to ensure proper number placement
+        RLM = '\u200F'
 
-        # Ensure each part is properly encoded before joining
-        safe_env_parts = [escape_for_paragraph(part) for part in env_text_parts]
-        env_text = ''.join(safe_env_parts)
+        # Build the text in parts with proper direction marks
+        part1 = format_rtl_number_text('המערכת הסולארית שלך תייצר כ-', annual_prod, ' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת ')
+        part2 = format_rtl_number_text('', trees, ' עצים והפחתת פליטות CO2 ב-')
+        part3 = format_rtl_number_text('', co2_saved, ' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
+
+        env_text = escape_for_paragraph(part1 + part2 + part3)
 
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
+        elements.append(Spacer(1, 0.1*inch))
+
+        # Add Cash Flow Analysis as Page 3
+        # First, we need to break to a new page before showing footer
+        elements.append(PageBreak())
+
+        # Cash Flow Analysis Section - Page 3
+        cashflow_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ניתוח תזרים מזומנים - 25 שנה")), heading_style)
+        elements.append(cashflow_heading)
+        elements.append(Spacer(1, 0.08*inch))
+
+        # Calculate cash flow data
+        degradation_rate = 0.004
+        base_operating_cost = total_price * 0.005
+        cumulative_cashflow = -total_price
+
+        # RLM mark for proper number alignment
+        RLM = '\u200F'
+
+        # Build cash flow table data
+        cashflow_table_data = []
+        # Header row
+        cashflow_table_data.append([
+            reshape_hebrew('תזרים מצטבר'),
+            reshape_hebrew('רווח נקי'),
+            reshape_hebrew('תפעול'),
+            reshape_hebrew('הכנסה'),
+            reshape_hebrew('השקעה'),
+            reshape_hebrew('שנה')
+        ])
+
+        # Year 0
+        cashflow_table_data.append([
+            f"{RLM}₪{format_number(int(-total_price))}",
+            '-',
+            '-',
+            '-',
+            f"{RLM}₪{format_number(int(-total_price))}",
+            f"{RLM}0"
+        ])
+
+        total_revenue_sum = 0
+        total_operating_sum = 0
+        total_net_profit_sum = 0
+
+        # Years 1-25
+        for year in range(1, 26):
+            yearly_degradation = 1 - (degradation_rate * (year - 1))
+            year_revenue = int(annual_revenue * yearly_degradation)
+            year_operating_cost = int(base_operating_cost * (1.02 ** (year - 1)))
+            year_net_profit = year_revenue - year_operating_cost
+
+            total_revenue_sum += year_revenue
+            total_operating_sum += year_operating_cost
+            total_net_profit_sum += year_net_profit
+            cumulative_cashflow = total_net_profit_sum - total_price
+
+            cashflow_table_data.append([
+                f"{RLM}₪{format_number(cumulative_cashflow)}",
+                f"{RLM}₪{format_number(year_net_profit)}",
+                f"{RLM}₪{format_number(year_operating_cost)}",
+                f"{RLM}₪{format_number(year_revenue)}",
+                '-',
+                f"{RLM}{str(year)}"
+            ])
+
+        # Total row
+        cashflow_table_data.append([
+            f"{RLM}₪{format_number(cumulative_cashflow)}",
+            f"{RLM}₪{format_number(total_net_profit_sum)}",
+            f"{RLM}₪{format_number(total_operating_sum)}",
+            f"{RLM}₪{format_number(total_revenue_sum)}",
+            f"{RLM}₪{format_number(int(-total_price))}",
+            reshape_hebrew('סה״כ')
+        ])
+
+        # Create cash flow table (smaller font to fit all rows)
+        cashflow_table = Table(cashflow_table_data, colWidths=[1.0*inch, 1.0*inch, 0.9*inch, 1.0*inch, 1.0*inch, 0.6*inch])
+        cashflow_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (0, 1), (-1, -2), colors.white),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#D9FF0D')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2d3748')),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
+            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(cashflow_table)
+        elements.append(Spacer(1, 0.08*inch))
+
+        # Financial Metrics Summary
+        metrics_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מדדים פיננסיים")), heading_style)
+        elements.append(metrics_heading)
+        elements.append(Spacer(1, 0.06*inch))
+
+        # Calculate metrics
+        price_per_kwp = (total_price / 1.18) / system_size if system_size else 0
+        roa = ((annual_revenue / total_price) * 100) if total_price else 0
+        total_cashflow_25 = cumulative_cashflow
+
+        metrics_data = [
+            [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
+            [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
+            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט')],
+            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
+            [f"{RLM}{payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
+            [f"{RLM}₪{format_number(total_cashflow_25)}", reshape_hebrew('תזרים מצטבר 25 שנה')],
+            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה על הון (IRR)')],
+        ]
+
+        metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(metrics_table)
+        elements.append(Spacer(1, 0.06*inch))
+
+        # Assumptions note
+        assumptions_text = reshape_hebrew('הנחות יסוד: ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנה')
+        assumptions_para = Paragraph(escape_for_paragraph(assumptions_text), ParagraphStyle(
+            'Assumptions',
+            parent=normal_style,
+            fontSize=7,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
+            fontName=FONT_NAME
+        ))
+        elements.append(assumptions_para)
 
         # Break to footer frame - this moves content to the footer frame positioned in yellow area
         elements.append(FrameBreak())
