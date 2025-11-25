@@ -390,26 +390,31 @@
 
         /* Financial Comparison Styles */
         .comparison-container {
-            display: grid;
-            grid-template-columns: 40% 60%;
-            gap: 30px;
-            margin-top: 30px;
+            max-width: 1400px;
+            margin: 30px auto;
         }
 
         .metrics-panel {
             background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            margin-top: 25px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 20px;
-            margin-bottom: 8px;
-            border-radius: 8px;
+            padding: 10px 16px;
+            border-radius: 6px;
             background: #f7fafc;
             border: 1px solid #e2e8f0;
         }
@@ -476,16 +481,16 @@
 
         .data-table-panel {
             background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
             overflow-x: auto;
         }
 
         .comparison-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .comparison-table thead {
@@ -495,11 +500,12 @@
         }
 
         .comparison-table thead th {
-            padding: 14px 12px;
+            padding: 10px 8px;
             text-align: center;
             font-weight: 700;
             color: #00358A;
             border: 1px solid #b8e600;
+            font-size: 12px;
         }
 
         .comparison-table tbody tr {
@@ -511,10 +517,11 @@
         }
 
         .comparison-table tbody td {
-            padding: 10px 12px;
+            padding: 8px;
             text-align: center;
             border: 1px solid #e2e8f0;
             color: #2d3748;
+            font-size: 13px;
         }
 
         .comparison-table tbody tr:first-child {
@@ -534,10 +541,13 @@
             color: white;
         }
 
-        @media (max-width: 1200px) {
-            .comparison-container {
-                grid-template-columns: 1fr;
-            }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #D9FF0D;
+            padding-bottom: 8px;
         }
     </style>
 </head>
@@ -755,99 +765,57 @@
 
         <!-- Financial Comparison Section -->
         <div id="comparisonSection" style="display:none;">
-            <h1>השוואת תזרים המזומנים והשואה אל המקורות</h1>
+            <h1>ניתוח פיננסי - תזרים מזומנים 25 שנה</h1>
 
             <div class="comparison-container">
-                <!-- Left side: Financial metrics -->
-                <div class="metrics-panel">
-                    <div class="metric-row">
-                        <div class="metric-label">מחיר מערכת לפני מע"מ</div>
-                        <div class="metric-value" id="comp-price-kwp">0</div>
-                    </div>
-                    <div class="metric-row highlight">
-                        <div class="metric-label">מחיר ל'קו"ט לפני מע"מ</div>
-                        <div class="metric-value" id="comp-price-per-kwp">0</div>
-                    </div>
-                    <div class="metric-row">
-                        <div class="metric-label">מחיר מערכת לפני מע"מ</div>
-                        <div class="metric-value" id="comp-system-price">0</div>
-                    </div>
-                    <div class="metric-row highlight">
-                        <div class="metric-label">עלות תפעול אריזה/שונאה יציג לפני מע"מ</div>
-                        <div class="metric-value" id="comp-operational-cost">0</div>
-                    </div>
-                    <div class="metric-row highlight">
-                        <div class="metric-label">ס"כ עלות הקמה כולל מע"מ (18%)</div>
-                        <div class="metric-value" id="comp-total-with-vat">0</div>
-                    </div>
-
-                    <div class="metric-row success" style="margin-top: 20px;">
-                        <div class="metric-label">תשואה ממוצעת על הנכס (ROA)</div>
-                        <div class="metric-value" id="comp-roa">0%</div>
-                    </div>
-
-                    <div class="analysis-section">
-                        <h3>ניתוח מימון:</h3>
-                        <div class="metric-row">
-                            <div class="metric-label">יחס פדיון גבוה:</div>
-                            <div class="metric-value" id="comp-redemption-ratio">1.00</div>
-                        </div>
-                        <div class="metric-row">
-                            <div class="metric-label">שינוי ריבית שנתית:</div>
-                            <div class="metric-value" id="comp-interest-change">0.00%</div>
-                        </div>
-                        <div class="metric-row">
-                            <div class="metric-label">שיעור מימון:</div>
-                            <div class="metric-value" id="comp-financing-rate">0%</div>
-                        </div>
-                    </div>
-
-                    <div class="metric-row" style="margin-top: 20px;">
-                        <div class="metric-label">ניו כסף משקיע</div>
-                        <div class="metric-value" id="comp-investor-cash">0</div>
-                    </div>
-                    <div class="metric-row highlight">
-                        <div class="metric-label">IRR נטו משקיע (נטו מס הכנסה)</div>
-                        <div class="metric-value" id="comp-net-irr">0</div>
-                    </div>
-                    <div class="metric-row">
-                        <div class="metric-label">ס"כ תזרים נטו</div>
-                        <div class="metric-value" id="comp-total-cashflow">0</div>
-                    </div>
-                    <div class="metric-row">
-                        <div class="metric-label">תשואה ממוצעת להון העצמי (IRR)</div>
-                        <div class="metric-value" id="comp-equity-irr">0%</div>
-                    </div>
-                    <div class="metric-row">
-                        <div class="metric-label">תקופת החזר השקעה בשנים:</div>
-                        <div class="metric-value" id="comp-payback-years">0</div>
-                    </div>
-
-                    <div class="notes-section">
-                        <h4>הערות</h4>
-                        <p>המחיר מנוא פחות מחיר בדרך לאחראיה (הכולל כולל התקני הרכבת והעבודת) המאוקר ע.פ הצעת מחיר יהתשפ"א נכון ל- 24.1 מל אך מוסדת לטמיטה כמבוקשי היה הסמוכת המהדירם היבמרמרות מקומ החריביון בית המייצה (פרט נהספרדוק פי הסקאא יחריום החת (והוא, לזכרב להמלכא ואחריות, יתכן שכתם ההרכבת ההחברה הרוב בפיים במערכות והצמוך כתותית הן בתחוע ניגמונץ הםתפעקלו הסחאסחולאת הססיטרואית מחמיסאת 10 שנים שעפע. בניסה והחמעת ארוגאת וחיגת מאדיס באיגת החטדון הומוזבועב והדידוע חנו מערך תמהומוכ אכחטובו של מהעגדת והוספיס במומות ההאס תחדווכת ניסו כרכת בטהרטת מסוהח כפורד - הדחונה 2.5% בנה. הוראן השמרט דגל מקומים להצעה לחספרד ערך השפד 5 ל והומן המחם ההתעות בהיטח במסכן יהומני סוויכס תונאה מטיכות מטנשרט פי ברט תוהעת מטיכורת במניכות. פרטת, פרלכת, מסטרת ספורת לכל, כמלא שבו תוסשו מטבר שנות מדר סםכל בעלודכ ההתשכות והמחובעיס היצווטד בנקדס.</p>
-                    </div>
-                </div>
-
-                <!-- Right side: Monthly data table -->
+                <!-- Cash flow table first -->
                 <div class="data-table-panel">
+                    <div class="section-title">תזרים מזומנים שנתי</div>
                     <table class="comparison-table">
                         <thead>
                             <tr>
                                 <th>שנה</th>
-                                <th>ייצור חשמל</th>
-                                <th>מימון</th>
-                                <th>ניכוס/הפחתה</th>
-                                <th>תפעול/אחזקה</th>
-                                <th>תזרים שנתי נטו</th>
-                                <th>הכנסות</th>
-                                <th>"יתר היוצ"ש"</th>
+                                <th>השקעה</th>
+                                <th>הכנסה שנתית</th>
+                                <th>תזרים מצטבר</th>
                             </tr>
                         </thead>
                         <tbody id="comp-table-body">
-                            <tr><td>0</td><td>0</td><td>-</td><td>0</td><td>-</td><td>-</td><td>0</td></tr>
+                            <tr><td>0</td><td>0</td><td>-</td><td>0</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Financial metrics below -->
+                <div class="metrics-panel">
+                    <div class="section-title">מדדים פיננסיים</div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-row highlight">
+                            <div class="metric-label">עלות כוללת (כולל מע"מ)</div>
+                            <div class="metric-value" id="comp-total-with-vat">0</div>
+                        </div>
+                        <div class="metric-row highlight">
+                            <div class="metric-label">מחיר לקילו-וואט</div>
+                            <div class="metric-value" id="comp-price-per-kwp">0</div>
+                        </div>
+                        <div class="metric-row success">
+                            <div class="metric-label">תשואה שנתית (ROA)</div>
+                            <div class="metric-value" id="comp-roa">0%</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">תקופת החזר (שנים)</div>
+                            <div class="metric-value" id="comp-payback-years">0</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">תזרים מצטבר 25 שנה</div>
+                            <div class="metric-value" id="comp-total-cashflow">0</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">תשואה על הון (IRR)</div>
+                            <div class="metric-value" id="comp-equity-irr">0%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1081,17 +1049,12 @@
             const irr = roa; // Simplified IRR calculation
 
             // Update metrics panel
-            document.getElementById('comp-price-kwp').textContent = (totalPrice / systemSize / 1000).toFixed(3);
-            document.getElementById('comp-price-per-kwp').textContent = (pricePerKwp / 1000).toFixed(3);
-            document.getElementById('comp-system-price').textContent = (systemPriceBeforeVAT / 1000).toFixed(3);
-            document.getElementById('comp-operational-cost').textContent = operationalCost;
-            document.getElementById('comp-total-with-vat').textContent = (totalWithVAT / 1000).toFixed(3);
+            document.getElementById('comp-total-with-vat').textContent = `₪${(totalWithVAT / 1000).toFixed(1)}K`;
+            document.getElementById('comp-price-per-kwp').textContent = `₪${(pricePerKwp / 1000).toFixed(2)}K`;
             document.getElementById('comp-roa').textContent = roa + '%';
-            document.getElementById('comp-investor-cash').textContent = (totalWithVAT / 1000).toFixed(3);
-            document.getElementById('comp-net-irr').textContent = operationalCost;
-            document.getElementById('comp-total-cashflow').textContent = (totalCashflow / 1000).toFixed(3);
-            document.getElementById('comp-equity-irr').textContent = irr + '%';
             document.getElementById('comp-payback-years').textContent = paybackYears;
+            document.getElementById('comp-total-cashflow').textContent = `₪${(totalCashflow / 1000).toFixed(1)}K`;
+            document.getElementById('comp-equity-irr').textContent = irr + '%';
 
             // Generate 25-year table
             generateCashflowTable(systemSize, totalPrice, annualRevenue);
@@ -1103,34 +1066,28 @@
 
             // Year 0 - Initial investment
             const row0 = document.createElement('tr');
-            row0.innerHTML = `<td>0</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>-</td><td>0</td>`;
+            row0.innerHTML = `<td>0</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>${(-totalPrice).toLocaleString()}</td>`;
             tbody.appendChild(row0);
 
             // Annual degradation rate (~0.4% per year for production)
             const degradationRate = 0.004;
-            let totalCashflow = 0;
-            let totalProduction = 0;
-            let totalIncome = 0;
+            let cumulativeCashflow = -totalPrice;
+            let totalRevenue = 0;
 
             // Years 1-25
             for (let year = 1; year <= 25; year++) {
                 const yearlyDegradation = 1 - (degradationRate * (year - 1));
-                const yearProduction = Math.round(annualRevenue * yearlyDegradation);
-                const yearIncome = Math.round(systemSize * 1500 * yearlyDegradation); // Rough estimate
+                const yearRevenue = Math.round(annualRevenue * yearlyDegradation);
 
-                totalProduction += yearProduction;
-                totalIncome += yearIncome;
-                totalCashflow = totalProduction - totalPrice;
+                totalRevenue += yearRevenue;
+                cumulativeCashflow = totalRevenue - totalPrice;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${year}</td>
-                    <td>${yearProduction.toLocaleString()}</td>
                     <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>${yearProduction.toLocaleString()}</td>
-                    <td>${yearIncome.toLocaleString()}</td>
+                    <td>${yearRevenue.toLocaleString()}</td>
+                    <td>${cumulativeCashflow.toLocaleString()}</td>
                 `;
                 tbody.appendChild(row);
             }
@@ -1139,13 +1096,10 @@
             const totalRow = document.createElement('tr');
             totalRow.className = 'total-row';
             totalRow.innerHTML = `
-                <td>ס"כ</td>
-                <td>${totalProduction.toLocaleString()}</td>
-                <td>-</td>
+                <td>סה"כ</td>
                 <td>${(-totalPrice).toLocaleString()}</td>
-                <td>-</td>
-                <td>${totalCashflow.toLocaleString()}</td>
-                <td>${totalIncome.toLocaleString()}</td>
+                <td>${totalRevenue.toLocaleString()}</td>
+                <td>${cumulativeCashflow.toLocaleString()}</td>
             `;
             tbody.appendChild(totalRow);
         }

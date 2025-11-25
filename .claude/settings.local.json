@@ -1,19 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python chart_generator.py:*)",
-      "Bash(python:*)",
-      "Bash(dir:*)",
-      "Bash(nul)",
-      "Bash(git commit:*)",
-      "Bash(git config:*)",
-      "Bash(git branch:*)",
-      "Bash(git remote add:*)",
-      "Bash(git push:*)",
       "Bash(git add:*)",
-      "Bash(pip install:*)",
-      "Bash(curl:*)",
-      "Bash(git restore:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

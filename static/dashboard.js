@@ -114,9 +114,11 @@ async function loadQuoteHistory() {
                 <td>₪${quote.total_price.toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
-                    <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; margin-left: 8px;">ניתוח פיננסי</button>
-                    <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; margin-left: 8px;">הורד PDF</button>
-                    <button onclick="deleteQuote(${quote.id})" class="delete">מחק</button>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">ניתוח פיננסי</button>
+                        <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">PDF</button>
+                        <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">מחק</button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(row);
