@@ -730,6 +730,7 @@
                 <div class="actions">
                     <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
                     <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
+                    <button onclick="viewFinancialAnalysis()" class="btn-secondary" style="background: #D9FF0D; color: #00358A;">הצג ניתוח פיננסי</button>
                 </div>
             </div>
         </div>
@@ -761,65 +762,65 @@
                 <div class="metrics-panel">
                     <div class="metric-row">
                         <div class="metric-label">מחיר מערכת לפני מע"מ</div>
-                        <div class="metric-value">0.540</div>
+                        <div class="metric-value" id="comp-price-kwp">0</div>
                     </div>
                     <div class="metric-row highlight">
                         <div class="metric-label">מחיר ל'קו"ט לפני מע"מ</div>
-                        <div class="metric-value">3.473</div>
+                        <div class="metric-value" id="comp-price-per-kwp">0</div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">מחיר מערכת לפני מע"מ</div>
-                        <div class="metric-value">62.514</div>
+                        <div class="metric-value" id="comp-system-price">0</div>
                     </div>
                     <div class="metric-row highlight">
                         <div class="metric-label">עלות תפעול אריזה/שונאה יציג לפני מע"מ</div>
-                        <div class="metric-value">0</div>
+                        <div class="metric-value" id="comp-operational-cost">0</div>
                     </div>
                     <div class="metric-row highlight">
                         <div class="metric-label">ס"כ עלות הקמה כולל מע"מ (18%)</div>
-                        <div class="metric-value">73.767</div>
+                        <div class="metric-value" id="comp-total-with-vat">0</div>
                     </div>
 
                     <div class="metric-row success" style="margin-top: 20px;">
                         <div class="metric-label">תשואה ממוצעת על הנכס (ROA)</div>
-                        <div class="metric-value">17.3%</div>
+                        <div class="metric-value" id="comp-roa">0%</div>
                     </div>
 
                     <div class="analysis-section">
                         <h3>ניתוח מימון:</h3>
                         <div class="metric-row">
                             <div class="metric-label">יחס פדיון גבוה:</div>
-                            <div class="metric-value">1.00</div>
+                            <div class="metric-value" id="comp-redemption-ratio">1.00</div>
                         </div>
                         <div class="metric-row">
                             <div class="metric-label">שינוי ריבית שנתית:</div>
-                            <div class="metric-value">0.00%</div>
+                            <div class="metric-value" id="comp-interest-change">0.00%</div>
                         </div>
                         <div class="metric-row">
                             <div class="metric-label">שיעור מימון:</div>
-                            <div class="metric-value">0%</div>
+                            <div class="metric-value" id="comp-financing-rate">0%</div>
                         </div>
                     </div>
 
                     <div class="metric-row" style="margin-top: 20px;">
                         <div class="metric-label">ניו כסף משקיע</div>
-                        <div class="metric-value">73.767</div>
+                        <div class="metric-value" id="comp-investor-cash">0</div>
                     </div>
                     <div class="metric-row highlight">
                         <div class="metric-label">IRR נטו משקיע (נטו מס הכנסה)</div>
-                        <div class="metric-value">0</div>
+                        <div class="metric-value" id="comp-net-irr">0</div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">ס"כ תזרים נטו</div>
-                        <div class="metric-value">244.565</div>
+                        <div class="metric-value" id="comp-total-cashflow">0</div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">תשואה ממוצעת להון העצמי (IRR)</div>
-                        <div class="metric-value">19.1%</div>
+                        <div class="metric-value" id="comp-equity-irr">0%</div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">תקופת החזר השקעה בשנים:</div>
-                        <div class="metric-value">5.33</div>
+                        <div class="metric-value" id="comp-payback-years">0</div>
                     </div>
 
                     <div class="notes-section">
@@ -843,34 +844,8 @@
                                 <th>"יתר היוצ"ש"</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr><td>0</td><td>-73,767</td><td>-</td><td>-73,767</td><td>-</td><td>-</td><td>0</td></tr>
-                            <tr><td>1</td><td>13,751</td><td>-</td><td>-</td><td>-</td><td>13,751</td><td>24,555</td></tr>
-                            <tr><td>2</td><td>13,696</td><td>-</td><td>-</td><td>-</td><td>13,696</td><td>24,456</td></tr>
-                            <tr><td>3</td><td>13,641</td><td>-</td><td>-</td><td>-</td><td>13,641</td><td>24,358</td></tr>
-                            <tr><td>4</td><td>13,586</td><td>-</td><td>-</td><td>-</td><td>13,586</td><td>24,260</td></tr>
-                            <tr><td>5</td><td>13,531</td><td>-</td><td>-</td><td>-</td><td>13,531</td><td>24,162</td></tr>
-                            <tr><td>6</td><td>13,476</td><td>-</td><td>-</td><td>-</td><td>13,476</td><td>24,063</td></tr>
-                            <tr><td>7</td><td>13,421</td><td>-</td><td>-</td><td>-</td><td>13,421</td><td>23,965</td></tr>
-                            <tr><td>8</td><td>13,366</td><td>-</td><td>-</td><td>-</td><td>13,366</td><td>23,867</td></tr>
-                            <tr><td>9</td><td>13,311</td><td>-</td><td>-</td><td>-</td><td>13,311</td><td>23,769</td></tr>
-                            <tr><td>10</td><td>13,256</td><td>-</td><td>-</td><td>-</td><td>13,256</td><td>23,671</td></tr>
-                            <tr><td>11</td><td>13,201</td><td>-</td><td>-</td><td>-</td><td>13,201</td><td>23,573</td></tr>
-                            <tr><td>12</td><td>13,146</td><td>-</td><td>-</td><td>-</td><td>13,146</td><td>23,474</td></tr>
-                            <tr><td>13</td><td>13,091</td><td>-</td><td>-</td><td>-</td><td>13,091</td><td>23,376</td></tr>
-                            <tr><td>14</td><td>13,036</td><td>-</td><td>-</td><td>-</td><td>13,036</td><td>23,278</td></tr>
-                            <tr><td>15</td><td>12,981</td><td>-</td><td>-</td><td>-</td><td>12,981</td><td>23,179</td></tr>
-                            <tr><td>16</td><td>12,926</td><td>-</td><td>-</td><td>-</td><td>12,926</td><td>23,081</td></tr>
-                            <tr><td>17</td><td>12,595</td><td>-</td><td>-</td><td>-</td><td>12,595</td><td>22,983</td></tr>
-                            <tr><td>18</td><td>11,717</td><td>-</td><td>-</td><td>-</td><td>11,717</td><td>22,885</td></tr>
-                            <tr><td>19</td><td>11,667</td><td>-</td><td>-</td><td>-</td><td>11,667</td><td>22,787</td></tr>
-                            <tr><td>20</td><td>11,616</td><td>-</td><td>-</td><td>-</td><td>11,616</td><td>22,688</td></tr>
-                            <tr><td>21</td><td>11,566</td><td>-</td><td>-</td><td>-</td><td>11,566</td><td>22,590</td></tr>
-                            <tr><td>22</td><td>11,516</td><td>-</td><td>-</td><td>-</td><td>11,516</td><td>22,492</td></tr>
-                            <tr><td>23</td><td>11,466</td><td>-</td><td>-</td><td>-</td><td>11,466</td><td>22,394</td></tr>
-                            <tr><td>24</td><td>11,415</td><td>-</td><td>-</td><td>-</td><td>11,415</td><td>22,296</td></tr>
-                            <tr><td>25</td><td>11,365</td><td>-</td><td>-</td><td>-</td><td>11,365</td><td>22,197</td></tr>
-                            <tr class="total-row"><td>ס"כ</td><td>244,565</td><td>-</td><td>-73,767</td><td>-</td><td>318,331</td><td>584,398</td></tr>
+                        <tbody id="comp-table-body">
+                            <tr><td>0</td><td>0</td><td>-</td><td>0</td><td>-</td><td>-</td><td>0</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1062,6 +1037,119 @@
             document.getElementById('calcRoofArea').focus();
         }
 
+        // Financial Analysis Functions
+        function viewFinancialAnalysis() {
+            const systemSize = parseFloat(document.getElementById('systemSize').value);
+            const totalPrice = parseFloat(document.getElementById('totalPrice').textContent.replace(/[^\d.-]/g, ''));
+
+            if (!systemSize || !totalPrice) {
+                alert('נא לחשב את ההצעה תחילה');
+                return;
+            }
+
+            // Calculate and display financial analysis
+            calculateFinancialComparison(systemSize, totalPrice);
+
+            // Switch to comparison section
+            showSection('comparison');
+        }
+
+        async function calculateFinancialComparison(systemSize, totalPrice) {
+            // Basic calculations
+            const pricePerKwp = (totalPrice / 1.18) / systemSize; // Price per kWp before VAT
+            const systemPriceBeforeVAT = totalPrice / 1.18;
+            const operationalCost = 0; // As shown in image
+            const totalWithVAT = totalPrice;
+
+            // Calculate annual revenue using existing API
+            const formData = new FormData();
+            formData.append('system_size', systemSize);
+
+            const response = await fetch('/api/calculate', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            const annualRevenue = Math.round(data.annual_revenue);
+            const totalRevenue25Years = annualRevenue * 25;
+
+            // Financial metrics
+            const roa = ((annualRevenue / totalPrice) * 100).toFixed(1);
+            const paybackYears = (totalPrice / annualRevenue).toFixed(2);
+            const totalCashflow = totalRevenue25Years - totalPrice;
+            const irr = roa; // Simplified IRR calculation
+
+            // Update metrics panel
+            document.getElementById('comp-price-kwp').textContent = (totalPrice / systemSize / 1000).toFixed(3);
+            document.getElementById('comp-price-per-kwp').textContent = (pricePerKwp / 1000).toFixed(3);
+            document.getElementById('comp-system-price').textContent = (systemPriceBeforeVAT / 1000).toFixed(3);
+            document.getElementById('comp-operational-cost').textContent = operationalCost;
+            document.getElementById('comp-total-with-vat').textContent = (totalWithVAT / 1000).toFixed(3);
+            document.getElementById('comp-roa').textContent = roa + '%';
+            document.getElementById('comp-investor-cash').textContent = (totalWithVAT / 1000).toFixed(3);
+            document.getElementById('comp-net-irr').textContent = operationalCost;
+            document.getElementById('comp-total-cashflow').textContent = (totalCashflow / 1000).toFixed(3);
+            document.getElementById('comp-equity-irr').textContent = irr + '%';
+            document.getElementById('comp-payback-years').textContent = paybackYears;
+
+            // Generate 25-year table
+            generateCashflowTable(systemSize, totalPrice, annualRevenue);
+        }
+
+        function generateCashflowTable(systemSize, totalPrice, annualRevenue) {
+            const tbody = document.getElementById('comp-table-body');
+            tbody.innerHTML = '';
+
+            // Year 0 - Initial investment
+            const row0 = document.createElement('tr');
+            row0.innerHTML = `<td>0</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>${(-totalPrice).toLocaleString()}</td><td>-</td><td>-</td><td>0</td>`;
+            tbody.appendChild(row0);
+
+            // Annual degradation rate (~0.4% per year for production)
+            const degradationRate = 0.004;
+            let totalCashflow = 0;
+            let totalProduction = 0;
+            let totalIncome = 0;
+
+            // Years 1-25
+            for (let year = 1; year <= 25; year++) {
+                const yearlyDegradation = 1 - (degradationRate * (year - 1));
+                const yearProduction = Math.round(annualRevenue * yearlyDegradation);
+                const yearIncome = Math.round(systemSize * 1500 * yearlyDegradation); // Rough estimate
+
+                totalProduction += yearProduction;
+                totalIncome += yearIncome;
+                totalCashflow = totalProduction - totalPrice;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${year}</td>
+                    <td>${yearProduction.toLocaleString()}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>${yearProduction.toLocaleString()}</td>
+                    <td>${yearIncome.toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            // Total row
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'total-row';
+            totalRow.innerHTML = `
+                <td>ס"כ</td>
+                <td>${totalProduction.toLocaleString()}</td>
+                <td>-</td>
+                <td>${(-totalPrice).toLocaleString()}</td>
+                <td>-</td>
+                <td>${totalCashflow.toLocaleString()}</td>
+                <td>${totalIncome.toLocaleString()}</td>
+            `;
+            tbody.appendChild(totalRow);
+        }
+
         // Check URL parameter on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Lucide icons
@@ -1069,7 +1157,7 @@
 
             const urlParams = new URLSearchParams(window.location.search);
             const section = urlParams.get('section');
-            if (section === 'calculator' || section === 'history') {
+            if (section === 'calculator' || section === 'history' || section === 'comparison') {
                 showSection(section);
             }
         });
