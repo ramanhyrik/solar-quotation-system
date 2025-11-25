@@ -14,7 +14,7 @@ body {
     height: 100vh;
     background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
-    padding: 15px 18px;
+    padding: 20px 20px;
     display: flex;
     flex-direction: column;
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
@@ -26,8 +26,8 @@ body {
 }
 
 .sidebar h2 {
-    margin-bottom: 15px;
-    font-size: 20px;
+    margin-bottom: 20px;
+    font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.5px;
     flex-shrink: 0;
@@ -37,19 +37,39 @@ body {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding-right: 5px;
+}
+
+/* Scrollbar styling for sidebar nav */
+.sidebar nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar nav::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
 }
 
 .sidebar nav a {
     display: block;
-    padding: 9px 12px;
+    padding: 11px 14px;
     color: white;
     text-decoration: none;
-    border-radius: 8px;
-    margin-bottom: 4px;
+    border-radius: 10px;
+    margin-bottom: 6px;
     transition: all 0.3s;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .sidebar nav a:hover,
@@ -60,14 +80,14 @@ body {
 
 .user-info {
     margin-top: auto;
-    padding-top: 10px;
+    padding-top: 15px;
     border-top: 1px solid rgba(255, 255, 255, 0.3);
-    font-size: 12px;
+    font-size: 13px;
     flex-shrink: 0;
 }
 
 .user-info p {
-    margin-bottom: 3px;
+    margin-bottom: 5px;
 }
 
 .main-content {
