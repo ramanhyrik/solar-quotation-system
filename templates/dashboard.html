@@ -387,6 +387,158 @@
         .leasing-terms li {
             margin-bottom: 5px;
         }
+
+        /* Financial Comparison Styles */
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 40% 60%;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .metrics-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-row.highlight {
+            background: #D9FF0D;
+            border: 1px solid #D9FF0D;
+            font-weight: 600;
+        }
+
+        .metric-row.success {
+            background: #D9FF0D;
+            border: 1px solid #D9FF0D;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .metric-label {
+            color: #2d3748;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .metric-value {
+            color: #00358A;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .analysis-section {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #00358A;
+        }
+
+        .analysis-section h3 {
+            color: #00358A;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .notes-section {
+            background: #fffbeb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border-right: 4px solid #f59e0b;
+        }
+
+        .notes-section h4 {
+            color: #92400e;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .notes-section p {
+            color: #78350f;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .data-table-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .comparison-table thead {
+            background: #D9FF0D;
+            position: sticky;
+            top: 0;
+        }
+
+        .comparison-table thead th {
+            padding: 14px 12px;
+            text-align: center;
+            font-weight: 700;
+            color: #00358A;
+            border: 1px solid #b8e600;
+        }
+
+        .comparison-table tbody tr {
+            transition: background 0.2s;
+        }
+
+        .comparison-table tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .comparison-table tbody td {
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            color: #2d3748;
+        }
+
+        .comparison-table tbody tr:first-child {
+            background: #e2e8f0;
+            font-weight: 700;
+        }
+
+        .comparison-table tbody tr.total-row {
+            background: #00358A;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .comparison-table tbody tr.total-row td {
+            border: 1px solid #002a6b;
+            color: white;
+        }
+
+        @media (max-width: 1200px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -400,6 +552,7 @@
             <a href="/users">ניהול משתמשים</a>
             {% endif %}
             <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
+            <a href="#" onclick="showSection('comparison')" id="nav-comparison">השוואת תזרים מזומנים</a>
             <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
@@ -598,6 +751,131 @@
                 <tbody></tbody>
             </table>
         </div>
+
+        <!-- Financial Comparison Section -->
+        <div id="comparisonSection" style="display:none;">
+            <h1>השוואת תזרים המזומנים והשואה אל המקורות</h1>
+
+            <div class="comparison-container">
+                <!-- Left side: Financial metrics -->
+                <div class="metrics-panel">
+                    <div class="metric-row">
+                        <div class="metric-label">מחיר מערכת לפני מע"מ</div>
+                        <div class="metric-value">0.540</div>
+                    </div>
+                    <div class="metric-row highlight">
+                        <div class="metric-label">מחיר ל'קו"ט לפני מע"מ</div>
+                        <div class="metric-value">3.473</div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric-label">מחיר מערכת לפני מע"מ</div>
+                        <div class="metric-value">62.514</div>
+                    </div>
+                    <div class="metric-row highlight">
+                        <div class="metric-label">עלות תפעול אריזה/שונאה יציג לפני מע"מ</div>
+                        <div class="metric-value">0</div>
+                    </div>
+                    <div class="metric-row highlight">
+                        <div class="metric-label">ס"כ עלות הקמה כולל מע"מ (18%)</div>
+                        <div class="metric-value">73.767</div>
+                    </div>
+
+                    <div class="metric-row success" style="margin-top: 20px;">
+                        <div class="metric-label">תשואה ממוצעת על הנכס (ROA)</div>
+                        <div class="metric-value">17.3%</div>
+                    </div>
+
+                    <div class="analysis-section">
+                        <h3>ניתוח מימון:</h3>
+                        <div class="metric-row">
+                            <div class="metric-label">יחס פדיון גבוה:</div>
+                            <div class="metric-value">1.00</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">שינוי ריבית שנתית:</div>
+                            <div class="metric-value">0.00%</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">שיעור מימון:</div>
+                            <div class="metric-value">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-row" style="margin-top: 20px;">
+                        <div class="metric-label">ניו כסף משקיע</div>
+                        <div class="metric-value">73.767</div>
+                    </div>
+                    <div class="metric-row highlight">
+                        <div class="metric-label">IRR נטו משקיע (נטו מס הכנסה)</div>
+                        <div class="metric-value">0</div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric-label">ס"כ תזרים נטו</div>
+                        <div class="metric-value">244.565</div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric-label">תשואה ממוצעת להון העצמי (IRR)</div>
+                        <div class="metric-value">19.1%</div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric-label">תקופת החזר השקעה בשנים:</div>
+                        <div class="metric-value">5.33</div>
+                    </div>
+
+                    <div class="notes-section">
+                        <h4>הערות</h4>
+                        <p>המחיר מנוא פחות מחיר בדרך לאחראיה (הכולל כולל התקני הרכבת והעבודת) המאוקר ע.פ הצעת מחיר יהתשפ"א נכון ל- 24.1 מל אך מוסדת לטמיטה כמבוקשי היה הסמוכת המהדירם היבמרמרות מקומ החריביון בית המייצה (פרט נהספרדוק פי הסקאא יחריום החת (והוא, לזכרב להמלכא ואחריות, יתכן שכתם ההרכבת ההחברה הרוב בפיים במערכות והצמוך כתותית הן בתחוע ניגמונץ הםתפעקלו הסחאסחולאת הססיטרואית מחמיסאת 10 שנים שעפע. בניסה והחמעת ארוגאת וחיגת מאדיס באיגת החטדון הומוזבועב והדידוע חנו מערך תמהומוכ אכחטובו של מהעגדת והוספיס במומות ההאס תחדווכת ניסו כרכת בטהרטת מסוהח כפורד - הדחונה 2.5% בנה. הוראן השמרט דגל מקומים להצעה לחספרד ערך השפד 5 ל והומן המחם ההתעות בהיטח במסכן יהומני סוויכס תונאה מטיכות מטנשרט פי ברט תוהעת מטיכורת במניכות. פרטת, פרלכת, מסטרת ספורת לכל, כמלא שבו תוסשו מטבר שנות מדר סםכל בעלודכ ההתשכות והמחובעיס היצווטד בנקדס.</p>
+                    </div>
+                </div>
+
+                <!-- Right side: Monthly data table -->
+                <div class="data-table-panel">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>שנה</th>
+                                <th>ייצור חשמל</th>
+                                <th>מימון</th>
+                                <th>ניכוס/הפחתה</th>
+                                <th>תפעול/אחזקה</th>
+                                <th>תזרים שנתי נטו</th>
+                                <th>הכנסות</th>
+                                <th>"יתר היוצ"ש"</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>0</td><td>-73,767</td><td>-</td><td>-73,767</td><td>-</td><td>-</td><td>0</td></tr>
+                            <tr><td>1</td><td>13,751</td><td>-</td><td>-</td><td>-</td><td>13,751</td><td>24,555</td></tr>
+                            <tr><td>2</td><td>13,696</td><td>-</td><td>-</td><td>-</td><td>13,696</td><td>24,456</td></tr>
+                            <tr><td>3</td><td>13,641</td><td>-</td><td>-</td><td>-</td><td>13,641</td><td>24,358</td></tr>
+                            <tr><td>4</td><td>13,586</td><td>-</td><td>-</td><td>-</td><td>13,586</td><td>24,260</td></tr>
+                            <tr><td>5</td><td>13,531</td><td>-</td><td>-</td><td>-</td><td>13,531</td><td>24,162</td></tr>
+                            <tr><td>6</td><td>13,476</td><td>-</td><td>-</td><td>-</td><td>13,476</td><td>24,063</td></tr>
+                            <tr><td>7</td><td>13,421</td><td>-</td><td>-</td><td>-</td><td>13,421</td><td>23,965</td></tr>
+                            <tr><td>8</td><td>13,366</td><td>-</td><td>-</td><td>-</td><td>13,366</td><td>23,867</td></tr>
+                            <tr><td>9</td><td>13,311</td><td>-</td><td>-</td><td>-</td><td>13,311</td><td>23,769</td></tr>
+                            <tr><td>10</td><td>13,256</td><td>-</td><td>-</td><td>-</td><td>13,256</td><td>23,671</td></tr>
+                            <tr><td>11</td><td>13,201</td><td>-</td><td>-</td><td>-</td><td>13,201</td><td>23,573</td></tr>
+                            <tr><td>12</td><td>13,146</td><td>-</td><td>-</td><td>-</td><td>13,146</td><td>23,474</td></tr>
+                            <tr><td>13</td><td>13,091</td><td>-</td><td>-</td><td>-</td><td>13,091</td><td>23,376</td></tr>
+                            <tr><td>14</td><td>13,036</td><td>-</td><td>-</td><td>-</td><td>13,036</td><td>23,278</td></tr>
+                            <tr><td>15</td><td>12,981</td><td>-</td><td>-</td><td>-</td><td>12,981</td><td>23,179</td></tr>
+                            <tr><td>16</td><td>12,926</td><td>-</td><td>-</td><td>-</td><td>12,926</td><td>23,081</td></tr>
+                            <tr><td>17</td><td>12,595</td><td>-</td><td>-</td><td>-</td><td>12,595</td><td>22,983</td></tr>
+                            <tr><td>18</td><td>11,717</td><td>-</td><td>-</td><td>-</td><td>11,717</td><td>22,885</td></tr>
+                            <tr><td>19</td><td>11,667</td><td>-</td><td>-</td><td>-</td><td>11,667</td><td>22,787</td></tr>
+                            <tr><td>20</td><td>11,616</td><td>-</td><td>-</td><td>-</td><td>11,616</td><td>22,688</td></tr>
+                            <tr><td>21</td><td>11,566</td><td>-</td><td>-</td><td>-</td><td>11,566</td><td>22,590</td></tr>
+                            <tr><td>22</td><td>11,516</td><td>-</td><td>-</td><td>-</td><td>11,516</td><td>22,492</td></tr>
+                            <tr><td>23</td><td>11,466</td><td>-</td><td>-</td><td>-</td><td>11,466</td><td>22,394</td></tr>
+                            <tr><td>24</td><td>11,415</td><td>-</td><td>-</td><td>-</td><td>11,415</td><td>22,296</td></tr>
+                            <tr><td>25</td><td>11,365</td><td>-</td><td>-</td><td>-</td><td>11,365</td><td>22,197</td></tr>
+                            <tr class="total-row"><td>ס"כ</td><td>244,565</td><td>-</td><td>-73,767</td><td>-</td><td>318,331</td><td>584,398</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/dashboard.js"></script>
@@ -663,6 +941,7 @@
             document.getElementById('calculatorSection').style.display = 'none';
             document.getElementById('quoteSection').style.display = 'none';
             document.getElementById('historySection').style.display = 'none';
+            document.getElementById('comparisonSection').style.display = 'none';
 
             // Remove active class from all nav items
             document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
@@ -678,6 +957,9 @@
                 document.getElementById('historySection').style.display = 'block';
                 document.getElementById('nav-history').classList.add('active');
                 loadQuoteHistory();
+            } else if (section === 'comparison') {
+                document.getElementById('comparisonSection').style.display = 'block';
+                document.getElementById('nav-comparison').classList.add('active');
             }
         }
 
