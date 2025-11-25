@@ -103,8 +103,8 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
 
     # Create bars with 3D-like gradient effect - yellow-green color
     bars = ax.bar(range(12), monthly_production,
-                   color='#7FFF00',  # Yellow-green matching PDF footer
-                   edgecolor='#66CC00',
+                   color='#D9FF0D',  # Yellow-green matching dashboard
+                   edgecolor='#b8e600',
                    linewidth=1.5,
                    width=0.75,
                    zorder=3)
@@ -162,8 +162,8 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
             transform=ax.transAxes, fontsize=9, fontweight='700',
             verticalalignment='top', horizontalalignment='right',
             color='#2d3748',
-            bbox=dict(boxstyle='round,pad=0.6', facecolor='#7FFF00',
-                     edgecolor='#66CC00', linewidth=1.5, alpha=0.95))
+            bbox=dict(boxstyle='round,pad=0.6', facecolor='#D9FF0D',
+                     edgecolor='#b8e600', linewidth=1.5, alpha=0.95))
 
     # Add blue background matching PDF
     ax.set_facecolor('#000080')
@@ -220,11 +220,11 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     # Add gradient-like layers for depth (multiple fills with decreasing alpha)
     for i, alpha_val in enumerate([0.15, 0.25, 0.35]):
         layer_values = [v * (0.4 + i * 0.2) for v in production_values]
-        ax.fill(angles, layer_values, alpha=alpha_val, color='#7FFF00', zorder=2 + i)
+        ax.fill(angles, layer_values, alpha=alpha_val, color='#D9FF0D', zorder=2 + i)
 
     # Main plot with professional styling - yellow-green
-    ax.plot(angles, production_values, 'o-', linewidth=3, color='#7FFF00',
-            markersize=10, markeredgecolor='#66CC00', markeredgewidth=2,
+    ax.plot(angles, production_values, 'o-', linewidth=3, color='#D9FF0D',
+            markersize=10, markeredgecolor='#b8e600', markeredgewidth=2,
             zorder=5, label='Production')
 
     # Main fill with gradient effect
@@ -258,8 +258,8 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.text(0, 0, reshape_text_for_chart(center_text),
             ha='center', va='center', fontsize=11, fontweight='bold',
             color='white',  # Changed to white for better visibility
-            bbox=dict(boxstyle='round,pad=0.8', facecolor='#7FFF00',
-                     edgecolor='#66CC00', linewidth=2, alpha=0.95))
+            bbox=dict(boxstyle='round,pad=0.8', facecolor='#D9FF0D',
+                     edgecolor='#b8e600', linewidth=2, alpha=0.95))
 
     # Save to bytes with higher DPI - blue background
     buf = io.BytesIO()

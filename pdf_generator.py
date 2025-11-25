@@ -180,7 +180,7 @@ def add_blue_background_with_footer(canvas, doc):
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     # Yellow-green footer at bottom
     footer_height = 1.2 * inch
-    canvas.setFillColor(colors.HexColor('#7FFF00'))
+    canvas.setFillColor(colors.HexColor('#D9FF0D'))
     canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
     canvas.restoreState()
 
@@ -283,7 +283,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'Title',
             parent=styles['Normal'],
             fontSize=24,
-            textColor=colors.HexColor('#7FFF00'),  # Yellow-green for main heading
+            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green for main heading
             spaceAfter=6,
             alignment=TA_RIGHT,
             fontName=FONT_NAME_BOLD
@@ -328,7 +328,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         safe_subtitle = escape_for_paragraph(subtitle_hebrew)
 
         # Create title cell content with yellow-green main title and white subtitle
-        title_para = Paragraph(f"<para align=right><b><font color='#7FFF00'>{safe_title}</font></b><br/><font size=12 color='white'>{safe_subtitle}</font></para>", title_style)
+        title_para = Paragraph(f"<para align=right><b><font color='#D9FF0D'>{safe_title}</font></b><br/><font size=12 color='white'>{safe_subtitle}</font></para>", title_style)
 
         # Try to load logo from multiple paths
         logo_loaded = False
