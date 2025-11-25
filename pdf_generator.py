@@ -273,7 +273,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'Subtitle',
             parent=styles['Normal'],
             fontSize=18,
-            textColor=colors.HexColor('#FFD700'),  # Yellow color for title
+            textColor=colors.white,  # White color for consistency
             spaceAfter=3,
             alignment=TA_CENTER,
             fontName=FONT_NAME_BOLD
@@ -283,7 +283,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'Title',
             parent=styles['Normal'],
             fontSize=24,
-            textColor=colors.HexColor('#FFD700'),  # Yellow/gold color
+            textColor=colors.white,  # White color for consistency
             spaceAfter=6,
             alignment=TA_RIGHT,
             fontName=FONT_NAME_BOLD
@@ -456,7 +456,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#4d4dff')),  # Lighter blue grid lines
+            ('GRID', (0, 0), (-1, -1), 0.75, colors.white),  # White grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -530,7 +530,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#4d4dff')),  # Lighter blue grid
+            ('GRID', (0, 0), (-1, -1), 1, colors.white),  # White grid lines
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 10),

@@ -137,18 +137,18 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.set_xlabel(reshape_text_for_chart('חודש'), fontsize=10, fontweight='700', labelpad=10, color='white')
     ax.set_ylabel(reshape_text_for_chart('ייצור (קוט״ש)'), fontsize=10, fontweight='700', labelpad=10, color='white')
 
-    # Title with proper RTL formatting - yellow color
+    # Title with proper RTL formatting - white color
     title_text = f'ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש'
     ax.set_title(reshape_text_for_chart(title_text),
-                 fontsize=12, fontweight='bold', pad=15, color='#FFD700')
+                 fontsize=12, fontweight='bold', pad=15, color='white')
 
     # Set x-axis labels (months) with proper RTL text - white
     hebrew_months_display = [reshape_text_for_chart(month) for month in HEBREW_MONTHS_RAW]
     ax.set_xticks(range(12))
     ax.set_xticklabels(hebrew_months_display, rotation=45, ha='right', fontsize=9, fontweight='500', color='white')
 
-    # Add professional grid - lighter blue
-    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='#4d4dff', zorder=0)
+    # Add professional grid - white
+    ax.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.8, color='white', zorder=0)
     ax.set_axisbelow(True)
 
     # Format y-axis with thousands separator - white text
@@ -168,9 +168,9 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     # Add blue background matching PDF
     ax.set_facecolor('#000080')
 
-    # Style spines - lighter blue
+    # Style spines - white
     for spine in ax.spines.values():
-        spine.set_edgecolor('#4d4dff')
+        spine.set_edgecolor('white')
         spine.set_linewidth(1.2)
 
     # Tight layout
@@ -238,20 +238,20 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x/1000)}k'))
     ax.tick_params(axis='y', labelsize=10, colors='white')
 
-    # Add professional grid - lighter blue
-    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='#4d4dff')
+    # Add professional grid - white
+    ax.grid(True, linestyle='--', alpha=0.25, linewidth=1, color='white')
 
     # Set radial axis limits for better appearance
     ax.set_ylim(0, max(production_values) * 1.1)
 
-    # Remove black circular boundary - use theme color
-    ax.spines['polar'].set_edgecolor('#4d4dff')
+    # Use white for circular boundary
+    ax.spines['polar'].set_edgecolor('white')
     ax.spines['polar'].set_linewidth(1.5)
 
-    # Title with brand color and proper RTL text - yellow
+    # Title with proper RTL text - white color
     title_text = f'ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש'
     ax.set_title(reshape_text_for_chart(title_text),
-                 fontsize=14, fontweight='bold', pad=20, y=1.08, color='#FFD700')
+                 fontsize=14, fontweight='bold', pad=20, y=1.08, color='white')
 
     # Add center annotation with brand styling and proper RTL text - yellow-green box
     center_text = f'דרום\n{int(annual_production):,}\nקוט״ש/שנה'
