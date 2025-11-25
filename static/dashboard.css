@@ -14,7 +14,7 @@ body {
     height: 100vh;
     background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
     color: white;
-    padding: 20px 20px;
+    padding: 22px 20px;
     display: flex;
     flex-direction: column;
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
@@ -26,8 +26,8 @@ body {
 }
 
 .sidebar h2 {
-    margin-bottom: 20px;
-    font-size: 22px;
+    margin-bottom: 22px;
+    font-size: 23px;
     font-weight: 700;
     letter-spacing: -0.5px;
     flex-shrink: 0;
@@ -37,7 +37,7 @@ body {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
     padding-right: 5px;
 }
 
