@@ -419,7 +419,6 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
-        quote_table.hAlign = 'RIGHT'  # Align table to the right margin
         elements.append(quote_table)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
@@ -662,13 +661,13 @@ def generate_quote_pdf(quote_data, company_info=None):
             reshape_hebrew('שנה')
         ])
 
-        # Year 0
+        # Year 0 - show investment as positive, cumulative in parentheses for negative
         cashflow_table_data.append([
-            f"{RLM}₪{format_number(int(-total_price))}",
+            f"{RLM}({format_number(int(total_price))}₪)",  # Negative cumulative in parentheses
             '-',
             '-',
             '-',
-            f"{RLM}₪{format_number(int(-total_price))}",
+            f"{RLM}₪{format_number(int(total_price))}",  # Investment shown as positive
             f"{RLM}0"
         ])
 
@@ -688,8 +687,14 @@ def generate_quote_pdf(quote_data, company_info=None):
             total_net_profit_sum += year_net_profit
             cumulative_cashflow = total_net_profit_sum - total_price
 
+            # Format cumulative cashflow - use parentheses for negative values
+            if cumulative_cashflow < 0:
+                cumulative_display = f"{RLM}({format_number(abs(cumulative_cashflow))}₪)"
+            else:
+                cumulative_display = f"{RLM}₪{format_number(cumulative_cashflow)}"
+
             cashflow_table_data.append([
-                f"{RLM}₪{format_number(cumulative_cashflow)}",
+                cumulative_display,
                 f"{RLM}₪{format_number(year_net_profit)}",
                 f"{RLM}₪{format_number(year_operating_cost)}",
                 f"{RLM}₪{format_number(year_revenue)}",
@@ -697,18 +702,18 @@ def generate_quote_pdf(quote_data, company_info=None):
                 f"{RLM}{str(year)}"
             ])
 
-        # Total row
+        # Total row - investment shown as positive amount
         cashflow_table_data.append([
             f"{RLM}₪{format_number(cumulative_cashflow)}",
             f"{RLM}₪{format_number(total_net_profit_sum)}",
             f"{RLM}₪{format_number(total_operating_sum)}",
             f"{RLM}₪{format_number(total_revenue_sum)}",
-            f"{RLM}₪{format_number(int(-total_price))}",
+            f"{RLM}₪{format_number(int(total_price))}",  # Show as positive
             reshape_hebrew('סה״כ')
         ])
 
-        # Create cash flow table (smaller font to fit all rows)
-        cashflow_table = Table(cashflow_table_data, colWidths=[1.0*inch, 1.0*inch, 0.9*inch, 1.0*inch, 1.0*inch, 0.6*inch])
+        # Create cash flow table (smaller font to fit all rows) - increased widths to fill page
+        cashflow_table = Table(cashflow_table_data, colWidths=[1.15*inch, 1.15*inch, 1.05*inch, 1.15*inch, 1.15*inch, 0.7*inch])
         cashflow_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
