@@ -440,26 +440,28 @@ def generate_quote_pdf(quote_data, company_info=None):
         customer_email_display = customer_email_val if customer_email_val else not_specified  # Email doesn't need reshaping
         customer_address_display = reshape_hebrew(customer_address_val) if customer_address_val else not_specified
 
-        # RTL: Value first (right), Label second (left)
+        # RTL: Label first (will appear on right), Value second (will appear on left)
         customer_data = [
-            [customer_name_display, reshape_hebrew('שם:')],
-            [customer_phone_display, reshape_hebrew('טלפון:')],
-            [customer_email_display, reshape_hebrew('אימייל:')],
-            [customer_address_display, reshape_hebrew('כתובת:')],
+            [reshape_hebrew('שם:'), customer_name_display],
+            [reshape_hebrew('טלפון:'), customer_phone_display],
+            [reshape_hebrew('אימייל:'), customer_email_display],
+            [reshape_hebrew('כתובת:'), customer_address_display],
         ]
 
-        customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
+        customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
         customer_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
+            ('ALIGN', (0, 0), (0, -1), 'RIGHT'),  # Labels aligned right
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),   # Values aligned left
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
+        customer_table.hAlign = 'RIGHT'  # Align table to the right margin
         elements.append(customer_table)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
@@ -509,10 +511,6 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Production Charts Section
         if system_size and annual_prod:
-            # Switch to LastPage template before page 2 starts
-            # This ensures page 2 has the yellow footer at the bottom
-            elements.append(NextPageTemplate('LastPage'))
-
             elements.append(Spacer(1, 0.05*inch))  # Reduced spacing
 
             # Monthly Production Chart
@@ -579,31 +577,65 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(financial_table)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
+        # Calculate financial metrics here (moved from later in the code)
+        RLM = '\u200F'
+        price_per_kwp = (total_price / 1.18) / system_size if system_size else 0
+        roa = ((annual_revenue / total_price) * 100) if total_price else 0
+
+        # Financial Metrics Summary on Page 2
+        metrics_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מדדים פיננסיים - סיכום השקעה")), heading_style)
+        elements.append(metrics_heading)
+        elements.append(Spacer(1, 0.06*inch))
+
+        metrics_data = [
+            [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
+            [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
+            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט')],
+            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
+            [f"{RLM}{payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
+        ]
+
+        metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D9FF0D')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
+            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(metrics_table)
+        elements.append(Spacer(1, 0.08*inch))
+
         # Environmental Impact
         env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
         elements.append(env_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
+        elements.append(Spacer(1, 0.06*inch))
 
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
         # Build environmental text with proper RTL formatting for numbers
-        # Using RLM (Right-to-Left Mark) to ensure proper number placement
-        RLM = '\u200F'
-
-        # Build the text in parts with proper direction marks
         part1 = format_rtl_number_text('המערכת הסולארית שלך תייצר כ-', annual_prod, ' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת ')
         part2 = format_rtl_number_text('', trees, ' עצים והפחתת פליטות CO2 ב-')
         part3 = format_rtl_number_text('', co2_saved, ' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
 
         env_text = escape_for_paragraph(part1 + part2 + part3)
-
         env_para = Paragraph(env_text, normal_style)
         elements.append(env_para)
         elements.append(Spacer(1, 0.1*inch))
 
-        # Add Cash Flow Analysis as Page 3
-        # First, we need to break to a new page before showing footer
+        # Switch to LastPage template for page 3 which has yellow footer
+        elements.append(NextPageTemplate('LastPage'))
+        # Page break to Page 3
         elements.append(PageBreak())
 
         # Cash Flow Analysis Section - Page 3
@@ -699,56 +731,37 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(cashflow_table)
         elements.append(Spacer(1, 0.08*inch))
 
-        # Financial Metrics Summary
-        metrics_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מדדים פיננסיים")), heading_style)
-        elements.append(metrics_heading)
-        elements.append(Spacer(1, 0.06*inch))
-
-        # Calculate metrics
-        price_per_kwp = (total_price / 1.18) / system_size if system_size else 0
-        roa = ((annual_revenue / total_price) * 100) if total_price else 0
-        total_cashflow_25 = cumulative_cashflow
-
-        metrics_data = [
-            [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
-            [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
-            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט')],
-            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
-            [f"{RLM}{payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
-            [f"{RLM}₪{format_number(total_cashflow_25)}", reshape_hebrew('תזרים מצטבר 25 שנה')],
-            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה על הון (IRR)')],
-        ]
-
-        metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
-        metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(metrics_table)
-        elements.append(Spacer(1, 0.06*inch))
-
         # Assumptions note
-        assumptions_text = reshape_hebrew('הנחות יסוד: ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנה')
+        assumptions_heading = Paragraph(escape_for_paragraph(reshape_hebrew("הנחות יסוד")), heading_style)
+        elements.append(assumptions_heading)
+        elements.append(Spacer(1, 0.04*inch))
+
+        assumptions_text = reshape_hebrew('ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנה')
         assumptions_para = Paragraph(escape_for_paragraph(assumptions_text), ParagraphStyle(
             'Assumptions',
             parent=normal_style,
-            fontSize=7,
+            fontSize=8,
             textColor=colors.white,
             alignment=TA_RIGHT,
-            fontName=FONT_NAME
+            fontName=FONT_NAME,
+            spaceAfter=10
         ))
         elements.append(assumptions_para)
+        elements.append(Spacer(1, 0.1*inch))
+
+        # Closing remarks
+        closing_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום")), heading_style)
+        elements.append(closing_heading)
+        elements.append(Spacer(1, 0.04*inch))
+
+        total_cashflow_25 = cumulative_cashflow
+        closing_text = format_rtl_number_text(
+            'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא ',
+            total_cashflow_25,
+            f' ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
+        )
+        closing_para = Paragraph(escape_for_paragraph(closing_text), normal_style)
+        elements.append(closing_para)
 
         # Break to footer frame - this moves content to the footer frame positioned in yellow area
         elements.append(FrameBreak())
