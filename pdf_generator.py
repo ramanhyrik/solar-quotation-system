@@ -419,6 +419,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
+        quote_table.hAlign = 'RIGHT'  # Align table to the right margin
         elements.append(quote_table)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
@@ -440,28 +441,26 @@ def generate_quote_pdf(quote_data, company_info=None):
         customer_email_display = customer_email_val if customer_email_val else not_specified  # Email doesn't need reshaping
         customer_address_display = reshape_hebrew(customer_address_val) if customer_address_val else not_specified
 
-        # RTL: Label first (will appear on right), Value second (will appear on left)
+        # RTL: Value first (right), Label second (left)
         customer_data = [
-            [reshape_hebrew('שם:'), customer_name_display],
-            [reshape_hebrew('טלפון:'), customer_phone_display],
-            [reshape_hebrew('אימייל:'), customer_email_display],
-            [reshape_hebrew('כתובת:'), customer_address_display],
+            [customer_name_display, reshape_hebrew('שם:')],
+            [customer_phone_display, reshape_hebrew('טלפון:')],
+            [customer_email_display, reshape_hebrew('אימייל:')],
+            [customer_address_display, reshape_hebrew('כתובת:')],
         ]
 
-        customer_table = Table(customer_data, colWidths=[1.2*inch, 4.8*inch])
+        customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
         customer_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (0, -1), 'RIGHT'),  # Labels aligned right
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),   # Values aligned left
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
-        customer_table.hAlign = 'RIGHT'  # Align table to the right margin
         elements.append(customer_table)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
