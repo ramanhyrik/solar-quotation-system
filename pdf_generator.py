@@ -596,7 +596,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
         metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D9FF0D')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
             ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
@@ -713,7 +713,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
             ('TEXTCOLOR', (0, 1), (-1, -2), colors.white),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#D9FF0D')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.white),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2d3748')),
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
@@ -735,7 +735,20 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(assumptions_heading)
         elements.append(Spacer(1, 0.04*inch))
 
-        assumptions_text = reshape_hebrew('ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנה')
+        # Build assumptions text with proper RTL formatting for numbers
+        RLM = '\u200F'
+        assumptions_parts = [
+            reshape_hebrew('ירידה שנתית בייצור: '),
+            f"{RLM}0.4%",
+            reshape_hebrew(' | עלויות תפעול: '),
+            f"{RLM}0.5%",
+            reshape_hebrew(' עלות המערכת, עלייה '),
+            f"{RLM}2%",
+            reshape_hebrew(' בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: '),
+            f"{RLM}25",
+            reshape_hebrew(' שנה')
+        ]
+        assumptions_text = ''.join(assumptions_parts)
         assumptions_para = Paragraph(escape_for_paragraph(assumptions_text), ParagraphStyle(
             'Assumptions',
             parent=normal_style,
@@ -793,11 +806,14 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         if company_info:
             if company_info.get('company_phone'):
-                right_lines.append(escape_for_paragraph(reshape_hebrew('טלפון: ')) + escape_for_paragraph(company_info['company_phone']))
+                # RTL: Phone number on left, label on right
+                right_lines.append(escape_for_paragraph(company_info['company_phone']) + ' :' + escape_for_paragraph(reshape_hebrew('טלפון')))
             if company_info.get('company_email'):
-                right_lines.append(escape_for_paragraph(reshape_hebrew('אימייל: ')) + escape_for_paragraph(company_info['company_email']))
+                # RTL: Email on left, label on right
+                right_lines.append(escape_for_paragraph(company_info['company_email']) + ' :' + escape_for_paragraph(reshape_hebrew('אימייל')))
             if company_info.get('company_address'):
-                right_lines.append(escape_for_paragraph(reshape_hebrew('כתובת: ')) + escape_for_paragraph(reshape_hebrew(company_info['company_address'])))
+                # RTL: Address on left, label on right
+                right_lines.append(escape_for_paragraph(reshape_hebrew(company_info['company_address'])) + ' :' + escape_for_paragraph(reshape_hebrew('כתובת')))
 
         right_lines.append("")
         right_lines.append(escape_for_paragraph(reshape_hebrew('כאן לשירותך וזמינה לשאלות ובירורים.')))
