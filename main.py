@@ -63,6 +63,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Templates
 templates = Jinja2Templates(directory="templates")
 
+# Health check endpoint for uptime monitoring
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for UptimeRobot and monitoring services"""
+    return {"status": "ok", "service": "solar-quotation-system"}
+
 def create_session(user_id: int, email: str, role: str) -> str:
     """Create a new session"""
     session_id = secrets.token_urlsafe(32)
