@@ -621,13 +621,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
-        # Build environmental text with proper RTL formatting for numbers
-        part1 = format_rtl_number_text('המערכת הסולארית שלך תייצר כ-', annual_prod, ' קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת ')
-        part2 = format_rtl_number_text('', trees, ' עצים והפחתת פליטות CO2 ב-')
-        part3 = format_rtl_number_text('', co2_saved, ' ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.')
-
-        env_text = escape_for_paragraph(part1 + part2 + part3)
-        env_para = Paragraph(env_text, normal_style)
+        # Build environmental text - use plain Hebrew for paragraphs
+        env_text = f'המערכת הסולארית שלך תייצר כ-{format_number(annual_prod)} קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת {format_number(trees)} עצים והפחתת פליטות CO2 ב-{format_number(co2_saved)} ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.'
+        env_para = Paragraph(escape_for_paragraph(env_text), normal_style)
         elements.append(env_para)
         elements.append(Spacer(1, 0.1*inch))
 
@@ -740,20 +736,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(assumptions_heading)
         elements.append(Spacer(1, 0.04*inch))
 
-        # Build assumptions text with proper RTL formatting for numbers
-        RLM = '\u200F'
-        assumptions_parts = [
-            reshape_hebrew('ירידה שנתית בייצור: '),
-            f"{RLM}0.4%",
-            reshape_hebrew(' | עלויות תפעול: '),
-            f"{RLM}0.5%",
-            reshape_hebrew(' עלות המערכת, עלייה '),
-            f"{RLM}2%",
-            reshape_hebrew(' בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: '),
-            f"{RLM}25",
-            reshape_hebrew(' שנה')
-        ]
-        assumptions_text = ''.join(assumptions_parts)
+        # Build assumptions text - use plain Hebrew for paragraphs
+        assumptions_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנים'
         assumptions_para = Paragraph(escape_for_paragraph(assumptions_text), ParagraphStyle(
             'Assumptions',
             parent=normal_style,
@@ -772,11 +756,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(Spacer(1, 0.04*inch))
 
         total_cashflow_25 = cumulative_cashflow
-        closing_text = format_rtl_number_text(
-            'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא ',
-            total_cashflow_25,
-            f' ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
-        )
+        # Use plain Hebrew for paragraphs
+        closing_text = f'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא {format_number(total_cashflow_25)} ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
         closing_para = Paragraph(escape_for_paragraph(closing_text), normal_style)
         elements.append(closing_para)
 
@@ -821,7 +802,7 @@ def generate_quote_pdf(quote_data, company_info=None):
                 right_lines.append(escape_for_paragraph(reshape_hebrew(company_info['company_address'])) + ' :' + escape_for_paragraph(reshape_hebrew('כתובת')))
 
         right_lines.append("")
-        right_lines.append(escape_for_paragraph(reshape_hebrew('כאן לשירותך וזמינה לשאלות ובירורים.')))
+        right_lines.append(escape_for_paragraph(reshape_hebrew('זמינים לשירותכם בכל שאלה.')))
 
         right_text = "<br/>".join(right_lines)
         right_para = Paragraph(right_text, footer_style_right)
