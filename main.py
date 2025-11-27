@@ -64,9 +64,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Health check endpoint for uptime monitoring
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    """Health check endpoint for UptimeRobot and monitoring services"""
+    """Health check endpoint for UptimeRobot and monitoring services (supports GET and HEAD)"""
     return {"status": "ok", "service": "solar-quotation-system"}
 
 def create_session(user_id: int, email: str, role: str) -> str:
