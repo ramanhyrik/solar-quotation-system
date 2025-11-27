@@ -621,9 +621,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         trees = int(annual_prod * 0.05) if annual_prod else 0
         co2_saved = int(annual_prod * 0.5) if annual_prod else 0
 
-        # Build environmental text - use plain Hebrew for paragraphs
+        # Build environmental text - reshape for proper RTL display
         env_text = f'המערכת הסולארית שלך תייצר כ-{format_number(annual_prod)} קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת {format_number(trees)} עצים והפחתת פליטות CO2 ב-{format_number(co2_saved)} ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.'
-        env_para = Paragraph(escape_for_paragraph(env_text), normal_style)
+        env_para = Paragraph(escape_for_paragraph(reshape_hebrew(env_text)), normal_style)
         elements.append(env_para)
         elements.append(Spacer(1, 0.1*inch))
 
@@ -736,9 +736,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(assumptions_heading)
         elements.append(Spacer(1, 0.04*inch))
 
-        # Build assumptions text - use plain Hebrew for paragraphs
+        # Build assumptions text - reshape for proper RTL display
         assumptions_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנים'
-        assumptions_para = Paragraph(escape_for_paragraph(assumptions_text), ParagraphStyle(
+        assumptions_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumptions_text)), ParagraphStyle(
             'Assumptions',
             parent=normal_style,
             fontSize=8,
@@ -756,9 +756,9 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(Spacer(1, 0.04*inch))
 
         total_cashflow_25 = cumulative_cashflow
-        # Use plain Hebrew for paragraphs
+        # Reshape for proper RTL display
         closing_text = f'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא {format_number(total_cashflow_25)} ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
-        closing_para = Paragraph(escape_for_paragraph(closing_text), normal_style)
+        closing_para = Paragraph(escape_for_paragraph(reshape_hebrew(closing_text)), normal_style)
         elements.append(closing_para)
 
         # Break to footer frame - this moves content to the footer frame positioned in yellow area
