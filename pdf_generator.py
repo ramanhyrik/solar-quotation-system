@@ -807,12 +807,37 @@ def generate_quote_pdf(quote_data, company_info=None):
         right_text = "<br/>".join(right_lines)
         right_para = Paragraph(right_text, footer_style_right)
 
-        # Left column: Signature line (longer underscore)
-        left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________________'))
-        left_para = Paragraph(left_text, footer_style_left)
+        # Left column: Signature image
+        # Try to load sign.png from multiple paths
+        sign_paths = [
+            os.path.join(cwd, 'sign.png'),
+            'sign.png',
+            os.path.join(script_dir, 'sign.png'),
+            os.path.join(cwd, 'static', 'images', 'sign.png'),
+            'static/images/sign.png',
+            os.path.join(script_dir, 'static', 'images', 'sign.png'),
+        ]
+
+        signature_element = None
+        for sign_path in sign_paths:
+            if os.path.exists(sign_path):
+                try:
+                    # Load signature image - adjust width and height as needed
+                    signature_element = Image(sign_path, width=1.5*inch, height=0.6*inch, kind='proportional')
+                    print(f"[OK] Signature image loaded from: {sign_path}")
+                    break
+                except Exception as e:
+                    print(f"[ERROR] Error loading signature from {sign_path}: {e}")
+                    continue
+
+        # Fallback to text if image not found
+        if signature_element is None:
+            print("[WARNING] Signature image not found, using text signature line")
+            left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________________'))
+            signature_element = Paragraph(left_text, footer_style_left)
 
         # Create two-column footer table: signature on left, company info on right
-        footer_data = [[left_para, right_para]]
+        footer_data = [[signature_element, right_para]]
         footer_table = Table(footer_data, colWidths=[2.5*inch, 3.5*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Signature at bottom
