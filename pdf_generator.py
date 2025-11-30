@@ -807,7 +807,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         right_text = "<br/>".join(right_lines)
         right_para = Paragraph(right_text, footer_style_right)
 
-        # Left column: Signature image
+        # Left column: Signature label with image
         # Try to load sign.png from multiple paths
         sign_paths = [
             os.path.join(cwd, 'sign.png'),
@@ -818,20 +818,33 @@ def generate_quote_pdf(quote_data, company_info=None):
             os.path.join(script_dir, 'static', 'images', 'sign.png'),
         ]
 
-        signature_element = None
+        signature_img = None
         for sign_path in sign_paths:
             if os.path.exists(sign_path):
                 try:
-                    # Load signature image - adjust width and height as needed
-                    signature_element = Image(sign_path, width=1.5*inch, height=0.6*inch, kind='proportional')
+                    # Load signature image - smaller size
+                    signature_img = Image(sign_path, width=1.0*inch, height=0.4*inch, kind='proportional')
                     print(f"[OK] Signature image loaded from: {sign_path}")
                     break
                 except Exception as e:
                     print(f"[ERROR] Error loading signature from {sign_path}: {e}")
                     continue
 
-        # Fallback to text if image not found
-        if signature_element is None:
+        # Create signature section with label and image
+        if signature_img is not None:
+            # Create a table with signature label on right and image on left (RTL layout)
+            sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימה:')), footer_style_left)
+            sig_table_data = [[signature_img, sig_label]]
+            signature_element = Table(sig_table_data, colWidths=[1.2*inch, 0.5*inch])
+            signature_element.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),   # Image on left
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
+                ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ]))
+        else:
+            # Fallback to text if image not found
             print("[WARNING] Signature image not found, using text signature line")
             left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________________'))
             signature_element = Paragraph(left_text, footer_style_left)
