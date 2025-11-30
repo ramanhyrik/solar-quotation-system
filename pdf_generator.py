@@ -835,13 +835,15 @@ def generate_quote_pdf(quote_data, company_info=None):
             # Create a table with signature label on right and image on left (RTL layout)
             sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימה:')), footer_style_left)
             sig_table_data = [[signature_img, sig_label]]
-            signature_element = Table(sig_table_data, colWidths=[1.2*inch, 0.5*inch])
+            signature_element = Table(sig_table_data, colWidths=[1.0*inch, 0.6*inch])
             signature_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),   # Image on left
+                ('ALIGN', (0, 0), (0, 0), 'RIGHT'),  # Image aligned right (closer to label)
                 ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
-                ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),  # Image vertically centered with text
+                ('VALIGN', (1, 0), (1, 0), 'MIDDLE'),  # Label vertically centered
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Minimal padding between image and label
+                ('RIGHTPADDING', (1, 0), (1, 0), 0),
             ]))
         else:
             # Fallback to text if image not found
