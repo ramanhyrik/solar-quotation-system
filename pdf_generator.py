@@ -736,8 +736,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             textColor=colors.white,
             alignment=TA_RIGHT,
             fontName=FONT_NAME,
-            spaceAfter=3,
-            leading=12,
+            spaceAfter=5,  # Increased from 3 to 5 for better separation
+            leading=13,  # Slightly increased from 12 to 13 for readability
             rightIndent=0,
             leftIndent=0
         )
@@ -764,7 +764,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             'TechnicalDetails',
             parent=normal_style,
             fontSize=8,
-            textColor=colors.white,
+            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme
             alignment=TA_RIGHT,
             fontName=FONT_NAME,
             spaceAfter=10
@@ -788,8 +788,8 @@ def generate_quote_pdf(quote_data, company_info=None):
         disclaimer_style = ParagraphStyle(
             'Disclaimer',
             parent=normal_style,
-            fontSize=7,
-            textColor=colors.white,
+            fontSize=8,  # Increased from 7 to 8 for better readability
+            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme and stand out
             alignment=TA_RIGHT,
             fontName=FONT_NAME,
             spaceAfter=10
