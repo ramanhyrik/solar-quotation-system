@@ -723,15 +723,45 @@ def generate_quote_pdf(quote_data, company_info=None):
         elements.append(cashflow_table)
         elements.append(Spacer(1, 0.08*inch))
 
-        # Assumptions note
-        assumptions_heading = Paragraph(escape_for_paragraph(reshape_hebrew("הנחות יסוד")), heading_style)
+        # Assumptions note with detailed list
+        assumptions_heading = Paragraph(escape_for_paragraph(reshape_hebrew("הנחות יסוד לחישוב הכנסות:")), heading_style)
         elements.append(assumptions_heading)
         elements.append(Spacer(1, 0.04*inch))
 
-        # Build assumptions text - reshape for proper RTL display
-        assumptions_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה | מחירי תעריפים עפ״י תקנות ייצור פרטי | אחריות: 25 שנים'
-        assumptions_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumptions_text)), ParagraphStyle(
-            'Assumptions',
+        # Detailed assumptions style
+        assumptions_style = ParagraphStyle(
+            'AssumptionsDetailed',
+            parent=normal_style,
+            fontSize=8,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
+            fontName=FONT_NAME,
+            spaceAfter=3,
+            leading=12,
+            rightIndent=0,
+            leftIndent=0
+        )
+
+        # Assumption 1
+        assumption1_text = '1. החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה.'
+        assumption1_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption1_text)), assumptions_style)
+        elements.append(assumption1_para)
+
+        # Assumption 2
+        assumption2_text = '2. החישוב מבוסס על תפוקת הפאנלים הסולאריים, כאשר 20% מסך הייצור נצרך לצריכה עצמית, ולפיכך נוצר חיסכון נוסף בצריכת החשמל בהתאם לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר. החישוב מניח תחזוקה נאותה של המערכת לאורך כל תקופת הפעולה.'
+        assumption2_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption2_text)), assumptions_style)
+        elements.append(assumption2_para)
+
+        # Assumption 3
+        assumption3_text = '3. כל הנתונים והחישובים המוצגים הינם הערכות בלבד, והכנסות מדויקות יתאפשרו רק לאחר התקנת המערכת וביצועיה בפועל.'
+        assumption3_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption3_text)), assumptions_style)
+        elements.append(assumption3_para)
+        elements.append(Spacer(1, 0.06*inch))
+
+        # Additional technical details
+        technical_details_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת.'
+        technical_para = Paragraph(escape_for_paragraph(reshape_hebrew(technical_details_text)), ParagraphStyle(
+            'TechnicalDetails',
             parent=normal_style,
             fontSize=8,
             textColor=colors.white,
@@ -739,7 +769,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             fontName=FONT_NAME,
             spaceAfter=10
         ))
-        elements.append(assumptions_para)
+        elements.append(technical_para)
         elements.append(Spacer(1, 0.1*inch))
 
         # Closing remarks
