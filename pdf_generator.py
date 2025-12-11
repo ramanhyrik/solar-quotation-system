@@ -651,7 +651,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         cashflow_table_data.append([
             reshape_hebrew('תזרים מצטבר'),
             reshape_hebrew('רווח נקי'),
-            reshape_hebrew('תפעול'),
             reshape_hebrew('הכנסה'),
             reshape_hebrew('השקעה'),
             reshape_hebrew('שנה')
@@ -660,7 +659,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Year 0 - show investment as positive, cumulative in parentheses for negative
         cashflow_table_data.append([
             f"({format_number(int(total_price))}₪)",  # Negative cumulative in parentheses
-            '-',
             '-',
             '-',
             f"₪{format_number(int(total_price))}",  # Investment shown as positive
@@ -692,7 +690,6 @@ def generate_quote_pdf(quote_data, company_info=None):
             cashflow_table_data.append([
                 cumulative_display,
                 f"₪{format_number(year_net_profit)}",
-                f"₪{format_number(year_operating_cost)}",
                 f"₪{format_number(year_revenue)}",
                 '-',
                 str(year)
@@ -702,14 +699,13 @@ def generate_quote_pdf(quote_data, company_info=None):
         cashflow_table_data.append([
             f"₪{format_number(cumulative_cashflow)}",
             f"₪{format_number(total_net_profit_sum)}",
-            f"₪{format_number(total_operating_sum)}",
             f"₪{format_number(total_revenue_sum)}",
             f"₪{format_number(int(total_price))}",  # Show as positive
             reshape_hebrew('סה״כ')
         ])
 
-        # Create cash flow table (smaller font to fit all rows) - increased widths to fill page
-        cashflow_table = Table(cashflow_table_data, colWidths=[1.15*inch, 1.15*inch, 1.05*inch, 1.15*inch, 1.15*inch, 0.7*inch])
+        # Create cash flow table (smaller font to fit all rows) - adjusted widths for 5 columns
+        cashflow_table = Table(cashflow_table_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch, 0.8*inch])
         cashflow_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
@@ -807,7 +803,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         right_text = "<br/>".join(right_lines)
         right_para = Paragraph(right_text, footer_style_right)
 
-        # Left column: Signature label with image
+        # Signature section: customer signature on left, company signature in middle, company info on right
         # Try to load sign.png from multiple paths
         sign_paths = [
             os.path.join(cwd, 'sign.png'),
@@ -830,13 +826,17 @@ def generate_quote_pdf(quote_data, company_info=None):
                     print(f"[ERROR] Error loading signature from {sign_path}: {e}")
                     continue
 
-        # Create signature section with label and image
+        # Left column: Customer signature (text line)
+        customer_sig_text = escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________'))
+        customer_sig_element = Paragraph(customer_sig_text, footer_style_left)
+
+        # Middle column: Company signature with label and image
         if signature_img is not None:
             # Create a table with signature label on right and image on left (RTL layout)
-            sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימה:')), footer_style_left)
+            sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה:')), footer_style_left)
             sig_table_data = [[signature_img, sig_label]]
-            signature_element = Table(sig_table_data, colWidths=[1.0*inch, 0.6*inch])
-            signature_element.setStyle(TableStyle([
+            company_sig_element = Table(sig_table_data, colWidths=[1.0*inch, 0.8*inch])
+            company_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'RIGHT'),  # Image aligned right (closer to label)
                 ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
                 ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),  # Image vertically centered with text
@@ -848,19 +848,21 @@ def generate_quote_pdf(quote_data, company_info=None):
         else:
             # Fallback to text if image not found
             print("[WARNING] Signature image not found, using text signature line")
-            left_text = escape_for_paragraph(reshape_hebrew('חתימה: _______________________'))
-            signature_element = Paragraph(left_text, footer_style_left)
+            company_sig_text = escape_for_paragraph(reshape_hebrew('חתימת החברה: ______________'))
+            company_sig_element = Paragraph(company_sig_text, footer_style_left)
 
-        # Create two-column footer table: signature on left, company info on right
-        footer_data = [[signature_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[2.5*inch, 3.5*inch])
+        # Create three-column footer table: customer signature on left, company signature in middle, company info on right
+        footer_data = [[customer_sig_element, company_sig_element, right_para]]
+        footer_table = Table(footer_data, colWidths=[1.5*inch, 1.8*inch, 2.7*inch])
         footer_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Signature at bottom
-            ('VALIGN', (1, 0), (1, 0), 'TOP'),      # Company info at top
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('LEFTPADDING', (0, 0), (0, 0), 0),     # Remove left padding for signature
-            ('RIGHTPADDING', (1, 0), (1, 0), 0),    # Remove right padding to align with text margin
+            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
+            ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
+            ('VALIGN', (2, 0), (2, 0), 'TOP'),      # Company info at top
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),      # Customer signature left
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),    # Company signature center
+            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),     # Company info right
+            ('LEFTPADDING', (0, 0), (0, 0), 0),     # Remove left padding for customer signature
+            ('RIGHTPADDING', (2, 0), (2, 0), 0),    # Remove right padding to align with text margin
         ]))
 
         # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background

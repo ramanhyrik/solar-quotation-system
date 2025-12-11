@@ -65,7 +65,7 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pricing_parameters (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                price_per_kwp REAL DEFAULT 4130,
+                price_per_kwp REAL DEFAULT 4300,
                 production_per_kwp REAL DEFAULT 1360,
                 tariff_rate REAL DEFAULT 0.48,
                 trees_multiplier REAL DEFAULT 0.05,
@@ -97,7 +97,7 @@ def init_database():
             cursor.execute('''
                 INSERT INTO pricing_parameters
                 (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate)
-                VALUES (4130, 1360, 0.48, 0.05, 0.17)
+                VALUES (4300, 1360, 0.48, 0.05, 0.17)
             ''')
             conn.commit()
 
