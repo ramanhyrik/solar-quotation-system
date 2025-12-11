@@ -577,7 +577,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Calculate financial metrics here (moved from later in the code)
         RLM = '\u200F'
-        price_per_kwp = (total_price / 1.18) / system_size if system_size else 0
+        price_per_kwp = total_price / system_size if system_size else 0  # Include VAT
         roa = ((annual_revenue / total_price) * 100) if total_price else 0
 
         # Financial Metrics Summary on Page 2
@@ -752,6 +752,21 @@ def generate_quote_pdf(quote_data, company_info=None):
         closing_text = f'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא {format_number(total_cashflow_25)} ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
         closing_para = Paragraph(escape_for_paragraph(reshape_hebrew(closing_text)), normal_style)
         elements.append(closing_para)
+        elements.append(Spacer(1, 0.1*inch))
+
+        # Disclaimer text
+        disclaimer_style = ParagraphStyle(
+            'Disclaimer',
+            parent=normal_style,
+            fontSize=7,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
+            fontName=FONT_NAME,
+            spaceAfter=10
+        )
+        disclaimer_text = '* כל הנתונים בהצעה משוערים ועשויים להשתנות בהתאם לאיזור וייקבעו לאחר ביצוע ההתקנה.'
+        disclaimer_para = Paragraph(escape_for_paragraph(reshape_hebrew(disclaimer_text)), disclaimer_style)
+        elements.append(disclaimer_para)
 
         # Break to footer frame - this moves content to the footer frame positioned in yellow area
         elements.append(FrameBreak())
