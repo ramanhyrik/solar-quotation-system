@@ -639,7 +639,6 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Calculate cash flow data
         degradation_rate = 0.004
-        base_operating_cost = total_price * 0.005
         cumulative_cashflow = -total_price
 
         # RLM mark for proper number alignment
@@ -666,18 +665,15 @@ def generate_quote_pdf(quote_data, company_info=None):
         ])
 
         total_revenue_sum = 0
-        total_operating_sum = 0
         total_net_profit_sum = 0
 
         # Years 1-25
         for year in range(1, 26):
             yearly_degradation = 1 - (degradation_rate * (year - 1))
             year_revenue = int(annual_revenue * yearly_degradation)
-            year_operating_cost = int(base_operating_cost * (1.02 ** (year - 1)))
-            year_net_profit = year_revenue - year_operating_cost
+            year_net_profit = year_revenue  # Net profit equals revenue (no operating costs)
 
             total_revenue_sum += year_revenue
-            total_operating_sum += year_operating_cost
             total_net_profit_sum += year_net_profit
             cumulative_cashflow = total_net_profit_sum - total_price
 
@@ -826,9 +822,17 @@ def generate_quote_pdf(quote_data, company_info=None):
                     print(f"[ERROR] Error loading signature from {sign_path}: {e}")
                     continue
 
-        # Left column: Customer signature (text line)
-        customer_sig_text = escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________'))
-        customer_sig_element = Paragraph(customer_sig_text, footer_style_left)
+        # Left column: Customer signature (text line) - wrapped in table for consistent alignment
+        customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
+        customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+        customer_sig_element.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+            ('LEFTPADDING', (0, 0), (0, 0), 0),
+            ('RIGHTPADDING', (0, 0), (0, 0), 0),
+            ('TOPPADDING', (0, 0), (0, 0), 0),
+            ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+        ]))
 
         # Middle column: Company signature with label and image
         if signature_img is not None:
@@ -839,17 +843,27 @@ def generate_quote_pdf(quote_data, company_info=None):
             company_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'RIGHT'),  # Image aligned right (closer to label)
                 ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
-                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),  # Image vertically centered with text
-                ('VALIGN', (1, 0), (1, 0), 'MIDDLE'),  # Label vertically centered
+                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Image aligned to bottom
+                ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Label aligned to bottom
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Minimal padding between image and label
                 ('RIGHTPADDING', (1, 0), (1, 0), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
             ]))
         else:
             # Fallback to text if image not found
             print("[WARNING] Signature image not found, using text signature line")
-            company_sig_text = escape_for_paragraph(reshape_hebrew('חתימת החברה: ______________'))
-            company_sig_element = Paragraph(company_sig_text, footer_style_left)
+            company_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה: ______________')), footer_style_left)
+            company_sig_element = Table([[company_sig_para]], colWidths=[1.8*inch])
+            company_sig_element.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                ('TOPPADDING', (0, 0), (0, 0), 0),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+            ]))
 
         # Create three-column footer table: customer signature on left, company signature in middle, company info on right
         footer_data = [[customer_sig_element, company_sig_element, right_para]]
