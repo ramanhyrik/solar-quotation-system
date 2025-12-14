@@ -732,17 +732,25 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
         )
 
 # Email configuration using Resend
-# Resend API Key
-RESEND_API_KEY = "re_f8heo33a_FvE13LJELo1kkHRygp3eVHh4"
-resend.api_key = RESEND_API_KEY
+# Get API key from environment variable for security
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+else:
+    print("[WARNING] RESEND_API_KEY environment variable not set - email notifications will not work")
 
 EMAIL_CONFIG = {
     "sender_email": "onboarding@resend.dev",  # Resend default sender for testing
-    "recipient_email": "engr.ramankamran@gmail.com"  # Where to receive notifications
+    "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
     """Send email notification when customer submits contact form using Resend API"""
+    # Check if API key is configured
+    if not RESEND_API_KEY:
+        print("[EMAIL] Resend API key not configured - skipping email notification")
+        return False
+
     try:
         # Prepare email body
         email_body = f"""
