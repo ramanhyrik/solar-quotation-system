@@ -728,6 +728,11 @@ EMAIL_CONFIG = {
 
 def send_email_notification(customer_data: dict, signature_path: str):
     """Send email notification when customer submits contact form"""
+    # Check if email is configured
+    if EMAIL_CONFIG["sender_email"] == "your_email@gmail.com" or EMAIL_CONFIG["sender_password"] == "your_app_password":
+        print("[EMAIL] Email not configured, skipping email notification")
+        return False
+
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_CONFIG["sender_email"]
@@ -762,8 +767,8 @@ This is an automated message from your Solar Quotation System.
                 img.add_header('Content-Disposition', 'attachment', filename='customer_signature.png')
                 msg.attach(img)
 
-        # Send email
-        with smtplib.SMTP(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"]) as server:
+        # Send email with timeout
+        with smtplib.SMTP(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"], timeout=5) as server:
             server.starttls()
             server.login(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_password"])
             server.send_message(msg)
@@ -772,7 +777,7 @@ This is an automated message from your Solar Quotation System.
         return True
     except Exception as e:
         print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
-        traceback.print_exc()
+        # Don't print full traceback to avoid cluttering logs
         return False
 
 @app.get("/contact", response_class=HTMLResponse)
