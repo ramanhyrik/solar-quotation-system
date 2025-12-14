@@ -744,8 +744,8 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
 EMAIL_CONFIG = {
     "smtp_server": "smtp.gmail.com",
     "smtp_port": 587,
-    "sender_email": "your_email@gmail.com",  # Replace with your Gmail
-    "sender_password": "your_app_password",   # Replace with Gmail App Password
+    "sender_email": "engr.ramankamran@gmail.com",  # Replace with your Gmail
+    "sender_password": "iyou qyeq sqha yzyn",   # Replace with Gmail App Password
     "recipient_email": "engr.ramankamran@gmail.com"
 }
 
