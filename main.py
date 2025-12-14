@@ -734,12 +734,18 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             detail=f"Failed to generate PDF: {str(e)}"
         )
 
-# Email configuration (will be moved to environment variables later)
+# Email configuration
+# TO ENABLE EMAIL NOTIFICATIONS:
+# 1. Go to https://myaccount.google.com/apppasswords (must have 2FA enabled)
+# 2. Create a new app password for "Mail"
+# 3. Copy the 16-character password
+# 4. Replace "your_email@gmail.com" with your Gmail address
+# 5. Replace "your_app_password" with the app password from step 3
 EMAIL_CONFIG = {
     "smtp_server": "smtp.gmail.com",
     "smtp_port": 587,
-    "sender_email": "your_email@gmail.com",  # Will be updated
-    "sender_password": "your_app_password",   # Will be updated
+    "sender_email": "your_email@gmail.com",  # Replace with your Gmail
+    "sender_password": "your_app_password",   # Replace with Gmail App Password
     "recipient_email": "engr.ramankamran@gmail.com"
 }
 
