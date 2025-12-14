@@ -161,6 +161,16 @@ async def users_page(request: Request, user=Depends(get_current_user)):
         "user": user
     })
 
+@app.get("/submissions", response_class=HTMLResponse)
+async def submissions_page(request: Request, user=Depends(get_current_user)):
+    """Customer submissions management page"""
+    if not user or user["role"] != "ADMIN":
+        return RedirectResponse(url="/login")
+    return templates.TemplateResponse("submissions.html", {
+        "request": request,
+        "user": user
+    })
+
 @app.get("/api/pricing")
 async def get_pricing():
     """Get current pricing parameters"""
@@ -553,6 +563,87 @@ async def delete_user(user_id: int, user=Depends(get_current_user)):
         conn.commit()
 
     return {"message": "User deleted successfully"}
+
+@app.get("/api/submissions")
+async def get_submissions(user=Depends(get_current_user)):
+    """Get all customer submissions (admin only)"""
+    if not user or user["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, customer_name, customer_phone, customer_email,
+                   customer_address, roof_area, signature_path,
+                   submission_date, status, notes
+            FROM customer_submissions
+            ORDER BY submission_date DESC
+        """)
+        submissions = cursor.fetchall()
+        return [dict(s) for s in submissions]
+
+@app.put("/api/submissions/{submission_id}")
+async def update_submission(
+    submission_id: int,
+    status: str = Form(...),
+    notes: str = Form(None),
+    user=Depends(get_current_user)
+):
+    """Update submission status and notes (admin only)"""
+    if not user or user["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    # Validate status
+    valid_statuses = ["new", "contacted", "quoted", "converted", "rejected"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Check if submission exists
+        cursor.execute("SELECT id FROM customer_submissions WHERE id = ?", (submission_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Submission not found")
+
+        # Update submission
+        cursor.execute("""
+            UPDATE customer_submissions
+            SET status = ?, notes = ?
+            WHERE id = ?
+        """, (status, notes, submission_id))
+        conn.commit()
+
+    return {"message": "Submission updated successfully"}
+
+@app.delete("/api/submissions/{submission_id}")
+async def delete_submission(submission_id: int, user=Depends(get_current_user)):
+    """Delete customer submission (admin only)"""
+    if not user or user["role"] != "ADMIN":
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Get signature path before deleting
+        cursor.execute("SELECT signature_path FROM customer_submissions WHERE id = ?", (submission_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Submission not found")
+
+        # Delete signature file if exists
+        if result['signature_path'] and os.path.exists(result['signature_path']):
+            try:
+                os.remove(result['signature_path'])
+            except Exception as e:
+                print(f"Error deleting signature file: {e}")
+
+        # Delete submission
+        cursor.execute("DELETE FROM customer_submissions WHERE id = ?", (submission_id,))
+        conn.commit()
+
+    return {"message": "Submission deleted successfully"}
 
 @app.get("/api/quotes/{quote_id}/pdf")
 async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
