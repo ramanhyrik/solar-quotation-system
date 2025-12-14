@@ -15,7 +15,7 @@ import traceback
 import re
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf
-import resend
+from mailersend import emails
 import base64
 
 # Detect if running in production (on Render or other HTTPS environment)
@@ -731,27 +731,29 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             detail=f"Failed to generate PDF: {str(e)}"
         )
 
-# Email configuration using Resend
+# Email configuration using MailerSend
 # Get API key from environment variable for security
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
-else:
-    print("[WARNING] RESEND_API_KEY environment variable not set - email notifications will not work")
+MAILERSEND_API_KEY = os.getenv("MAILERSEND_API_KEY", "")
+if not MAILERSEND_API_KEY:
+    print("[WARNING] MAILERSEND_API_KEY environment variable not set - email notifications will not work")
 
 EMAIL_CONFIG = {
-    "sender_email": "onboarding@resend.dev",  # Resend default sender for testing
-    "recipient_email": os.getenv("RECIPIENT_EMAIL", "ml.researcher@namal.edu.pk")  # Where to receive notifications (must match Resend signup email)
+    "sender_email": os.getenv("SENDER_EMAIL", "noreply@trial-3z0vklo73n5ldo2r.mlsender.net"),  # MailerSend verified sender
+    "sender_name": "Solar Quotation System",
+    "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
-    """Send email notification when customer submits contact form using Resend API"""
+    """Send email notification when customer submits contact form using MailerSend API"""
     # Check if API key is configured
-    if not RESEND_API_KEY:
-        print("[EMAIL] Resend API key not configured - skipping email notification")
+    if not MAILERSEND_API_KEY:
+        print("[EMAIL] MailerSend API key not configured - skipping email notification")
         return False
 
     try:
+        # Initialize MailerSend client
+        mailer = emails.NewEmail(MAILERSEND_API_KEY)
+
         # Prepare email body
         email_body = f"""
 <h2>New Customer Contact Form Submission</h2>
@@ -773,31 +775,40 @@ def send_email_notification(customer_data: dict, signature_path: str):
 <p style="color: #666; font-size: 12px;">This is an automated message from your Solar Quotation System.</p>
 """
 
-        # Prepare attachment
-        attachments = []
-        if signature_path and os.path.exists(signature_path):
-            with open(signature_path, 'rb') as f:
-                signature_data = base64.b64encode(f.read()).decode('utf-8')
-                attachments.append({
-                    "filename": "customer_signature.png",
-                    "content": signature_data
-                })
-
-        # Send email via Resend
-        params = {
-            "from": EMAIL_CONFIG["sender_email"],
-            "to": [EMAIL_CONFIG["recipient_email"]],
-            "subject": f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}",
-            "html": email_body
+        # Set up email
+        mail_from = {
+            "name": EMAIL_CONFIG["sender_name"],
+            "email": EMAIL_CONFIG["sender_email"]
         }
 
-        if attachments:
-            params["attachments"] = attachments
+        recipients = [
+            {
+                "name": "Solar Admin",
+                "email": EMAIL_CONFIG["recipient_email"]
+            }
+        ]
 
-        response = resend.Emails.send(params)
+        mailer.set_mail_from(mail_from, {})
+        mailer.set_mail_to(recipients, {})
+        mailer.set_subject(f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}", {})
+        mailer.set_html_content(email_body, {})
+
+        # Add attachment if signature exists
+        if signature_path and os.path.exists(signature_path):
+            attachments = [
+                {
+                    "id": "signature",
+                    "filename": "customer_signature.png",
+                    "content": base64.b64encode(open(signature_path, 'rb').read()).decode()
+                }
+            ]
+            mailer.set_attachments(attachments, {})
+
+        # Send email
+        response = mailer.send()
 
         print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
-        print(f"[EMAIL] Resend response: {response}")
+        print(f"[EMAIL] MailerSend response: {response}")
         return True
 
     except Exception as e:
