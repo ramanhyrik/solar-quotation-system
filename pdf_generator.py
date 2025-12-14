@@ -742,20 +742,15 @@ def generate_quote_pdf(quote_data, company_info=None):
             leftIndent=0
         )
 
-        # Assumption 1
-        assumption1_text = '1. החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה.'
+        # Assumption 1 (combined)
+        assumption1_text = '1.החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר,החישוב מניח תחזוקה נאותה של מערכת לאורך כל תקופת הפעולה.'
         assumption1_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption1_text)), assumptions_style)
         elements.append(assumption1_para)
 
         # Assumption 2
-        assumption2_text = '2. החישוב מבוסס על תפוקת הפאנלים הסולאריים, כאשר 20% מסך הייצור נצרך לצריכה עצמית, ולפיכך נוצר חיסכון נוסף בצריכת החשמל בהתאם לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר. החישוב מניח תחזוקה נאותה של המערכת לאורך כל תקופת הפעולה.'
+        assumption2_text = '2. כל הנתונים והחישובים המוצגים הינם הערכות בלבד, והכנסות מדויקות יתאפשרו רק לאחר התקנת המערכת וביצועיה בפועל.'
         assumption2_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption2_text)), assumptions_style)
         elements.append(assumption2_para)
-
-        # Assumption 3
-        assumption3_text = '3. כל הנתונים והחישובים המוצגים הינם הערכות בלבד, והכנסות מדויקות יתאפשרו רק לאחר התקנת המערכת וביצועיה בפועל.'
-        assumption3_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption3_text)), assumptions_style)
-        elements.append(assumption3_para)
         elements.append(Spacer(1, 0.06*inch))
 
         # Additional technical details
