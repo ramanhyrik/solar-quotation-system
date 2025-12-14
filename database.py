@@ -89,6 +89,22 @@ def init_database():
             )
         ''')
 
+        # Customer submissions table (public contact form)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS customer_submissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                customer_phone TEXT,
+                customer_email TEXT,
+                customer_address TEXT,
+                roof_area REAL,
+                signature_path TEXT,
+                submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'new',
+                notes TEXT
+            )
+        ''')
+
         conn.commit()
 
         # Insert default pricing parameters if not exists

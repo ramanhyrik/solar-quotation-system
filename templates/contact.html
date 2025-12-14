@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>צור קשר - אנרגיה סולארית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #000080 0%, #000060 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #000080;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #000080;
+            box-shadow: 0 0 0 4px rgba(0, 53, 138, 0.1);
+        }
+
+        .signature-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .signature-label {
+            font-weight: 600;
+            color: #000080;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .signature-canvas-container {
+            position: relative;
+            background: white;
+            border: 2px solid #000080;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        #signatureCanvas {
+            border-radius: 10px;
+            touch-action: none;
+            display: block;
+            width: 100%;
+            height: 200px;
+            cursor: crosshair;
+        }
+
+        .signature-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-clear {
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-clear:hover {
+            background: #c82333;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #000080 0%, #000060 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            border: 2px solid #c3e6cb;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 2px solid #f5c6cb;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .required {
+            color: #dc3545;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            #signatureCanvas {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/static/images/logo2.png" alt="Solar Logo" class="logo" onerror="this.style.display='none'">
+            <h1>השאירו פרטים</h1>
+            <p class="subtitle">נשמח לעמוד לשירותכם ולחזור אליכם בהקדם</p>
+        </div>
+
+        <form id="contactForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="customerName">שם מלא <span class="required">*</span></label>
+                <input type="text" id="customerName" name="customer_name" required placeholder="הזן שם מלא">
+            </div>
+
+            <div class="form-group">
+                <label for="customerPhone">טלפון <span class="required">*</span></label>
+                <input type="tel" id="customerPhone" name="customer_phone" required placeholder="050-1234567">
+            </div>
+
+            <div class="form-group">
+                <label for="customerEmail">אימייל</label>
+                <input type="email" id="customerEmail" name="customer_email" placeholder="example@email.com">
+            </div>
+
+            <div class="form-group">
+                <label for="customerAddress">כתובת</label>
+                <input type="text" id="customerAddress" name="customer_address" placeholder="עיר, רחוב">
+            </div>
+
+            <div class="form-group">
+                <label for="roofArea">שטח גג משוער (מ"ר)</label>
+                <input type="number" id="roofArea" name="roof_area" placeholder="לדוגמה: 135" min="0" step="1">
+            </div>
+
+            <div class="signature-section">
+                <div class="signature-label">חתימה דיגיטלית <span class="required">*</span></div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">אנא חתמו במסגרת באמצעות העכבר או האצבע</p>
+                <div class="signature-canvas-container">
+                    <canvas id="signatureCanvas"></canvas>
+                </div>
+                <div class="signature-buttons">
+                    <button type="button" class="btn-clear" onclick="clearSignature()">נקה חתימה</button>
+                </div>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">שלח פרטים</button>
+        </form>
+
+        <div id="successMessage" class="success-message">
+            <h2 style="color: #155724; margin-bottom: 10px;">✓ הפרטים נשלחו בהצלחה!</h2>
+            <p>תודה שפניתם אלינו. נחזור אליכם בהקדם.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script>
+        // Initialize signature pad
+        const canvas = document.getElementById('signatureCanvas');
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)',
+            minWidth: 1,
+            maxWidth: 3
+        });
+
+        // Resize canvas
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        function clearSignature() {
+            signaturePad.clear();
+        }
+
+        // Form submission
+        document.getElementById('contactForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const errorDiv = document.getElementById('errorMessage');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // Validate signature
+            if (signaturePad.isEmpty()) {
+                errorDiv.textContent = 'אנא חתמו במסגרת החתימה';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            errorDiv.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'שולח...';
+
+            try {
+                const formData = new FormData(this);
+
+                // Add signature as blob
+                const signatureBlob = await fetch(signaturePad.toDataURL()).then(r => r.blob());
+                formData.append('signature', signatureBlob, 'signature.png');
+
+                const response = await fetch('/api/submit-contact', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('contactForm').style.display = 'none';
+                    document.getElementById('successMessage').classList.add('show');
+                } else {
+                    errorDiv.textContent = result.detail || 'שגיאה בשליחת הטופס';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'שלח פרטים';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = 'שגיאה בשליחת הטופס. אנא נסו שוב.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'שלח פרטים';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -15,6 +15,11 @@ import traceback
 import re
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
+import base64
 
 # Session store (in-memory for simplicity)
 sessions = {}
@@ -620,6 +625,135 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             status_code=500,
             detail=f"Failed to generate PDF: {str(e)}"
         )
+
+# Email configuration (will be moved to environment variables later)
+EMAIL_CONFIG = {
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender_email": "your_email@gmail.com",  # Will be updated
+    "sender_password": "your_app_password",   # Will be updated
+    "recipient_email": "engr.ramankamran@gmail.com"
+}
+
+def send_email_notification(customer_data: dict, signature_path: str):
+    """Send email notification when customer submits contact form"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_CONFIG["sender_email"]
+        msg['To'] = EMAIL_CONFIG["recipient_email"]
+        msg['Subject'] = f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}"
+
+        # Email body
+        body = f"""
+New Customer Contact Form Submission
+
+Customer Details:
+-----------------
+Name: {customer_data.get('customer_name', 'N/A')}
+Phone: {customer_data.get('customer_phone', 'N/A')}
+Email: {customer_data.get('customer_email', 'N/A')}
+Address: {customer_data.get('customer_address', 'N/A')}
+Roof Area: {customer_data.get('roof_area', 'N/A')} m²
+
+Submission Date: {customer_data.get('submission_date', 'N/A')}
+
+Signature image is attached.
+
+---
+This is an automated message from your Solar Quotation System.
+"""
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Attach signature image
+        if signature_path and os.path.exists(signature_path):
+            with open(signature_path, 'rb') as f:
+                img = MIMEImage(f.read())
+                img.add_header('Content-Disposition', 'attachment', filename='customer_signature.png')
+                msg.attach(img)
+
+        # Send email
+        with smtplib.SMTP(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"]) as server:
+            server.starttls()
+            server.login(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_password"])
+            server.send_message(msg)
+
+        print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
+        traceback.print_exc()
+        return False
+
+@app.get("/contact", response_class=HTMLResponse)
+async def contact_form(request: Request):
+    """Public contact form page"""
+    return templates.TemplateResponse("contact.html", {"request": request})
+
+@app.post("/api/submit-contact")
+async def submit_contact(
+    customer_name: str = Form(...),
+    customer_phone: str = Form(...),
+    customer_email: Optional[str] = Form(None),
+    customer_address: Optional[str] = Form(None),
+    roof_area: Optional[float] = Form(None),
+    signature: UploadFile = File(...)
+):
+    """Handle contact form submission with signature"""
+    try:
+        # Create signatures directory if it doesn't exist
+        signatures_dir = os.path.join("static", "signatures")
+        os.makedirs(signatures_dir, exist_ok=True)
+
+        # Save signature image
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        signature_filename = f"signature_{timestamp}_{secrets.token_hex(4)}.png"
+        signature_path = os.path.join(signatures_dir, signature_filename)
+
+        with open(signature_path, "wb") as buffer:
+            shutil.copyfileobj(signature.file, buffer)
+
+        # Save to database
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO customer_submissions
+                (customer_name, customer_phone, customer_email, customer_address, roof_area, signature_path, submission_date, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                customer_name,
+                customer_phone,
+                customer_email or None,
+                customer_address or None,
+                roof_area,
+                signature_path,
+                datetime.now(),
+                'new'
+            ))
+            conn.commit()
+            submission_id = cursor.lastrowid
+
+        # Prepare email data
+        customer_data = {
+            "customer_name": customer_name,
+            "customer_phone": customer_phone,
+            "customer_email": customer_email or "N/A",
+            "customer_address": customer_address or "N/A",
+            "roof_area": roof_area or "N/A",
+            "submission_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        # Send email notification (don't fail if email fails)
+        send_email_notification(customer_data, signature_path)
+
+        return JSONResponse(content={
+            "message": "Submission received successfully",
+            "submission_id": submission_id
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Contact submission failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
