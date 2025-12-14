@@ -9,5 +9,4 @@ matplotlib==3.8.2
 pillow==10.2.0
 python-bidi==0.4.2
 arabic-reshaper==3.0.0
-fastapi-mail==1.4.1
-aiofiles==23.2.1
+resend==0.8.0

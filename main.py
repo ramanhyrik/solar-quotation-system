@@ -15,10 +15,7 @@ import traceback
 import re
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
+import resend
 import base64
 
 # Detect if running in production (on Render or other HTTPS environment)
@@ -734,70 +731,67 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             detail=f"Failed to generate PDF: {str(e)}"
         )
 
-# Email configuration
-# TO ENABLE EMAIL NOTIFICATIONS:
-# 1. Go to https://myaccount.google.com/apppasswords (must have 2FA enabled)
-# 2. Create a new app password for "Mail"
-# 3. Copy the 16-character password
-# 4. Replace "your_email@gmail.com" with your Gmail address
-# 5. Replace "your_app_password" with the app password from step 3
+# Email configuration using Resend
+# Resend API Key
+RESEND_API_KEY = "re_f8heo33a_FvE13LJELo1kkHRygp3eVHh4"
+resend.api_key = RESEND_API_KEY
+
 EMAIL_CONFIG = {
-    "smtp_server": "smtp.gmail.com",
-    "smtp_port": 587,
-    "sender_email": "engr.ramankamran@gmail.com",  # Replace with your Gmail
-    "sender_password": "iyou qyeq sqha yzyn",   # Replace with Gmail App Password
-    "recipient_email": "engr.ramankamran@gmail.com"
+    "sender_email": "onboarding@resend.dev",  # Resend default sender for testing
+    "recipient_email": "engr.ramankamran@gmail.com"  # Where to receive notifications
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
-    """Send email notification when customer submits contact form"""
-    # Check if email is configured
-    if EMAIL_CONFIG["sender_email"] == "your_email@gmail.com" or EMAIL_CONFIG["sender_password"] == "your_app_password":
-        print("[EMAIL] Email not configured, skipping email notification")
-        return False
-
+    """Send email notification when customer submits contact form using Resend API"""
     try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_CONFIG["sender_email"]
-        msg['To'] = EMAIL_CONFIG["recipient_email"]
-        msg['Subject'] = f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}"
+        # Prepare email body
+        email_body = f"""
+<h2>New Customer Contact Form Submission</h2>
 
-        # Email body
-        body = f"""
-New Customer Contact Form Submission
+<h3>Customer Details:</h3>
+<ul>
+    <li><strong>Name:</strong> {customer_data.get('customer_name', 'N/A')}</li>
+    <li><strong>Phone:</strong> {customer_data.get('customer_phone', 'N/A')}</li>
+    <li><strong>Email:</strong> {customer_data.get('customer_email', 'N/A')}</li>
+    <li><strong>Address:</strong> {customer_data.get('customer_address', 'N/A')}</li>
+    <li><strong>Roof Area:</strong> {customer_data.get('roof_area', 'N/A')} m²</li>
+</ul>
 
-Customer Details:
------------------
-Name: {customer_data.get('customer_name', 'N/A')}
-Phone: {customer_data.get('customer_phone', 'N/A')}
-Email: {customer_data.get('customer_email', 'N/A')}
-Address: {customer_data.get('customer_address', 'N/A')}
-Roof Area: {customer_data.get('roof_area', 'N/A')} m²
+<p><strong>Submission Date:</strong> {customer_data.get('submission_date', 'N/A')}</p>
 
-Submission Date: {customer_data.get('submission_date', 'N/A')}
+<p><em>Customer signature is attached as an image.</em></p>
 
-Signature image is attached.
-
----
-This is an automated message from your Solar Quotation System.
+<hr>
+<p style="color: #666; font-size: 12px;">This is an automated message from your Solar Quotation System.</p>
 """
-        msg.attach(MIMEText(body, 'plain'))
 
-        # Attach signature image
+        # Prepare attachment
+        attachments = []
         if signature_path and os.path.exists(signature_path):
             with open(signature_path, 'rb') as f:
-                img = MIMEImage(f.read())
-                img.add_header('Content-Disposition', 'attachment', filename='customer_signature.png')
-                msg.attach(img)
+                signature_data = base64.b64encode(f.read()).decode('utf-8')
+                attachments.append({
+                    "filename": "customer_signature.png",
+                    "content": signature_data
+                })
 
-        # Send email with timeout
-        with smtplib.SMTP(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"], timeout=5) as server:
-            server.starttls()
-            server.login(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_password"])
-            server.send_message(msg)
+        # Send email via Resend
+        params = {
+            "from": EMAIL_CONFIG["sender_email"],
+            "to": [EMAIL_CONFIG["recipient_email"]],
+            "subject": f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}",
+            "html": email_body
+        }
+
+        if attachments:
+            params["attachments"] = attachments
+
+        response = resend.Emails.send(params)
 
         print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
+        print(f"[EMAIL] Resend response: {response}")
         return True
+
     except Exception as e:
         print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
         traceback.print_exc()  # Print full traceback for debugging
