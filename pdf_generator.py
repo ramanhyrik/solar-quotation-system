@@ -588,7 +588,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         metrics_data = [
             [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
             [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
-            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט')],
+            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט (כולל מע״מ)')],
             [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
             [f"{RLM}{payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
         ]
