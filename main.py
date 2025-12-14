@@ -752,7 +752,9 @@ def send_email_notification(customer_data: dict, signature_path: str):
 
     try:
         # Initialize MailerSend client
-        mailer = emails.NewEmail(MAILERSEND_API_KEY)
+        from mailersend import NewEmail
+
+        mailer = NewEmail(MAILERSEND_API_KEY)
 
         # Prepare email body
         email_body = f"""
@@ -775,7 +777,9 @@ def send_email_notification(customer_data: dict, signature_path: str):
 <p style="color: #666; font-size: 12px;">This is an automated message from your Solar Quotation System.</p>
 """
 
-        # Set up email
+        # Set up email using new API
+        mail_body = {}
+
         mail_from = {
             "name": EMAIL_CONFIG["sender_name"],
             "email": EMAIL_CONFIG["sender_email"]
@@ -788,24 +792,27 @@ def send_email_notification(customer_data: dict, signature_path: str):
             }
         ]
 
-        mailer.set_mail_from(mail_from, {})
-        mailer.set_mail_to(recipients, {})
-        mailer.set_subject(f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}", {})
-        mailer.set_html_content(email_body, {})
+        mailer.set_mail_from(mail_from, mail_body)
+        mailer.set_mail_to(recipients, mail_body)
+        mailer.set_subject(f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}", mail_body)
+        mailer.set_html_content(email_body, mail_body)
 
         # Add attachment if signature exists
         if signature_path and os.path.exists(signature_path):
+            with open(signature_path, 'rb') as f:
+                signature_content = base64.b64encode(f.read()).decode()
+
             attachments = [
                 {
                     "id": "signature",
                     "filename": "customer_signature.png",
-                    "content": base64.b64encode(open(signature_path, 'rb').read()).decode()
+                    "content": signature_content
                 }
             ]
-            mailer.set_attachments(attachments, {})
+            mailer.set_attachments(attachments, mail_body)
 
-        # Send email
-        response = mailer.send()
+        # Send email with the mail_body message
+        response = mailer.send(mail_body)
 
         print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
         print(f"[EMAIL] MailerSend response: {response}")
