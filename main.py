@@ -800,7 +800,7 @@ This is an automated message from your Solar Quotation System.
         return True
     except Exception as e:
         print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
-        # Don't print full traceback to avoid cluttering logs
+        traceback.print_exc()  # Print full traceback for debugging
         return False
 
 @app.get("/contact", response_class=HTMLResponse)
@@ -862,7 +862,12 @@ async def submit_contact(
         }
 
         # Send email notification (don't fail if email fails)
-        send_email_notification(customer_data, signature_path)
+        print(f"[EMAIL] Attempting to send email notification for {customer_name}")
+        email_sent = send_email_notification(customer_data, signature_path)
+        if email_sent:
+            print(f"[EMAIL] Email notification sent successfully")
+        else:
+            print(f"[EMAIL] Email notification failed - check error logs above")
 
         return JSONResponse(content={
             "message": "Submission received successfully",
