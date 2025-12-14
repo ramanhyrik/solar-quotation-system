@@ -741,7 +741,7 @@ else:
 
 EMAIL_CONFIG = {
     "sender_email": "onboarding@resend.dev",  # Resend default sender for testing
-    "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
+    "recipient_email": os.getenv("RECIPIENT_EMAIL", "ml.researcher@namal.edu.pk")  # Where to receive notifications (must match Resend signup email)
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
