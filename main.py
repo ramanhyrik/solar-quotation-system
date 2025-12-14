@@ -21,6 +21,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 import base64
 
+# Detect if running in production (on Render or other HTTPS environment)
+IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") is not None
+
 # Session store (in-memory for simplicity)
 sessions = {}
 
@@ -119,7 +122,15 @@ async def login(email: str = Form(...), password: str = Form(...)):
 
         session_id = create_session(user["id"], user["email"], user["role"])
         response = RedirectResponse(url="/dashboard", status_code=303)
-        response.set_cookie(key="session_id", value=session_id, httponly=True)
+        # Set secure cookie with proper settings
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=IS_PRODUCTION,  # Only send over HTTPS in production
+            samesite="lax",  # CSRF protection
+            max_age=86400  # 24 hours
+        )
         return response
 
 @app.get("/logout")
@@ -128,14 +139,20 @@ async def logout(session_id: Optional[str] = Cookie(None)):
     if session_id and session_id in sessions:
         del sessions[session_id]
     response = RedirectResponse(url="/", status_code=303)
-    response.delete_cookie("session_id")
+    # Delete cookie with same settings as when it was set
+    response.delete_cookie(
+        key="session_id",
+        secure=IS_PRODUCTION,
+        httponly=True,
+        samesite="lax"
+    )
     return response
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user=Depends(get_current_user)):
     """Sales dashboard"""
     if not user:
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": user
@@ -145,7 +162,7 @@ async def dashboard(request: Request, user=Depends(get_current_user)):
 async def admin(request: Request, user=Depends(get_current_user)):
     """Admin panel"""
     if not user or user["role"] != "ADMIN":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("admin.html", {
         "request": request,
         "user": user
@@ -155,7 +172,7 @@ async def admin(request: Request, user=Depends(get_current_user)):
 async def users_page(request: Request, user=Depends(get_current_user)):
     """User management page"""
     if not user or user["role"] != "ADMIN":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("users.html", {
         "request": request,
         "user": user
@@ -165,7 +182,7 @@ async def users_page(request: Request, user=Depends(get_current_user)):
 async def submissions_page(request: Request, user=Depends(get_current_user)):
     """Customer submissions management page"""
     if not user or user["role"] != "ADMIN":
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("submissions.html", {
         "request": request,
         "user": user
