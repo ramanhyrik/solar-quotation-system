@@ -15,7 +15,8 @@ import traceback
 import re
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf
-from mailersend import emails
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
 
 # Detect if running in production (on Render or other HTTPS environment)
@@ -731,32 +732,31 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             detail=f"Failed to generate PDF: {str(e)}"
         )
 
-# Email configuration using MailerSend
+# Email configuration using SendGrid
 # Get API key from environment variable for security
-MAILERSEND_API_KEY = os.getenv("MAILERSEND_API_KEY", "")
-if not MAILERSEND_API_KEY:
-    print("[WARNING] MAILERSEND_API_KEY environment variable not set - email notifications will not work")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+if not SENDGRID_API_KEY:
+    print("[WARNING] SENDGRID_API_KEY environment variable not set - email notifications will not work")
 
 EMAIL_CONFIG = {
-    "sender_email": os.getenv("SENDER_EMAIL", "noreply@test-eqvygm01qmdl0p7w.mlsender.net"),  # MailerSend verified sender
+    "sender_email": os.getenv("SENDER_EMAIL", "baydon.maximus@gmail.com"),  # SendGrid verified sender
     "sender_name": "Solar Quotation System",
     "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
-    """Send email notification when customer submits contact form using MailerSend API"""
+    """Send email notification when customer submits contact form using SendGrid API"""
     # Check if API key is configured
-    if not MAILERSEND_API_KEY:
-        print("[EMAIL] MailerSend API key not configured - skipping email notification")
+    if not SENDGRID_API_KEY:
+        print("[EMAIL] SendGrid API key not configured - skipping email notification")
         return False
 
     try:
-        # Initialize MailerSend client
-        mailer = emails.NewEmail(MAILERSEND_API_KEY)
-
         # Prepare email body
         email_body = f"""
-<h2>New Customer Contact Form Submission</h2>
+<html>
+<body style="font-family: Arial, sans-serif; color: #333;">
+<h2 style="color: #000080;">New Customer Contact Form Submission</h2>
 
 <h3>Customer Details:</h3>
 <ul>
@@ -773,65 +773,46 @@ def send_email_notification(customer_data: dict, signature_path: str):
 
 <hr>
 <p style="color: #666; font-size: 12px;">This is an automated message from your Solar Quotation System.</p>
+</body>
+</html>
 """
 
-        # Set up email using new API
-        mail_body = {}
-
-        mail_from = {
-            "name": EMAIL_CONFIG["sender_name"],
-            "email": EMAIL_CONFIG["sender_email"]
-        }
-
-        recipients = [
-            {
-                "name": "Solar Admin",
-                "email": EMAIL_CONFIG["recipient_email"]
-            }
-        ]
-
-        mailer.set_mail_from(mail_from, mail_body)
-        mailer.set_mail_to(recipients, mail_body)
-        mailer.set_subject(f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}", mail_body)
-        mailer.set_html_content(email_body, mail_body)
+        # Create SendGrid Mail object
+        message = Mail(
+            from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
+            to_emails=EMAIL_CONFIG["recipient_email"],
+            subject=f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}",
+            html_content=email_body
+        )
 
         # Add attachment if signature exists
         if signature_path and os.path.exists(signature_path):
             with open(signature_path, 'rb') as f:
-                signature_content = base64.b64encode(f.read()).decode()
+                signature_content = f.read()
+                encoded_file = base64.b64encode(signature_content).decode()
 
-            attachments = [
-                {
-                    "id": "signature",
-                    "filename": "customer_signature.png",
-                    "content": signature_content
-                }
-            ]
-            mailer.set_attachments(attachments, mail_body)
+            attached_file = Attachment(
+                FileContent(encoded_file),
+                FileName('customer_signature.png'),
+                FileType('image/png'),
+                Disposition('attachment')
+            )
+            message.attachment = attached_file
 
-        # Send email with the mail_body message
-        response = mailer.send(mail_body)
+        # Send email using SendGrid API
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
 
-        # Check if the response indicates success or failure
-        if isinstance(response, dict) and response.get('message'):
-            # MailerSend returned an error message
-            print(f"[EMAIL ERROR] MailerSend API error: {response.get('message')}")
-            print(f"[EMAIL ERROR] Response details: {response}")
-
-            # Check for sender email validation error
-            if 'from.email' in str(response):
-                print("[EMAIL ERROR] SENDER EMAIL NOT VERIFIED!")
-                print("[EMAIL ERROR] Please verify your sender email in MailerSend dashboard")
-                print(f"[EMAIL ERROR] Current sender: {EMAIL_CONFIG['sender_email']}")
-                print("[EMAIL ERROR] Steps to fix:")
-                print("[EMAIL ERROR]   1. Go to MailerSend dashboard → Domains")
-                print("[EMAIL ERROR]   2. Verify your domain or add a verified sender email")
-                print("[EMAIL ERROR]   3. Update SENDER_EMAIL environment variable on Render with verified email")
-            return False
-        else:
+        # Check response status
+        if response.status_code >= 200 and response.status_code < 300:
             print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
-            print(f"[EMAIL] MailerSend response: {response}")
+            print(f"[EMAIL] SendGrid response status: {response.status_code}")
             return True
+        else:
+            print(f"[EMAIL ERROR] SendGrid API error - Status code: {response.status_code}")
+            print(f"[EMAIL ERROR] Response body: {response.body}")
+            print(f"[EMAIL ERROR] Response headers: {response.headers}")
+            return False
 
     except Exception as e:
         print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
