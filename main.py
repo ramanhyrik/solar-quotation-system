@@ -738,7 +738,7 @@ if not MAILERSEND_API_KEY:
     print("[WARNING] MAILERSEND_API_KEY environment variable not set - email notifications will not work")
 
 EMAIL_CONFIG = {
-    "sender_email": os.getenv("SENDER_EMAIL", "noreply@trial-3z0vklo73n5ldo2r.mlsender.net"),  # MailerSend verified sender
+    "sender_email": os.getenv("SENDER_EMAIL", "noreply@test-eqvygm01qmdl0p7w.mlsender.net"),  # MailerSend verified sender
     "sender_name": "Solar Quotation System",
     "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
 }
