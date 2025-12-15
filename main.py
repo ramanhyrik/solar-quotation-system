@@ -752,37 +752,141 @@ def send_email_notification(customer_data: dict, signature_path: str):
         return False
 
     try:
-        # Prepare email body
+        # Prepare professional HTML email body
         email_body = f"""
-<html>
-<body style="font-family: Arial, sans-serif; color: #333;">
-<h2 style="color: #000080;">New Customer Contact Form Submission</h2>
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פנייה חדשה ממערכת הצעות מחיר</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4; direction: rtl;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header with logo -->
+                    <tr>
+                        <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #000080 0%, #000060 100%);">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">מערכת הצעות מחיר - אנרגיה סולארית</h1>
+                        </td>
+                    </tr>
 
-<h3>Customer Details:</h3>
-<ul>
-    <li><strong>Name:</strong> {customer_data.get('customer_name', 'N/A')}</li>
-    <li><strong>Phone:</strong> {customer_data.get('customer_phone', 'N/A')}</li>
-    <li><strong>Email:</strong> {customer_data.get('customer_email', 'N/A')}</li>
-    <li><strong>Address:</strong> {customer_data.get('customer_address', 'N/A')}</li>
-    <li><strong>Roof Area:</strong> {customer_data.get('roof_area', 'N/A')} m²</li>
-</ul>
+                    <!-- Main content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #000080; margin: 0 0 20px 0; font-size: 22px; text-align: right;">לידיעתך - פנייה חדשה מהאתר 💡</h2>
 
-<p><strong>Submission Date:</strong> {customer_data.get('submission_date', 'N/A')}</p>
+                            <p style="color: #333; font-size: 16px; line-height: 1.6; text-align: right; margin: 0 0 25px 0;">
+                                התקבלה פנייה חדשה ממלא/ת טופס יצירת קשר באתר. להלן פרטי הלקוח:
+                            </p>
 
-<p><em>Customer signature is attached as an image.</em></p>
+                            <!-- Customer details box -->
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">שם מלא:</strong>
+                                                    <span style="color: #333; float: left;">{customer_data.get('customer_name', 'לא צוין')}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">טלפון:</strong>
+                                                    <span style="color: #333; float: left;">{customer_data.get('customer_phone', 'לא צוין')}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">אימייל:</strong>
+                                                    <span style="color: #333; float: left;">{customer_data.get('customer_email', 'לא צוין')}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">כתובת:</strong>
+                                                    <span style="color: #333; float: left;">{customer_data.get('customer_address', 'לא צוין')}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <strong style="color: #000080;">שטח גג (מ"ר):</strong>
+                                                    <span style="color: #333; float: left;">{customer_data.get('roof_area', 'לא צוין')}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
 
-<hr>
-<p style="color: #666; font-size: 12px;">This is an automated message from your Solar Quotation System.</p>
+                            <!-- Submission date -->
+                            <p style="color: #666; font-size: 14px; text-align: right; margin: 0 0 20px 0;">
+                                <strong>תאריך הפנייה:</strong> {customer_data.get('submission_date', 'לא זמין')}
+                            </p>
+
+                            <!-- Signature note -->
+                            <div style="background-color: #e8f4f8; border-right: 4px solid #000080; padding: 15px; margin: 20px 0; text-align: right;">
+                                <p style="margin: 0; color: #333; font-size: 14px;">
+                                    📎 <strong>חתימה דיגיטלית:</strong> החתימה הדיגיטלית של הלקוח מצורפת לאימייל זה.
+                                </p>
+                            </div>
+
+                            <!-- Call to action -->
+                            <p style="color: #333; font-size: 15px; text-align: right; margin: 25px 0 0 0; line-height: 1.6;">
+                                מומלץ ליצור קשר עם הלקוח בהקדם האפשרי כדי לספק שירות מקצועי ולהגדיל את סיכויי ההמרה.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 20px 30px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: center;">
+                            <p style="margin: 0; color: #666; font-size: 13px;">
+                                זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+                            </p>
+                            <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
+                                נשלח מ-Solar Quotation System
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 """
 
-        # Create SendGrid Mail object
+        # Plain text version for better deliverability
+        plain_text = f"""
+פנייה חדשה ממערכת הצעות מחיר - אנרגיה סולארית
+
+פרטי הלקוח:
+--------------
+שם מלא: {customer_data.get('customer_name', 'לא צוין')}
+טלפון: {customer_data.get('customer_phone', 'לא צוין')}
+אימייל: {customer_data.get('customer_email', 'לא צוין')}
+כתובת: {customer_data.get('customer_address', 'לא צוין')}
+שטח גג: {customer_data.get('roof_area', 'לא צוין')} מ"ר
+
+תאריך הפנייה: {customer_data.get('submission_date', 'לא זמין')}
+
+החתימה הדיגיטלית של הלקוח מצורפת לאימייל זה.
+
+---
+זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+"""
+
+        # Create SendGrid Mail object with both HTML and plain text
         message = Mail(
             from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
             to_emails=EMAIL_CONFIG["recipient_email"],
-            subject=f"New Customer Submission - {customer_data.get('customer_name', 'Unknown')}",
-            html_content=email_body
+            subject=f"🌞 פנייה חדשה מהאתר - {customer_data.get('customer_name', 'לקוח חדש')}",
+            html_content=email_body,
+            plain_text_content=plain_text
         )
 
         # Add attachment if signature exists
