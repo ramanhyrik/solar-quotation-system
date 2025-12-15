@@ -484,7 +484,6 @@ def generate_quote_pdf(quote_data, company_info=None):
             [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
             [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
             [f"{RLM}{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
-            [f"{RLM}{quote_data.get('warranty_years', 25)} {reshape_hebrew('שנים')}", reshape_hebrew('אחריות:')],
         ]
 
         specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
@@ -551,8 +550,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
             [f"{RLM}₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"{RLM}₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
-            [f"{RLM}{payback} {reshape_hebrew('שנים')}", reshape_hebrew('תקופת החזר')],
             [f"{RLM}₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
@@ -590,7 +587,6 @@ def generate_quote_pdf(quote_data, company_info=None):
             [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
             [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט (כולל מע״מ)')],
             [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
-            [f"{RLM}{payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
         ]
 
         metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
@@ -646,34 +642,37 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Build cash flow table data
         cashflow_table_data = []
-        # Header row
+        # Header row with new 'לקוח' (Customer) column
         cashflow_table_data.append([
             reshape_hebrew('תזרים מצטבר'),
+            reshape_hebrew('לקוח'),
             reshape_hebrew('רווח נקי'),
-            reshape_hebrew('הכנסה'),
             reshape_hebrew('השקעה'),
             reshape_hebrew('שנה')
         ])
 
-        # Year 0 - show investment as positive, cumulative in parentheses for negative
+        # Year 0 - investment is 0
         cashflow_table_data.append([
             f"({format_number(int(total_price))}₪)",  # Negative cumulative in parentheses
             '-',
             '-',
-            f"₪{format_number(int(total_price))}",  # Investment shown as positive
+            '0',  # Investment is 0
             '0'
         ])
 
         total_revenue_sum = 0
         total_net_profit_sum = 0
+        total_customer_sum = 0
 
         # Years 1-25
         for year in range(1, 26):
             yearly_degradation = 1 - (degradation_rate * (year - 1))
             year_revenue = int(annual_revenue * yearly_degradation)
-            year_net_profit = year_revenue  # Net profit equals revenue (no operating costs)
+            year_customer = int(year_revenue * 0.25)  # Customer portion: 25% of annual revenue
+            year_net_profit = int(year_revenue * 0.25)  # Net profit equals 25% of revenue
 
             total_revenue_sum += year_revenue
+            total_customer_sum += year_customer
             total_net_profit_sum += year_net_profit
             cumulative_cashflow = total_net_profit_sum - total_price
 
@@ -685,18 +684,18 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             cashflow_table_data.append([
                 cumulative_display,
+                f"₪{format_number(year_customer)}",
                 f"₪{format_number(year_net_profit)}",
-                f"₪{format_number(year_revenue)}",
                 '-',
                 str(year)
             ])
 
-        # Total row - investment shown as positive amount
+        # Total row
         cashflow_table_data.append([
             f"₪{format_number(cumulative_cashflow)}",
+            f"₪{format_number(total_customer_sum)}",
             f"₪{format_number(total_net_profit_sum)}",
-            f"₪{format_number(total_revenue_sum)}",
-            f"₪{format_number(int(total_price))}",  # Show as positive
+            '0',  # Total investment is 0
             reshape_hebrew('סה״כ')
         ])
 
