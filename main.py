@@ -752,9 +752,7 @@ def send_email_notification(customer_data: dict, signature_path: str):
 
     try:
         # Initialize MailerSend client
-        from mailersend import NewEmail
-
-        mailer = NewEmail(MAILERSEND_API_KEY)
+        mailer = emails.NewEmail(MAILERSEND_API_KEY)
 
         # Prepare email body
         email_body = f"""
