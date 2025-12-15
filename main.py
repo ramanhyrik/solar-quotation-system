@@ -812,9 +812,26 @@ def send_email_notification(customer_data: dict, signature_path: str):
         # Send email with the mail_body message
         response = mailer.send(mail_body)
 
-        print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
-        print(f"[EMAIL] MailerSend response: {response}")
-        return True
+        # Check if the response indicates success or failure
+        if isinstance(response, dict) and response.get('message'):
+            # MailerSend returned an error message
+            print(f"[EMAIL ERROR] MailerSend API error: {response.get('message')}")
+            print(f"[EMAIL ERROR] Response details: {response}")
+
+            # Check for sender email validation error
+            if 'from.email' in str(response):
+                print("[EMAIL ERROR] SENDER EMAIL NOT VERIFIED!")
+                print("[EMAIL ERROR] Please verify your sender email in MailerSend dashboard")
+                print(f"[EMAIL ERROR] Current sender: {EMAIL_CONFIG['sender_email']}")
+                print("[EMAIL ERROR] Steps to fix:")
+                print("[EMAIL ERROR]   1. Go to MailerSend dashboard → Domains")
+                print("[EMAIL ERROR]   2. Verify your domain or add a verified sender email")
+                print("[EMAIL ERROR]   3. Update SENDER_EMAIL environment variable on Render with verified email")
+            return False
+        else:
+            print(f"[EMAIL] Successfully sent notification for {customer_data.get('customer_name')}")
+            print(f"[EMAIL] MailerSend response: {response}")
+            return True
 
     except Exception as e:
         print(f"[EMAIL ERROR] Failed to send email: {str(e)}")
