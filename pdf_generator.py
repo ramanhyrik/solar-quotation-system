@@ -472,18 +472,18 @@ def generate_quote_pdf(quote_data, company_info=None):
         roof_area = quote_data.get('roof_area')
         annual_prod = quote_data.get('annual_production', 0) or 0
 
-        # RTL: In RTL context, write units BEFORE numbers to display numbers BEFORE units visually
-        # Visual result: "57.0 קוט״ש" (number first when reading RTL)
+        # Hebrew standard: number before unit (like English)
+        # Table has RTL alignment, so write naturally: number then unit
         specs_data = [
-            [f"{reshape_hebrew('קוט״ש')} {system_size}", reshape_hebrew('גודל מערכת:')],
-            [f"{reshape_hebrew('מ״ר')} {roof_area}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
-            [f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
+            [f"{system_size} {reshape_hebrew('קוט״ש')}", reshape_hebrew('גודל מערכת:')],
+            [f"{roof_area} {reshape_hebrew('מ״ר')}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
+            [f"{format_number(annual_prod)} {reshape_hebrew('קוט״ש/שנה')}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
             [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
             [f"{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
             [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
             [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
-            [f"°{quote_data.get('tilt_angle')}" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
-            [f"{reshape_hebrew('שנים')} {quote_data.get('warranty_years', 25)}", reshape_hebrew('אחריות:')],
+            [f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
+            [f"{quote_data.get('warranty_years', 25)} {reshape_hebrew('שנים')}", reshape_hebrew('אחריות:')],
         ]
 
         specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
@@ -544,12 +544,12 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         payback = quote_data.get('payback_period', 0) or 0
 
-        # RTL: Currency ₪ stays before numbers (LTR), but Hebrew units go before numbers in code to appear after visually
+        # Standard formatting: currency before numbers, units after numbers
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
             [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
             [f"₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
-            [f"{reshape_hebrew('שנים')} {payback:.2f}", reshape_hebrew('תקופת החזר')],
+            [f"{payback:.2f} {reshape_hebrew('שנים')}", reshape_hebrew('תקופת החזר')],
             [f"₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
@@ -586,8 +586,8 @@ def generate_quote_pdf(quote_data, company_info=None):
             [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
             [f"₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
             [f"₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט (כולל מע״מ)')],
-            [f"%{roa:.1f}", reshape_hebrew('תשואה שנתית (ROA)')],
-            [f"{reshape_hebrew('שנים')} {payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
+            [f"{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
+            [f"{payback:.2f} {reshape_hebrew('שנים')}", reshape_hebrew('תקופת החזר (שנים)')],
         ]
 
         metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
@@ -638,9 +638,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         degradation_rate = 0.004
         cumulative_cashflow = -total_price
 
-        # RLM mark for proper number alignment
-        RLM = '\u200F'
-
         # Build cash flow table data
         cashflow_table_data = []
         # Header row
@@ -654,7 +651,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
         # Year 0 - show investment as positive, cumulative in parentheses for negative
         cashflow_table_data.append([
-            f"({format_number(int(total_price))}₪)",  # Negative cumulative in parentheses
+            f"(₪{format_number(int(total_price))})",  # Negative cumulative in parentheses
             '-',
             '-',
             f"₪{format_number(int(total_price))}",  # Investment shown as positive
@@ -676,7 +673,7 @@ def generate_quote_pdf(quote_data, company_info=None):
 
             # Format cumulative cashflow - use parentheses for negative values
             if cumulative_cashflow < 0:
-                cumulative_display = f"({format_number(abs(cumulative_cashflow))}₪)"
+                cumulative_display = f"(₪{format_number(abs(cumulative_cashflow))})"
             else:
                 cumulative_display = f"₪{format_number(cumulative_cashflow)}"
 
