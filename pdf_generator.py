@@ -473,17 +473,15 @@ def generate_quote_pdf(quote_data, company_info=None):
         annual_prod = quote_data.get('annual_production', 0) or 0
 
         # RTL: Value first (right), Label second (left)
-        # Use RLM (Right-to-Left Mark) for proper number alignment
-        RLM = '\u200F'
         specs_data = [
-            [f"{RLM}{system_size} {reshape_hebrew('קוט״ש')}", reshape_hebrew('גודל מערכת:')],
-            [f"{RLM}{roof_area} {reshape_hebrew('מ״ר')}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
-            [f"{RLM}{format_number(annual_prod)} {reshape_hebrew('קוט״ש/שנה')}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
+            [f"{system_size} {reshape_hebrew('קוט״ש')}", reshape_hebrew('גודל מערכת:')],
+            [f"{roof_area} {reshape_hebrew('מ״ר')}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
+            [f"{format_number(annual_prod)} {reshape_hebrew('קוט״ש/שנה')}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
             [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
-            [f"{RLM}{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
+            [f"{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
             [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
             [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
-            [f"{RLM}{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
+            [f"{quote_data.get('tilt_angle')}°" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
         ]
 
         specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
@@ -545,12 +543,10 @@ def generate_quote_pdf(quote_data, company_info=None):
         payback = quote_data.get('payback_period', 0) or 0
 
         # RTL: Value first (right), Label second (left)
-        # Use RLM for proper currency and number alignment
-        RLM = '\u200F'
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
-            [f"{RLM}₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"{RLM}₪{format_number(int(annual_revenue * 25 * 0.25))}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
+            [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
+            [f"₪{format_number(int(annual_revenue * 25 * 0.25))}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
         financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
@@ -570,44 +566,7 @@ def generate_quote_pdf(quote_data, company_info=None):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         elements.append(financial_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Calculate financial metrics here (moved from later in the code)
-        RLM = '\u200F'
-        price_per_kwp = total_price / system_size if system_size else 0  # Include VAT
-        roa = ((annual_revenue / total_price) * 100) if total_price else 0
-
-        # Financial Metrics Summary on Page 2
-        metrics_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מדדים פיננסיים - סיכום השקעה")), heading_style)
-        elements.append(metrics_heading)
-        elements.append(Spacer(1, 0.06*inch))
-
-        metrics_data = [
-            [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
-            [f"{RLM}₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
-            [f"{RLM}₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט (כולל מע״מ)')],
-            [f"{RLM}{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
-        ]
-
-        metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
-        metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(metrics_table)
-        elements.append(Spacer(1, 0.08*inch))
+        elements.append(Spacer(1, 0.15*inch))  # Increased spacing after financial table
 
         # Environmental Impact
         env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
@@ -636,9 +595,6 @@ def generate_quote_pdf(quote_data, company_info=None):
         # Calculate cash flow data
         degradation_rate = 0.004
         cumulative_cashflow = -total_price
-
-        # RLM mark for proper number alignment
-        RLM = '\u200F'
 
         # Build cash flow table data
         cashflow_table_data = []
