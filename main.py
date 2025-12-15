@@ -14,7 +14,7 @@ import shutil
 import traceback
 import re
 from urllib.parse import quote as url_quote
-from pdf_generator import generate_quote_pdf
+from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
@@ -265,8 +265,8 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 quote_number, customer_name, customer_phone, customer_email, customer_address,
                 system_size, roof_area, annual_production, panel_type, panel_count,
                 inverter_type, direction, tilt_angle, warranty_years,
-                total_price, annual_revenue, payback_period, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                total_price, annual_revenue, payback_period, model_type, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             generate_quote_number(),
             data.get("customer_name"),
@@ -285,6 +285,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("total_price"),
             data.get("annual_revenue"),
             data.get("payback_period"),
+            data.get("model_type", "purchase"),
             user["user_id"]
         ))
         conn.commit()
@@ -694,10 +695,15 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
         print(f"[PDF] Customer: {quote_data.get('customer_name')}")
         print(f"[PDF] System size: {quote_data.get('system_size')}, Annual production: {quote_data.get('annual_production')}")
 
-        # Generate PDF
+        # Generate PDF based on model type
         try:
-            pdf_buffer = generate_quote_pdf(quote_data, company_info)
-            print(f"[PDF] Successfully generated PDF for quote #{quote_data.get('quote_number')}")
+            model_type = quote_data.get('model_type', 'purchase')
+            if model_type == 'leasing':
+                pdf_buffer = generate_leasing_quote_pdf(quote_data, company_info)
+                print(f"[PDF] Successfully generated LEASING PDF for quote #{quote_data.get('quote_number')}")
+            else:
+                pdf_buffer = generate_quote_pdf(quote_data, company_info)
+                print(f"[PDF] Successfully generated PURCHASE PDF for quote #{quote_data.get('quote_number')}")
         except Exception as pdf_error:
             print(f"[ERROR] PDF generation failed: {type(pdf_error).__name__}: {str(pdf_error)}")
             traceback.print_exc()

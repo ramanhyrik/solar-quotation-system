@@ -107,6 +107,14 @@ def init_database():
 
         conn.commit()
 
+        # Add model_type column to quotes table if it doesn't exist (migration)
+        cursor.execute("PRAGMA table_info(quotes)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'model_type' not in columns:
+            cursor.execute("ALTER TABLE quotes ADD COLUMN model_type TEXT DEFAULT 'purchase'")
+            conn.commit()
+            print("[OK] Added model_type column to quotes table")
+
         # Insert default pricing parameters if not exists
         cursor.execute("SELECT COUNT(*) FROM pricing_parameters")
         if cursor.fetchone()[0] == 0:

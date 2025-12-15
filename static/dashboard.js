@@ -70,7 +70,8 @@ async function saveQuote() {
         warranty_years: parseInt(document.getElementById('warrantyYears').value) || 25,
         total_price: currentQuoteData.total_price,
         annual_revenue: currentQuoteData.annual_revenue,
-        payback_period: currentQuoteData.payback_period
+        payback_period: currentQuoteData.payback_period,
+        model_type: window.currentModel || 'purchase'
     };
 
     try {
@@ -213,7 +214,8 @@ async function generatePDF() {
         warranty_years: parseInt(document.getElementById('warrantyYears').value) || 25,
         total_price: currentQuoteData.total_price,
         annual_revenue: currentQuoteData.annual_revenue,
-        payback_period: currentQuoteData.payback_period
+        payback_period: currentQuoteData.payback_period,
+        model_type: window.currentModel || 'purchase'
     };
 
     try {
