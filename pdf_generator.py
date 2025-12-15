@@ -550,7 +550,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
             [f"{RLM}₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"{RLM}₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
+            [f"{RLM}₪{format_number(int(annual_revenue * 25 * 0.25))}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
         financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
