@@ -684,6 +684,11 @@
         <div id="quoteSection" class="quote-form-section">
             <h1>יצירת הצעה חדשה</h1>
 
+            <div class="model-tabs">
+                <button class="model-tab" onclick="setQuoteModel('leasing')" id="quote-tab-leasing">מודל ליסינג</button>
+                <button class="model-tab active" onclick="setQuoteModel('purchase')" id="quote-tab-purchase">מודל רכישה</button>
+            </div>
+
             <div class="quote-form">
                 <h3>פרטי לקוח</h3>
                 <div class="form-grid">
@@ -928,6 +933,20 @@
             // Recalculate if results are visible
             if (document.getElementById('calcResults').style.display !== 'none') {
                 calculateModel();
+            }
+        }
+
+        function setQuoteModel(model) {
+            currentModel = model;
+
+            // Update tab styles for quote section
+            document.getElementById('quote-tab-leasing').classList.remove('active');
+            document.getElementById('quote-tab-purchase').classList.remove('active');
+
+            if (model === 'leasing') {
+                document.getElementById('quote-tab-leasing').classList.add('active');
+            } else {
+                document.getElementById('quote-tab-purchase').classList.add('active');
             }
         }
 
