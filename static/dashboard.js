@@ -109,6 +109,7 @@ async function loadQuoteHistory() {
         data.quotes.forEach(quote => {
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td><strong>${quote.id}</strong></td>
                 <td>${quote.quote_number}</td>
                 <td>${quote.customer_name}</td>
                 <td>${quote.system_size} קוט״ש</td>
