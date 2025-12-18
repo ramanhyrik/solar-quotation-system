@@ -860,15 +860,15 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         # Left column: Customer signature - use actual signature if provided, otherwise placeholder
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
-                # Load customer signature image
-                customer_sig_img = Image(customer_signature_path, width=1.2*inch, height=0.5*inch, kind='proportional')
+                # Load customer signature image - horizontal layout (RTL: signature on left, label on right)
+                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.4*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img], [customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch])
+                customer_sig_data = [[customer_sig_img, customer_sig_label]]
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('ALIGN', (0, 1), (0, 1), 'LEFT'),
-                    ('VALIGN', (0, 0), (0, 1), 'BOTTOM'),
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                    ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
@@ -879,7 +879,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -891,7 +891,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.8*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1565,15 +1565,15 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         # Left column: Customer signature - use actual signature if provided, otherwise placeholder
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
-                # Load customer signature image
-                customer_sig_img = Image(customer_signature_path, width=1.2*inch, height=0.5*inch, kind='proportional')
+                # Load customer signature image - horizontal layout (RTL: signature on left, label on right)
+                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.4*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img], [customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch])
+                customer_sig_data = [[customer_sig_img, customer_sig_label]]
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('ALIGN', (0, 1), (0, 1), 'LEFT'),
-                    ('VALIGN', (0, 0), (0, 1), 'BOTTOM'),
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                    ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
@@ -1584,7 +1584,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1596,7 +1596,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.8*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),

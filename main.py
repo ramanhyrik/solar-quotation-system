@@ -13,6 +13,7 @@ import os
 import shutil
 import traceback
 import re
+import io
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from sendgrid import SendGridAPIClient
@@ -1565,6 +1566,53 @@ async def preview_quote_pdf(token: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/sign/{token}/signed-pdf")
+async def view_signed_pdf(token: str):
+    """Allow customer to view signed PDF after signing"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get signature request and signed PDF path
+            cursor.execute('''
+                SELECT signed_pdf_path, status
+                FROM quote_signatures
+                WHERE signature_token = ?
+            ''', (token,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Signature request not found")
+
+            sig_data = dict(result)
+
+            # Check if signed
+            if sig_data['status'] != 'signed':
+                raise HTTPException(status_code=400, detail="Quote not signed yet")
+
+            signed_pdf_path = sig_data.get('signed_pdf_path')
+            if not signed_pdf_path or not os.path.exists(signed_pdf_path):
+                raise HTTPException(status_code=404, detail="Signed PDF not found")
+
+        # Return signed PDF for inline viewing
+        with open(signed_pdf_path, "rb") as pdf_file:
+            pdf_content = pdf_file.read()
+
+        return StreamingResponse(
+            io.BytesIO(pdf_content),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "inline"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Error viewing signed PDF: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/sign/{token}")
 async def submit_signature(token: str, signature: UploadFile = File(...), request: Request = None):
     """Handle customer signature submission"""
@@ -1662,9 +1710,13 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
         # Send email notification to admin with signed PDF
         send_admin_signed_quote_notification(sig_data, company_info, pdf_buffer, signature_path, signed_pdf_path)
 
+        # Generate URL for viewing signed PDF
+        signed_pdf_url = f"/sign/{token}/signed-pdf"
+
         return JSONResponse(content={
             "message": "Signature submitted successfully",
-            "quote_number": quote_number
+            "quote_number": quote_number,
+            "signed_pdf_url": signed_pdf_url
         })
 
     except HTTPException:

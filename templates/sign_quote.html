@@ -309,7 +309,7 @@
         </div>
 
         <!-- PDF Preview Button -->
-        <div style="text-align: center; margin-bottom: 25px;">
+        <div id="pdfPreviewSection" style="text-align: center; margin-bottom: 25px;">
             <a href="/sign/{{ request.url.path.split('/')[-1] }}/preview-pdf" target="_blank" class="pdf-preview-btn">
                 צפה בהצעת המחיר המלאה (PDF)
             </a>
@@ -451,7 +451,10 @@
             <h2>תודה רבה!</h2>
             <p style="font-size: 18px; margin-bottom: 15px;">החתימה התקבלה בהצלחה</p>
             <p>הצעת המחיר החתומה נשלחה לחברה.</p>
-            <p>נחזור אליך בהקדם האפשרי.</p>
+            <p style="margin-bottom: 20px;">נחזור אליך בהקדם האפשרי.</p>
+            <a id="viewSignedPdfBtn" href="#" target="_blank" class="pdf-preview-btn" style="display: none; margin-top: 15px;">
+                צפה בהצעת המחיר החתומה
+            </a>
         </div>
         {% endif %}
     </div>
@@ -527,21 +530,32 @@
                 const result = await response.json();
 
                 if (response.ok) {
+                    // Hide form and preview button
                     document.getElementById('signatureForm').style.display = 'none';
                     document.querySelector('.quote-details').style.display = 'none';
+                    document.getElementById('pdfPreviewSection').style.display = 'none';
+
+                    // Show success message
                     document.getElementById('successMessage').classList.add('show');
+
+                    // Update signed PDF link if provided
+                    if (result.signed_pdf_url) {
+                        const signedPdfBtn = document.getElementById('viewSignedPdfBtn');
+                        signedPdfBtn.href = result.signed_pdf_url;
+                        signedPdfBtn.style.display = 'inline-block';
+                    }
                 } else {
                     errorDiv.textContent = result.detail || 'שגיאה בשליחת החתימה';
                     errorDiv.classList.add('show');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = '✅ אישור וחתימה';
+                    submitBtn.textContent = 'אישור וחתימה';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 errorDiv.textContent = 'שגיאה בשליחת החתימה. אנא נסו שוב.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
-                submitBtn.textContent = '✅ אישור וחתימה';
+                submitBtn.textContent = 'אישור וחתימה';
             }
         });
     </script>
