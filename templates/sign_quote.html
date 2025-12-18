@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חתימה על הצעת מחיר - {{ quote_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #000080 0%, #000060 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #D9FF0D;
+        }
+
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #000080;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .quote-details {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .quote-details h2 {
+            color: #000080;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #000080;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .signature-section {
+            margin: 30px 0;
+            padding: 25px;
+            background: #f7fafc;
+            border-radius: 12px;
+            border: 2px solid #000080;
+        }
+
+        .signature-label {
+            font-weight: 600;
+            color: #000080;
+            margin-bottom: 15px;
+            font-size: 18px;
+            display: block;
+        }
+
+        .signature-instructions {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .signature-canvas-container {
+            position: relative;
+            background: white;
+            border: 3px solid #000080;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        #signatureCanvas {
+            border-radius: 12px;
+            touch-action: none;
+            display: block;
+            width: 100%;
+            height: 200px;
+            cursor: crosshair;
+        }
+
+        .signature-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .btn-clear {
+            padding: 12px 24px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-clear:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .consent-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 10px;
+            border: 2px solid #ffc107;
+        }
+
+        .consent-checkbox {
+            display: flex;
+            align-items: start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .consent-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .consent-checkbox label {
+            cursor: pointer;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #000080 0%, #000060 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 53, 138, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            color: #155724;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            border: 3px solid #c3e6cb;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-message h2 {
+            color: #155724;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 2px solid #f5c6cb;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .expired-message {
+            text-align: center;
+            padding: 40px;
+            color: #721c24;
+        }
+
+        .expired-message h2 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            #signatureCanvas {
+                height: 150px;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if expired %}
+        <div class="expired-message">
+            <h2>🔒 הקישור פג תוקף</h2>
+            <p>קישור החתימה אינו תקף יותר.</p>
+            <p>אנא צור קשר עם החברה לקבלת קישור חדש.</p>
+        </div>
+        {% else %}
+        <div class="header">
+            <img src="/static/images/logo.png" alt="Solar Logo" class="logo" onerror="this.style.display='none'">
+            <h1>חתימה על הצעת מחיר</h1>
+            <p class="subtitle">אנא קרא את פרטי ההצעה וחתום להמשך התהליך</p>
+        </div>
+
+        <!-- Quote Details -->
+        <div class="quote-details">
+            <h2>📋 פרטי הצעת המחיר</h2>
+            <div class="detail-row">
+                <span class="detail-label">מספר הצעה:</span>
+                <span class="detail-value">{{ quote_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">שם:</span>
+                <span class="detail-value">{{ customer_name }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">טלפון:</span>
+                <span class="detail-value">{{ customer_phone }}</span>
+            </div>
+            {% if customer_email %}
+            <div class="detail-row">
+                <span class="detail-label">אימייל:</span>
+                <span class="detail-value">{{ customer_email }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-row">
+                <span class="detail-label">גודל מערכת:</span>
+                <span class="detail-value">{{ system_size }} קוט״ש</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">מחיר כולל:</span>
+                <span class="detail-value">₪{{ total_price }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">סוג הצעה:</span>
+                <span class="detail-value">{{ 'ליסינג' if model_type == 'leasing' else 'רכישה' }}</span>
+            </div>
+        </div>
+
+        <form id="signatureForm">
+            <!-- Signature Section -->
+            <div class="signature-section">
+                <span class="signature-label">✍️ חתימה דיגיטלית</span>
+                <p class="signature-instructions">
+                    אנא חתום במסגרת למטה באמצעות העכבר או האצבע (במכשירים ניידים).
+                    החתימה שלך מאשרת את קבלת ההצעה והסכמתך לתנאים.
+                </p>
+                <div class="signature-canvas-container">
+                    <canvas id="signatureCanvas"></canvas>
+                </div>
+                <div class="signature-buttons">
+                    <button type="button" class="btn-clear" onclick="clearSignature()">🗑️ נקה חתימה</button>
+                </div>
+            </div>
+
+            <!-- Consent Section -->
+            <div class="consent-section">
+                <div class="consent-checkbox">
+                    <input type="checkbox" id="consentCheckbox" required>
+                    <label for="consentCheckbox">
+                        אני מאשר/ת שקראתי והבנתי את פרטי הצעת המחיר, ואני מסכים/ה לתנאים המפורטים בהצעה.
+                        החתימה הדיגיטלית שלי מהווה אישור רשמי להצעה זו.
+                    </label>
+                </div>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                ✅ אישור וחתימה
+            </button>
+        </form>
+
+        <div id="successMessage" class="success-message">
+            <h2>✓ תודה רבה!</h2>
+            <p style="font-size: 18px; margin-bottom: 15px;">החתימה התקבלה בהצלחה</p>
+            <p>הצעת המחיר החתומה נשלחה לחברה.</p>
+            <p>נחזור אליך בהקדם האפשרי.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script>
+        // Initialize signature pad
+        const canvas = document.getElementById('signatureCanvas');
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)',
+            minWidth: 1,
+            maxWidth: 3
+        });
+
+        // Resize canvas
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            signaturePad.clear();
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        function clearSignature() {
+            signaturePad.clear();
+        }
+
+        // Form submission
+        document.getElementById('signatureForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const errorDiv = document.getElementById('errorMessage');
+            const submitBtn = document.getElementById('submitBtn');
+            const consentCheckbox = document.getElementById('consentCheckbox');
+
+            // Validate signature
+            if (signaturePad.isEmpty()) {
+                errorDiv.textContent = 'אנא חתום במסגרת החתימה';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Validate consent
+            if (!consentCheckbox.checked) {
+                errorDiv.textContent = 'יש לאשר את תנאי ההצעה';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            errorDiv.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'שולח חתימה...';
+
+            try {
+                const formData = new FormData();
+
+                // Add signature as blob
+                const signatureBlob = await fetch(signaturePad.toDataURL()).then(r => r.blob());
+                formData.append('signature', signatureBlob, 'signature.png');
+
+                // Get token from URL
+                const token = window.location.pathname.split('/').pop();
+
+                const response = await fetch(`/api/sign/${token}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('signatureForm').style.display = 'none';
+                    document.querySelector('.quote-details').style.display = 'none';
+                    document.getElementById('successMessage').classList.add('show');
+                } else {
+                    errorDiv.textContent = result.detail || 'שגיאה בשליחת החתימה';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ אישור וחתימה';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = 'שגיאה בשליחת החתימה. אנא נסו שוב.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✅ אישור וחתימה';
+            }
+        });
+    </script>
+</body>
+</html>

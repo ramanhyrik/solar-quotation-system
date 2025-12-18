@@ -219,13 +219,14 @@ def add_blue_background_with_footer(canvas, doc):
     canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
     canvas.restoreState()
 
-def generate_quote_pdf(quote_data, company_info=None):
+def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=None):
     """
     Generate a professional PDF quote with Hebrew support
 
     Args:
         quote_data: Dictionary containing quote information
         company_info: Dictionary containing company information
+        customer_signature_path: Optional path to customer signature image
 
     Returns:
         BytesIO object containing the PDF
@@ -856,17 +857,49 @@ def generate_quote_pdf(quote_data, company_info=None):
                     print(f"[ERROR] Error loading signature from {sign_path}: {e}")
                     continue
 
-        # Left column: Customer signature (text line) - wrapped in table for consistent alignment
-        customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-        customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
-        customer_sig_element.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-            ('LEFTPADDING', (0, 0), (0, 0), 0),
-            ('RIGHTPADDING', (0, 0), (0, 0), 0),
-            ('TOPPADDING', (0, 0), (0, 0), 0),
-            ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-        ]))
+        # Left column: Customer signature - use actual signature if provided, otherwise placeholder
+        if customer_signature_path and os.path.exists(customer_signature_path):
+            try:
+                # Load customer signature image
+                customer_sig_img = Image(customer_signature_path, width=1.2*inch, height=0.5*inch, kind='proportional')
+                customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
+                customer_sig_data = [[customer_sig_img], [customer_sig_label]]
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch])
+                customer_sig_element.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                    ('ALIGN', (0, 1), (0, 1), 'LEFT'),
+                    ('VALIGN', (0, 0), (0, 1), 'BOTTOM'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ]))
+                print(f"[OK] Customer signature loaded from: {customer_signature_path}")
+            except Exception as e:
+                print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
+                # Fallback to placeholder
+                customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+                customer_sig_element.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                    ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+                    ('LEFTPADDING', (0, 0), (0, 0), 0),
+                    ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                    ('TOPPADDING', (0, 0), (0, 0), 0),
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+                ]))
+        else:
+            # Placeholder if no signature provided
+            customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+            customer_sig_element.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                ('TOPPADDING', (0, 0), (0, 0), 0),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+            ]))
 
         # Middle column: Company signature with label and image
         if signature_img is not None:
@@ -926,7 +959,7 @@ def generate_quote_pdf(quote_data, company_info=None):
         traceback.print_exc()
         raise
 
-def generate_leasing_quote_pdf(quote_data, company_info=None):
+def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature_path=None):
     """
     Generate a professional leasing PDF quote with Hebrew support
     This is the leasing model variant with 25% customer income calculations
@@ -934,6 +967,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None):
     Args:
         quote_data: Dictionary containing quote information
         company_info: Dictionary containing company information
+        customer_signature_path: Optional path to customer signature image
 
     Returns:
         BytesIO object containing the PDF
@@ -1528,17 +1562,49 @@ def generate_leasing_quote_pdf(quote_data, company_info=None):
                     print(f"[ERROR] Error loading signature from {sign_path}: {e}")
                     continue
 
-        # Left column: Customer signature (text line) - wrapped in table for consistent alignment
-        customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-        customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
-        customer_sig_element.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-            ('LEFTPADDING', (0, 0), (0, 0), 0),
-            ('RIGHTPADDING', (0, 0), (0, 0), 0),
-            ('TOPPADDING', (0, 0), (0, 0), 0),
-            ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-        ]))
+        # Left column: Customer signature - use actual signature if provided, otherwise placeholder
+        if customer_signature_path and os.path.exists(customer_signature_path):
+            try:
+                # Load customer signature image
+                customer_sig_img = Image(customer_signature_path, width=1.2*inch, height=0.5*inch, kind='proportional')
+                customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
+                customer_sig_data = [[customer_sig_img], [customer_sig_label]]
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch])
+                customer_sig_element.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                    ('ALIGN', (0, 1), (0, 1), 'LEFT'),
+                    ('VALIGN', (0, 0), (0, 1), 'BOTTOM'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ]))
+                print(f"[OK] Customer signature loaded from: {customer_signature_path}")
+            except Exception as e:
+                print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
+                # Fallback to placeholder
+                customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+                customer_sig_element.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                    ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+                    ('LEFTPADDING', (0, 0), (0, 0), 0),
+                    ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                    ('TOPPADDING', (0, 0), (0, 0), 0),
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+                ]))
+        else:
+            # Placeholder if no signature provided
+            customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.5*inch])
+            customer_sig_element.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                ('TOPPADDING', (0, 0), (0, 0), 0),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+            ]))
 
         # Middle column: Company signature with label and image
         if signature_img is not None:

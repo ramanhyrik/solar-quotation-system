@@ -40,6 +40,55 @@ def sanitize_filename(filename: str) -> str:
         sanitized = 'Quote.pdf'
     return sanitized
 
+def find_customer_signature(customer_phone: str = None, customer_email: str = None):
+    """
+    Find customer signature from submissions table based on phone or email.
+    Returns the signature path if found, None otherwise.
+    """
+    if not customer_phone and not customer_email:
+        return None
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Try to find by phone first (most reliable)
+            if customer_phone:
+                cursor.execute('''
+                    SELECT signature_path FROM customer_submissions
+                    WHERE customer_phone = ?
+                    ORDER BY submission_date DESC
+                    LIMIT 1
+                ''', (customer_phone,))
+                result = cursor.fetchone()
+                if result and result['signature_path']:
+                    signature_path = result['signature_path']
+                    if os.path.exists(signature_path):
+                        print(f"[INFO] Found customer signature by phone: {signature_path}")
+                        return signature_path
+
+            # Try to find by email if phone didn't work
+            if customer_email:
+                cursor.execute('''
+                    SELECT signature_path FROM customer_submissions
+                    WHERE customer_email = ?
+                    ORDER BY submission_date DESC
+                    LIMIT 1
+                ''', (customer_email,))
+                result = cursor.fetchone()
+                if result and result['signature_path']:
+                    signature_path = result['signature_path']
+                    if os.path.exists(signature_path):
+                        print(f"[INFO] Found customer signature by email: {signature_path}")
+                        return signature_path
+
+            print(f"[INFO] No signature found for customer (phone: {customer_phone}, email: {customer_email})")
+            return None
+
+    except Exception as e:
+        print(f"[ERROR] Error finding customer signature: {e}")
+        return None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler"""
@@ -695,14 +744,20 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
         print(f"[PDF] Customer: {quote_data.get('customer_name')}")
         print(f"[PDF] System size: {quote_data.get('system_size')}, Annual production: {quote_data.get('annual_production')}")
 
+        # Find customer signature if available
+        customer_signature_path = find_customer_signature(
+            customer_phone=quote_data.get('customer_phone'),
+            customer_email=quote_data.get('customer_email')
+        )
+
         # Generate PDF based on model type
         try:
             model_type = quote_data.get('model_type', 'purchase')
             if model_type == 'leasing':
-                pdf_buffer = generate_leasing_quote_pdf(quote_data, company_info)
+                pdf_buffer = generate_leasing_quote_pdf(quote_data, company_info, customer_signature_path)
                 print(f"[PDF] Successfully generated LEASING PDF for quote #{quote_data.get('quote_number')}")
             else:
-                pdf_buffer = generate_quote_pdf(quote_data, company_info)
+                pdf_buffer = generate_quote_pdf(quote_data, company_info, customer_signature_path)
                 print(f"[PDF] Successfully generated PURCHASE PDF for quote #{quote_data.get('quote_number')}")
         except Exception as pdf_error:
             print(f"[ERROR] PDF generation failed: {type(pdf_error).__name__}: {str(pdf_error)}")
@@ -737,6 +792,188 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             status_code=500,
             detail=f"Failed to generate PDF: {str(e)}"
         )
+
+@app.post("/api/quotes/{quote_id}/send-email")
+async def send_quote_email(quote_id: int, user=Depends(get_current_user)):
+    """Generate and send PDF quote to customer via email"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get quote data
+            cursor.execute('''
+                SELECT q.*, u.name as created_by_name, u.email as created_by_email
+                FROM quotes q
+                LEFT JOIN users u ON q.created_by = u.id
+                WHERE q.id = ?
+            ''', (quote_id,))
+            quote = cursor.fetchone()
+
+            if not quote:
+                raise HTTPException(status_code=404, detail="Quote not found")
+
+            # Get company settings
+            cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
+            company = cursor.fetchone()
+
+            # Convert to dict
+            quote_data = dict(quote)
+            company_info = dict(company) if company else {}
+
+        # Check if customer email exists
+        if not quote_data.get('customer_email'):
+            raise HTTPException(status_code=400, detail="Customer email not found in quote")
+
+        print(f"[EMAIL] Preparing to send quote #{quote_data.get('quote_number')} to {quote_data.get('customer_email')}")
+
+        # Find customer signature if available
+        customer_signature_path = find_customer_signature(
+            customer_phone=quote_data.get('customer_phone'),
+            customer_email=quote_data.get('customer_email')
+        )
+
+        # Generate PDF
+        model_type = quote_data.get('model_type', 'purchase')
+        if model_type == 'leasing':
+            pdf_buffer = generate_leasing_quote_pdf(quote_data, company_info, customer_signature_path)
+        else:
+            pdf_buffer = generate_quote_pdf(quote_data, company_info, customer_signature_path)
+
+        # Send email with PDF attachment
+        email_sent = send_quote_pdf_email(quote_data, company_info, pdf_buffer, customer_signature_path)
+
+        if email_sent:
+            return JSONResponse(content={
+                "message": "Quote PDF sent successfully",
+                "email": quote_data.get('customer_email'),
+                "has_signature": customer_signature_path is not None
+            })
+        else:
+            raise HTTPException(status_code=500, detail="Failed to send email")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to send quote email: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+@app.post("/api/quotes/{quote_id}/generate-signature-link")
+async def generate_signature_link(quote_id: int, user=Depends(get_current_user)):
+    """Generate a unique signature link for a quote"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get quote data
+            cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
+            quote = cursor.fetchone()
+
+            if not quote:
+                raise HTTPException(status_code=404, detail="Quote not found")
+
+            quote_data = dict(quote)
+
+            # Generate unique token (URL-safe)
+            signature_token = secrets.token_urlsafe(32)
+
+            # Set expiration (30 days from now)
+            from datetime import timedelta
+            expires_at = datetime.now() + timedelta(days=30)
+
+            # Get base URL from environment or use Render URL
+            base_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
+
+            # Check if there's already a pending signature request
+            cursor.execute('''
+                SELECT signature_token, status, expires_at
+                FROM quote_signatures
+                WHERE quote_id = ? AND status = 'pending'
+                ORDER BY created_at DESC LIMIT 1
+            ''', (quote_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                # Check if existing token is still valid
+                existing_expires = datetime.fromisoformat(existing['expires_at'])
+                if existing_expires > datetime.now():
+                    # Return existing valid token
+                    return JSONResponse(content={
+                        "message": "Signature link already exists",
+                        "signature_link": f"/sign/{existing['signature_token']}",
+                        "full_url": f"{base_url}/sign/{existing['signature_token']}",
+                        "expires_at": existing['expires_at'],
+                        "quote_number": quote_data.get('quote_number'),
+                        "customer_name": quote_data.get('customer_name')
+                    })
+
+            # Create new signature request
+            cursor.execute('''
+                INSERT INTO quote_signatures
+                (quote_id, signature_token, status, expires_at)
+                VALUES (?, ?, 'pending', ?)
+            ''', (quote_id, signature_token, expires_at))
+            conn.commit()
+
+            print(f"[SIGNATURE] Generated signature link for quote #{quote_data.get('quote_number')}")
+
+            return JSONResponse(content={
+                "message": "Signature link generated successfully",
+                "signature_link": f"/sign/{signature_token}",
+                "full_url": f"{base_url}/sign/{signature_token}",
+                "expires_at": expires_at.isoformat(),
+                "quote_number": quote_data.get('quote_number'),
+                "customer_name": quote_data.get('customer_name'),
+                "customer_email": quote_data.get('customer_email')
+            })
+
+    except Exception as e:
+        print(f"[ERROR] Failed to generate signature link: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate signature link: {str(e)}")
+
+@app.get("/api/quotes/{quote_id}/signature-status")
+async def get_signature_status(quote_id: int, user=Depends(get_current_user)):
+    """Get signature status for a quote"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT * FROM quote_signatures
+                WHERE quote_id = ?
+                ORDER BY created_at DESC LIMIT 1
+            ''', (quote_id,))
+            signature = cursor.fetchone()
+
+            if not signature:
+                return JSONResponse(content={
+                    "has_signature_request": False,
+                    "status": None
+                })
+
+            sig_data = dict(signature)
+            return JSONResponse(content={
+                "has_signature_request": True,
+                "status": sig_data.get('status'),
+                "viewed_at": sig_data.get('viewed_at'),
+                "signed_at": sig_data.get('signed_at'),
+                "expires_at": sig_data.get('expires_at'),
+                "signature_link": f"/sign/{sig_data.get('signature_token')}" if sig_data.get('status') == 'pending' else None
+            })
+
+    except Exception as e:
+        print(f"[ERROR] Failed to get signature status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Email configuration using SendGrid
 # Get API key from environment variable for security
@@ -929,6 +1166,198 @@ def send_email_notification(customer_data: dict, signature_path: str):
         traceback.print_exc()  # Print full traceback for debugging
         return False
 
+def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, customer_signature_path: str = None):
+    """
+    Send PDF quote to customer via email with their signature embedded
+
+    Args:
+        quote_data: Dictionary containing quote information
+        company_info: Dictionary containing company information
+        pdf_buffer: BytesIO object containing the generated PDF
+        customer_signature_path: Optional path to customer signature (for logging)
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    # Check if API key is configured
+    if not SENDGRID_API_KEY:
+        print("[EMAIL] SendGrid API key not configured - skipping quote email")
+        return False
+
+    # Validate customer email
+    customer_email = quote_data.get('customer_email')
+    if not customer_email:
+        print("[EMAIL] No customer email provided - cannot send quote")
+        return False
+
+    try:
+        customer_name = quote_data.get('customer_name', 'לקוח יקר')
+        quote_number = quote_data.get('quote_number', 'N/A')
+        model_type = quote_data.get('model_type', 'purchase')
+        model_type_hebrew = 'ליסינג' if model_type == 'leasing' else 'רכישה'
+
+        # Prepare professional HTML email body
+        email_body = f"""
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הצעת מחיר - מערכת סולארית</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4; direction: rtl;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #000080 0%, #000060 100%);">
+                            <h1 style="color: #D9FF0D; margin: 0; font-size: 28px; font-weight: bold;">הצעת מחיר - מערכת סולארית</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Main content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #000080; margin: 0 0 20px 0; font-size: 22px; text-align: right;">שלום {customer_name},</h2>
+
+                            <p style="color: #333; font-size: 16px; line-height: 1.8; text-align: right; margin: 0 0 25px 0;">
+                                תודה שפניתם אלינו! מצורפת הצעת המחיר שלכם למערכת סולארית.
+                            </p>
+
+                            <!-- Quote details box -->
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">מספר הצעה:</strong>
+                                                    <span style="color: #333; float: left;">{quote_number}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #000080;">סוג הצעה:</strong>
+                                                    <span style="color: #333; float: left;">{model_type_hebrew}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <strong style="color: #000080;">גודל מערכת:</strong>
+                                                    <span style="color: #333; float: left;">{quote_data.get('system_size', 'N/A')} קוט״ש</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- PDF attachment notice -->
+                            <div style="background-color: #e8f4f8; border-right: 4px solid #000080; padding: 20px; margin: 25px 0; text-align: right;">
+                                <p style="margin: 0 0 10px 0; color: #000080; font-size: 16px; font-weight: bold;">
+                                    📎 הצעת המחיר המלאה מצורפת
+                                </p>
+                                <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.6;">
+                                    ההצעה כוללת את כל הפרטים הטכניים, החישובים הפיננסיים, והחתימה שלכם.
+                                    נשמח לענות על כל שאלה ולסייע בתהליך ההחלטה.
+                                </p>
+                            </div>
+
+                            <!-- Call to action -->
+                            <p style="color: #333; font-size: 15px; text-align: right; margin: 25px 0 0 0; line-height: 1.8;">
+                                נשמח לעמוד לשירותכם בכל שאלה.<br/>
+                                ניתן ליצור איתנו קשר בטלפון או באימייל.
+                            </p>
+
+                            <p style="color: #666; font-size: 14px; text-align: right; margin: 20px 0 0 0;">
+                                בברכה,<br/>
+                                <strong>{company_info.get('company_name', 'צוות האנרגיה הסולארית')}</strong>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 20px 30px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: center;">
+                            <p style="margin: 0; color: #666; font-size: 13px;">
+                                זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
+
+        # Plain text version
+        plain_text = f"""
+שלום {customer_name},
+
+תודה שפניתם אלינו! מצורפת הצעת המחיר שלכם למערכת סולארית.
+
+פרטי ההצעה:
+--------------
+מספר הצעה: {quote_number}
+סוג הצעה: {model_type_hebrew}
+גודל מערכת: {quote_data.get('system_size', 'N/A')} קוט״ש
+
+ההצעה המלאה מצורפת לאימייל זה וכוללת את כל הפרטים הטכניים והחישובים הפיננסיים.
+
+נשמח לעמוד לשירותכם בכל שאלה.
+
+בברכה,
+{company_info.get('company_name', 'צוות האנרגיה הסולארית')}
+
+---
+זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+"""
+
+        # Create SendGrid Mail object
+        message = Mail(
+            from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
+            to_emails=customer_email,
+            subject=f"🌞 הצעת מחיר מספר {quote_number} - מערכת סולארית",
+            html_content=email_body,
+            plain_text_content=plain_text
+        )
+
+        # Attach PDF
+        pdf_buffer.seek(0)  # Reset buffer position
+        pdf_content = pdf_buffer.read()
+        encoded_pdf = base64.b64encode(pdf_content).decode()
+
+        pdf_attachment = Attachment(
+            FileContent(encoded_pdf),
+            FileName(f'Quote_{quote_number}_{customer_name}.pdf'),
+            FileType('application/pdf'),
+            Disposition('attachment')
+        )
+        message.attachment = pdf_attachment
+
+        # Send email using SendGrid API
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+
+        # Check response status
+        if response.status_code >= 200 and response.status_code < 300:
+            sig_info = "with signature" if customer_signature_path else "without signature"
+            print(f"[EMAIL] Successfully sent quote PDF to {customer_email} ({sig_info})")
+            print(f"[EMAIL] SendGrid response status: {response.status_code}")
+            return True
+        else:
+            print(f"[EMAIL ERROR] SendGrid API error - Status code: {response.status_code}")
+            return False
+
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send quote PDF: {str(e)}")
+        traceback.print_exc()
+        return False
+
 @app.get("/contact", response_class=HTMLResponse)
 async def contact_form(request: Request):
     """Public contact form page"""
@@ -1004,6 +1433,346 @@ async def submit_contact(
         print(f"[ERROR] Contact submission failed: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/sign/{token}", response_class=HTMLResponse)
+async def signature_portal(token: str, request: Request):
+    """Display signature portal page for customer"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get signature request details
+            cursor.execute('''
+                SELECT qs.*, q.*
+                FROM quote_signatures qs
+                JOIN quotes q ON qs.quote_id = q.id
+                WHERE qs.signature_token = ?
+            ''', (token,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Signature request not found")
+
+            sig_data = dict(result)
+
+            # Check if expired
+            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            if expires_at < datetime.now():
+                return templates.TemplateResponse("sign_quote.html", {
+                    "request": request,
+                    "expired": True
+                })
+
+            # Check if already signed
+            if sig_data['status'] == 'signed':
+                return templates.TemplateResponse("sign_quote.html", {
+                    "request": request,
+                    "expired": True,  # Show as expired/invalid
+                })
+
+            # Mark as viewed if first time
+            if not sig_data['viewed_at']:
+                cursor.execute('''
+                    UPDATE quote_signatures
+                    SET viewed_at = ?, status = 'viewed'
+                    WHERE signature_token = ?
+                ''', (datetime.now(), token))
+                conn.commit()
+
+            # Format numbers for display
+            total_price_formatted = f"{int(sig_data['total_price']):,}" if sig_data.get('total_price') else 'N/A'
+
+            return templates.TemplateResponse("sign_quote.html", {
+                "request": request,
+                "expired": False,
+                "quote_number": sig_data.get('quote_number'),
+                "customer_name": sig_data.get('customer_name'),
+                "customer_phone": sig_data.get('customer_phone'),
+                "customer_email": sig_data.get('customer_email'),
+                "system_size": sig_data.get('system_size'),
+                "total_price": total_price_formatted,
+                "model_type": sig_data.get('model_type', 'purchase')
+            })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Error loading signature portal: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sign/{token}")
+async def submit_signature(token: str, signature: UploadFile = File(...), request: Request = None):
+    """Handle customer signature submission"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get signature request details
+            cursor.execute('''
+                SELECT qs.*, q.*
+                FROM quote_signatures qs
+                JOIN quotes q ON qs.quote_id = q.id
+                WHERE qs.signature_token = ?
+            ''', (token,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Signature request not found")
+
+            sig_data = dict(result)
+
+            # Check if expired
+            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            if expires_at < datetime.now():
+                raise HTTPException(status_code=400, detail="Signature link has expired")
+
+            # Check if already signed
+            if sig_data['status'] == 'signed':
+                raise HTTPException(status_code=400, detail="Quote already signed")
+
+            # Create quote_signatures directory if it doesn't exist
+            signatures_dir = os.path.join("static", "quote_signatures")
+            os.makedirs(signatures_dir, exist_ok=True)
+
+            # Save signature image
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            quote_number = sig_data.get('quote_number', 'unknown')
+            signature_filename = f"quote_sig_{quote_number}_{timestamp}.png"
+            signature_path = os.path.join(signatures_dir, signature_filename)
+
+            with open(signature_path, "wb") as buffer:
+                shutil.copyfileobj(signature.file, buffer)
+
+            # Get client IP
+            client_ip = request.client.host if request else "unknown"
+            user_agent = request.headers.get("user-agent", "unknown") if request else "unknown"
+
+            # Update signature record
+            cursor.execute('''
+                UPDATE quote_signatures
+                SET signature_path = ?,
+                    status = 'signed',
+                    signed_at = ?,
+                    customer_ip = ?,
+                    customer_user_agent = ?
+                WHERE signature_token = ?
+            ''', (signature_path, datetime.now(), client_ip, user_agent, token))
+            conn.commit()
+
+            print(f"[SIGNATURE] Customer signed quote #{quote_number}")
+
+            # Get company info for PDF generation
+            cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
+            company = cursor.fetchone()
+            company_info = dict(company) if company else {}
+
+        # Generate signed PDF with customer signature
+        model_type = sig_data.get('model_type', 'purchase')
+        if model_type == 'leasing':
+            pdf_buffer = generate_leasing_quote_pdf(sig_data, company_info, signature_path)
+        else:
+            pdf_buffer = generate_quote_pdf(sig_data, company_info, signature_path)
+
+        # Save signed PDF
+        signed_pdfs_dir = os.path.join("static", "signed_pdfs")
+        os.makedirs(signed_pdfs_dir, exist_ok=True)
+
+        signed_pdf_filename = f"signed_quote_{quote_number}_{timestamp}.pdf"
+        signed_pdf_path = os.path.join(signed_pdfs_dir, signed_pdf_filename)
+
+        with open(signed_pdf_path, "wb") as f:
+            pdf_buffer.seek(0)
+            f.write(pdf_buffer.read())
+
+        # Update signature record with signed PDF path
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE quote_signatures
+                SET signed_pdf_path = ?
+                WHERE signature_token = ?
+            ''', (signed_pdf_path, token))
+            conn.commit()
+
+        # Send email notification to admin with signed PDF
+        send_admin_signed_quote_notification(sig_data, company_info, pdf_buffer, signature_path, signed_pdf_path)
+
+        return JSONResponse(content={
+            "message": "Signature submitted successfully",
+            "quote_number": quote_number
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Error submitting signature: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to submit signature: {str(e)}")
+
+def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, pdf_buffer, signature_path: str, signed_pdf_path: str):
+    """Send email notification to admin when customer signs a quote"""
+    if not SENDGRID_API_KEY:
+        print("[EMAIL] SendGrid API key not configured - skipping signed quote notification")
+        return False
+
+    try:
+        customer_name = quote_data.get('customer_name', 'לקוח')
+        quote_number = quote_data.get('quote_number', 'N/A')
+        customer_phone = quote_data.get('customer_phone', 'לא צוין')
+        customer_email = quote_data.get('customer_email', 'לא צוין')
+
+        # Prepare email body
+        email_body = f"""
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <title>הצעת מחיר נחתמה - {quote_number}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4; direction: rtl;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">✅ הצעת מחיר נחתמה!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #28a745; margin: 0 0 20px 0; font-size: 22px; text-align: right;">מזל טוב! 🎉</h2>
+
+                            <p style="color: #333; font-size: 16px; line-height: 1.8; text-align: right; margin: 0 0 25px 0;">
+                                הלקוח חתם על הצעת המחיר באופן דיגיטלי.
+                            </p>
+
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #28a745;">מספר הצעה:</strong>
+                                                    <span style="color: #333; float: left;">{quote_number}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #28a745;">שם לקוח:</strong>
+                                                    <span style="color: #333; float: left;">{customer_name}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+                                                    <strong style="color: #28a745;">טלפון:</strong>
+                                                    <span style="color: #333; float: left;">{customer_phone}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <strong style="color: #28a745;">אימייל:</strong>
+                                                    <span style="color: #333; float: left;">{customer_email}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="background-color: #d4edda; border-right: 4px solid #28a745; padding: 20px; margin: 25px 0; text-align: right;">
+                                <p style="margin: 0 0 10px 0; color: #155724; font-size: 16px; font-weight: bold;">
+                                    📎 הצעת המחיר החתומה מצורפת
+                                </p>
+                                <p style="margin: 0; color: #155724; font-size: 14px;">
+                                    ההצעה כוללת את החתימה הדיגיטלית של הלקוח.
+                                </p>
+                            </div>
+
+                            <p style="color: #333; font-size: 15px; text-align: right; margin: 25px 0 0 0; line-height: 1.8;">
+                                <strong>צעדים הבאים:</strong><br/>
+                                1. צור קשר עם הלקוח לתיאום התקנה<br/>
+                                2. שלח את ההצעה החתומה ללקוח (אם נדרש)<br/>
+                                3. עדכן את המערכת עם תאריך התקנה
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 20px 30px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: center;">
+                            <p style="margin: 0; color: #666; font-size: 13px;">
+                                זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
+
+        plain_text = f"""
+✅ הצעת מחיר נחתמה!
+
+מזל טוב! הלקוח חתם על הצעת המחיר באופן דיגיטלי.
+
+פרטי ההצעה:
+--------------
+מספר הצעה: {quote_number}
+שם לקוח: {customer_name}
+טלפון: {customer_phone}
+אימייל: {customer_email}
+
+הצעת המחיר החתומה מצורפת לאימייל זה.
+
+צעדים הבאים:
+1. צור קשר עם הלקוח לתיאום התקנה
+2. שלח את ההצעה החתומה ללקוח (אם נדרש)
+3. עדכן את המערכת עם תאריך התקנה
+
+---
+זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
+"""
+
+        # Create email
+        message = Mail(
+            from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
+            to_emails=EMAIL_CONFIG["recipient_email"],
+            subject=f"✅ הצעת מחיר נחתמה - {quote_number} - {customer_name}",
+            html_content=email_body,
+            plain_text_content=plain_text
+        )
+
+        # Attach signed PDF
+        pdf_buffer.seek(0)
+        pdf_content = pdf_buffer.read()
+        encoded_pdf = base64.b64encode(pdf_content).decode()
+
+        pdf_attachment = Attachment(
+            FileContent(encoded_pdf),
+            FileName(f'Signed_Quote_{quote_number}_{customer_name}.pdf'),
+            FileType('application/pdf'),
+            Disposition('attachment')
+        )
+        message.attachment = pdf_attachment
+
+        # Send email
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+
+        if response.status_code >= 200 and response.status_code < 300:
+            print(f"[EMAIL] Successfully sent signed quote notification for {quote_number}")
+            return True
+        else:
+            print(f"[EMAIL ERROR] Failed to send signed quote notification")
+            return False
+
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send signed quote notification: {str(e)}")
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
     import uvicorn

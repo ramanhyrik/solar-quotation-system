@@ -105,6 +105,25 @@ def init_database():
             )
         ''')
 
+        # Quote signatures table (for web portal digital signatures)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS quote_signatures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                quote_id INTEGER NOT NULL,
+                signature_token TEXT UNIQUE NOT NULL,
+                signature_path TEXT,
+                signed_pdf_path TEXT,
+                customer_ip TEXT,
+                customer_user_agent TEXT,
+                status TEXT DEFAULT 'pending',
+                expires_at TIMESTAMP,
+                viewed_at TIMESTAMP,
+                signed_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+            )
+        ''')
+
         conn.commit()
 
         # Add model_type column to quotes table if it doesn't exist (migration)
