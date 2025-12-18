@@ -109,7 +109,7 @@ async function loadQuoteHistory() {
         data.quotes.forEach(quote => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>${quote.id}</strong></td>
+                <td><strong style="color: #00358A; font-size: 16px;">${quote.id}</strong></td>
                 <td>${quote.quote_number}</td>
                 <td>${quote.customer_name}</td>
                 <td>${quote.system_size} קוט״ש</td>
@@ -117,6 +117,7 @@ async function loadQuoteHistory() {
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
                     <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">✍️ קישור חתימה</button>
                         <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">ניתוח פיננסי</button>
                         <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">PDF</button>
                         <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">מחק</button>
@@ -155,6 +156,99 @@ async function deleteQuote(id) {
 
 function downloadPDF(quoteId) {
     window.location.href = `/api/quotes/${quoteId}/pdf`;
+}
+
+async function generateSignatureLink(quoteId) {
+    try {
+        const response = await fetch(`/api/quotes/${quoteId}/generate-signature-link`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to generate signature link');
+        }
+
+        const data = await response.json();
+
+        // Create a nice modal/alert with the link
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+
+        modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; direction: rtl;">
+                <h2 style="color: #00358A; margin-bottom: 20px;">✅ קישור חתימה נוצר בהצלחה!</h2>
+
+                <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <strong style="display: block; margin-bottom: 10px; color: #2d3748;">פרטי הצעה:</strong>
+                    <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
+                        מספר הצעה: <strong>${data.quote_number}</strong><br>
+                        לקוח: <strong>${data.customer_name}</strong><br>
+                        אימייל: <strong>${data.customer_email || 'לא צוין'}</strong>
+                    </div>
+                </div>
+
+                <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #00358A;">
+                    <strong style="display: block; margin-bottom: 10px; color: #00358A;">קישור לחתימה:</strong>
+                    <input type="text" value="${data.full_url}" readonly
+                           style="width: 100%; padding: 10px; border: 2px solid #00358A; border-radius: 6px; font-size: 13px; font-family: monospace;"
+                           id="signatureLinkInput">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="copySignatureLink()"
+                            style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        📋 העתק קישור
+                    </button>
+                    <button onclick="closeSignatureModal()"
+                            style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        סגור
+                    </button>
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; font-size: 13px; color: #856404;">
+                    ⏰ הקישור תקף ל-30 יום
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Store the modal reference for closing
+        window.currentSignatureModal = modal;
+
+        // Auto-select the link text
+        setTimeout(() => {
+            document.getElementById('signatureLinkInput').select();
+        }, 100);
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה ביצירת קישור חתימה');
+    }
+}
+
+function copySignatureLink() {
+    const input = document.getElementById('signatureLinkInput');
+    input.select();
+    document.execCommand('copy');
+
+    // Show success message
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✅ הועתק!';
+    btn.style.background = '#00358A';
+
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '#28a745';
+    }, 2000);
+}
+
+function closeSignatureModal() {
+    if (window.currentSignatureModal) {
+        window.currentSignatureModal.remove();
+        window.currentSignatureModal = null;
+    }
 }
 
 async function viewQuoteAnalysis(quoteId) {
