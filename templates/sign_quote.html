@@ -249,6 +249,25 @@
             margin-bottom: 15px;
         }
 
+        .pdf-preview-btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background: #00358A;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.2);
+        }
+
+        .pdf-preview-btn:hover {
+            background: #002a6b;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.3);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -266,6 +285,11 @@
                 flex-direction: column;
                 gap: 5px;
             }
+
+            .pdf-preview-btn {
+                font-size: 14px;
+                padding: 12px 20px;
+            }
         }
     </style>
 </head>
@@ -273,7 +297,7 @@
     <div class="container">
         {% if expired %}
         <div class="expired-message">
-            <h2>🔒 הקישור פג תוקף</h2>
+            <h2>הקישור פג תוקף</h2>
             <p>קישור החתימה אינו תקף יותר.</p>
             <p>אנא צור קשר עם החברה לקבלת קישור חדש.</p>
         </div>
@@ -284,45 +308,115 @@
             <p class="subtitle">אנא קרא את פרטי ההצעה וחתום להמשך התהליך</p>
         </div>
 
+        <!-- PDF Preview Button -->
+        <div style="text-align: center; margin-bottom: 25px;">
+            <a href="/sign/{{ request.url.path.split('/')[-1] }}/preview-pdf" target="_blank" class="pdf-preview-btn">
+                צפה בהצעת המחיר המלאה (PDF)
+            </a>
+        </div>
+
         <!-- Quote Details -->
         <div class="quote-details">
-            <h2>📋 פרטי הצעת המחיר</h2>
-            <div class="detail-row">
-                <span class="detail-label">מספר הצעה:</span>
-                <span class="detail-value">{{ quote_number }}</span>
+            <h2>פרטי הצעת המחיר</h2>
+
+            <!-- Customer Details -->
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
+                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטי לקוח</h3>
+                <div class="detail-row">
+                    <span class="detail-label">מספר הצעה:</span>
+                    <span class="detail-value">{{ quote_number }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">שם:</span>
+                    <span class="detail-value">{{ customer_name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">טלפון:</span>
+                    <span class="detail-value">{{ customer_phone }}</span>
+                </div>
+                {% if customer_email %}
+                <div class="detail-row">
+                    <span class="detail-label">אימייל:</span>
+                    <span class="detail-value">{{ customer_email }}</span>
+                </div>
+                {% endif %}
+                {% if customer_address %}
+                <div class="detail-row">
+                    <span class="detail-label">כתובת:</span>
+                    <span class="detail-value">{{ customer_address }}</span>
+                </div>
+                {% endif %}
             </div>
-            <div class="detail-row">
-                <span class="detail-label">שם:</span>
-                <span class="detail-value">{{ customer_name }}</span>
+
+            <!-- System Details -->
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
+                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטי מערכת</h3>
+                <div class="detail-row">
+                    <span class="detail-label">גודל מערכת:</span>
+                    <span class="detail-value">{{ system_size }} קוט״ש</span>
+                </div>
+                {% if panel_type %}
+                <div class="detail-row">
+                    <span class="detail-label">סוג פאנלים:</span>
+                    <span class="detail-value">{{ panel_type }}</span>
+                </div>
+                {% endif %}
+                {% if panel_count %}
+                <div class="detail-row">
+                    <span class="detail-label">מספר פאנלים:</span>
+                    <span class="detail-value">{{ panel_count }}</span>
+                </div>
+                {% endif %}
+                {% if inverter_type %}
+                <div class="detail-row">
+                    <span class="detail-label">סוג מהפך:</span>
+                    <span class="detail-value">{{ inverter_type }}</span>
+                </div>
+                {% endif %}
+                {% if annual_production %}
+                <div class="detail-row">
+                    <span class="detail-label">ייצור שנתי משוער:</span>
+                    <span class="detail-value">{{ annual_production }} קוט״ש</span>
+                </div>
+                {% endif %}
+                {% if warranty_years %}
+                <div class="detail-row">
+                    <span class="detail-label">תקופת אחריות:</span>
+                    <span class="detail-value">{{ warranty_years }} שנים</span>
+                </div>
+                {% endif %}
             </div>
-            <div class="detail-row">
-                <span class="detail-label">טלפון:</span>
-                <span class="detail-value">{{ customer_phone }}</span>
-            </div>
-            {% if customer_email %}
-            <div class="detail-row">
-                <span class="detail-label">אימייל:</span>
-                <span class="detail-value">{{ customer_email }}</span>
-            </div>
-            {% endif %}
-            <div class="detail-row">
-                <span class="detail-label">גודל מערכת:</span>
-                <span class="detail-value">{{ system_size }} קוט״ש</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">מחיר כולל:</span>
-                <span class="detail-value">₪{{ total_price }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">סוג הצעה:</span>
-                <span class="detail-value">{{ 'ליסינג' if model_type == 'leasing' else 'רכישה' }}</span>
+
+            <!-- Financial Details -->
+            <div>
+                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטים פיננסיים</h3>
+                <div class="detail-row">
+                    <span class="detail-label">סוג הצעה:</span>
+                    <span class="detail-value">{{ 'ליסינג' if model_type == 'leasing' else 'רכישה' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">מחיר כולל:</span>
+                    <span class="detail-value" style="font-size: 18px; font-weight: 700; color: #00358A;">₪{{ total_price }}</span>
+                </div>
+                {% if annual_revenue %}
+                <div class="detail-row">
+                    <span class="detail-label">הכנסה שנתית משוערת:</span>
+                    <span class="detail-value">₪{{ annual_revenue }}</span>
+                </div>
+                {% endif %}
+                {% if payback_period %}
+                <div class="detail-row">
+                    <span class="detail-label">תקופת החזר:</span>
+                    <span class="detail-value">{{ payback_period }} שנים</span>
+                </div>
+                {% endif %}
             </div>
         </div>
 
         <form id="signatureForm">
             <!-- Signature Section -->
             <div class="signature-section">
-                <span class="signature-label">✍️ חתימה דיגיטלית</span>
+                <span class="signature-label">חתימה דיגיטלית</span>
                 <p class="signature-instructions">
                     אנא חתום במסגרת למטה באמצעות העכבר או האצבע (במכשירים ניידים).
                     החתימה שלך מאשרת את קבלת ההצעה והסכמתך לתנאים.
@@ -331,7 +425,7 @@
                     <canvas id="signatureCanvas"></canvas>
                 </div>
                 <div class="signature-buttons">
-                    <button type="button" class="btn-clear" onclick="clearSignature()">🗑️ נקה חתימה</button>
+                    <button type="button" class="btn-clear" onclick="clearSignature()">נקה חתימה</button>
                 </div>
             </div>
 
@@ -349,12 +443,12 @@
             <div id="errorMessage" class="error-message"></div>
 
             <button type="submit" class="submit-btn" id="submitBtn">
-                ✅ אישור וחתימה
+                אישור וחתימה
             </button>
         </form>
 
         <div id="successMessage" class="success-message">
-            <h2>✓ תודה רבה!</h2>
+            <h2>תודה רבה!</h2>
             <p style="font-size: 18px; margin-bottom: 15px;">החתימה התקבלה בהצלחה</p>
             <p>הצעת המחיר החתומה נשלחה לחברה.</p>
             <p>נחזור אליך בהקדם האפשרי.</p>
@@ -367,7 +461,7 @@
         // Initialize signature pad
         const canvas = document.getElementById('signatureCanvas');
         const signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgb(255, 255, 255)',
+            backgroundColor: 'rgba(0, 0, 0, 0)',
             penColor: 'rgb(0, 0, 0)',
             minWidth: 1,
             maxWidth: 3

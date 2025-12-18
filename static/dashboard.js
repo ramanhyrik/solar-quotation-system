@@ -116,11 +116,11 @@ async function loadQuoteHistory() {
                 <td>₪${quote.total_price.toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
-                    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">✍️ קישור חתימה</button>
-                        <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">ניתוח פיננסי</button>
-                        <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">PDF</button>
-                        <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;">מחק</button>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+                        <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">קישור חתימה</button>
+                        <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">ניתוח פיננסי</button>
+                        <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">PDF</button>
+                        <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">מחק</button>
                     </div>
                 </td>
             `;
@@ -176,7 +176,7 @@ async function generateSignatureLink(quoteId) {
 
         modal.innerHTML = `
             <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; direction: rtl;">
-                <h2 style="color: #00358A; margin-bottom: 20px;">✅ קישור חתימה נוצר בהצלחה!</h2>
+                <h2 style="color: #00358A; margin-bottom: 20px;">קישור חתימה נוצר בהצלחה!</h2>
 
                 <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                     <strong style="display: block; margin-bottom: 10px; color: #2d3748;">פרטי הצעה:</strong>
@@ -197,7 +197,7 @@ async function generateSignatureLink(quoteId) {
                 <div style="display: flex; gap: 10px;">
                     <button onclick="copySignatureLink()"
                             style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        📋 העתק קישור
+                        העתק קישור
                     </button>
                     <button onclick="closeSignatureModal()"
                             style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
@@ -206,7 +206,7 @@ async function generateSignatureLink(quoteId) {
                 </div>
 
                 <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; font-size: 13px; color: #856404;">
-                    ⏰ הקישור תקף ל-30 יום
+                    הקישור תקף ל-30 יום
                 </div>
             </div>
         `;
@@ -235,7 +235,7 @@ function copySignatureLink() {
     // Show success message
     const btn = event.target;
     const originalText = btn.textContent;
-    btn.textContent = '✅ הועתק!';
+    btn.textContent = 'הועתק!';
     btn.style.background = '#00358A';
 
     setTimeout(() => {

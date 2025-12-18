@@ -1481,15 +1481,25 @@ async def signature_portal(token: str, request: Request):
 
             # Format numbers for display
             total_price_formatted = f"{int(sig_data['total_price']):,}" if sig_data.get('total_price') else 'N/A'
+            annual_revenue_formatted = f"{int(sig_data['annual_revenue']):,}" if sig_data.get('annual_revenue') else 'N/A'
 
             return templates.TemplateResponse("sign_quote.html", {
                 "request": request,
                 "expired": False,
+                "quote_id": sig_data.get('quote_id'),
                 "quote_number": sig_data.get('quote_number'),
                 "customer_name": sig_data.get('customer_name'),
                 "customer_phone": sig_data.get('customer_phone'),
                 "customer_email": sig_data.get('customer_email'),
+                "customer_address": sig_data.get('customer_address'),
                 "system_size": sig_data.get('system_size'),
+                "panel_type": sig_data.get('panel_type'),
+                "panel_count": sig_data.get('panel_count'),
+                "inverter_type": sig_data.get('inverter_type'),
+                "annual_production": sig_data.get('annual_production'),
+                "annual_revenue": annual_revenue_formatted,
+                "payback_period": sig_data.get('payback_period'),
+                "warranty_years": sig_data.get('warranty_years'),
                 "total_price": total_price_formatted,
                 "model_type": sig_data.get('model_type', 'purchase')
             })
@@ -1498,6 +1508,60 @@ async def signature_portal(token: str, request: Request):
         raise
     except Exception as e:
         print(f"[ERROR] Error loading signature portal: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/sign/{token}/preview-pdf")
+async def preview_quote_pdf(token: str):
+    """Allow customer to view PDF quote using signature token (no authentication required)"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get signature request and quote details
+            cursor.execute('''
+                SELECT qs.*, q.*
+                FROM quote_signatures qs
+                JOIN quotes q ON qs.quote_id = q.id
+                WHERE qs.signature_token = ?
+            ''', (token,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Signature request not found")
+
+            sig_data = dict(result)
+
+            # Check if expired
+            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            if expires_at < datetime.now():
+                raise HTTPException(status_code=400, detail="Signature link has expired")
+
+            # Get company settings
+            cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
+            company = cursor.fetchone()
+            company_info = dict(company) if company else None
+
+        # Generate PDF (without customer signature since they haven't signed yet)
+        model_type = sig_data.get('model_type', 'purchase')
+        if model_type == 'leasing':
+            pdf_buffer = generate_leasing_quote_pdf(sig_data, company_info, None)
+        else:
+            pdf_buffer = generate_quote_pdf(sig_data, company_info, None)
+
+        # Return PDF for inline viewing
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "inline"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Error generating PDF preview: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
