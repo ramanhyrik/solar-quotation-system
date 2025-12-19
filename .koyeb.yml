@@ -1,0 +1,23 @@
+app:
+  name: solar-quotation-system
+
+services:
+  - name: web
+    type: web
+    builder: dockerfile
+    instance_type: free
+    regions:
+      - fra
+    ports:
+      - port: 8000
+        protocol: http
+    env:
+      - key: PORT
+        value: "8000"
+    health_check:
+      http:
+        port: 8000
+        path: /
+    routes:
+      - path: /
+        port: 8000
