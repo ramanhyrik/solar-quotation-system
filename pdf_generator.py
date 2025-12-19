@@ -861,10 +861,10 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
                 # Load customer signature image - horizontal layout (RTL: signature on left, label on right)
-                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.4*inch, kind='proportional')
+                customer_sig_img = Image(customer_signature_path, width=1.4*inch, height=0.6*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.8*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.4*inch, 0.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -1566,10 +1566,10 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
                 # Load customer signature image - horizontal layout (RTL: signature on left, label on right)
-                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.4*inch, kind='proportional')
+                customer_sig_img = Image(customer_signature_path, width=1.4*inch, height=0.6*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.8*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.4*inch, 0.8*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
