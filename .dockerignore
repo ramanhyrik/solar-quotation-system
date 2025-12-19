@@ -1,47 +1,22 @@
-# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-
-# Virtual environments
-env/
-venv/
-ENV/
-
-# IDE
-.vscode/
-.idea/
-.claude/
-*.swp
-*.swo
-*~
-
-# Git
+*.so
+*.egg
+*.egg-info
+dist/
+build/
 .git/
 .gitignore
-.gitattributes
-
-# Documentation
-README.md
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Local database (will be on persistent disk)
+.env
 *.db
 *.db-journal
-*.sqlite
-*.sqlite3
-
-# Logs
-*.log
-
-# Environment files
-.env
-.env.local
-
-# Temporary files
-nul
+venv/
+env/
+.vscode/
+.idea/
+*.md
+render.yaml
+build.sh
