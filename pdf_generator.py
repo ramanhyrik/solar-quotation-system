@@ -65,7 +65,7 @@ def reshape_hebrew(text):
 
 def trim_signature_whitespace(image_path):
     """
-    Trim whitespace from signature image and return path to trimmed version
+    Aggressively trim whitespace from signature image using edge detection
 
     Args:
         image_path: Path to original signature image
@@ -81,18 +81,29 @@ def trim_signature_whitespace(image_path):
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
 
-        # Get the bounding box of non-transparent/non-white pixels
+        # Get the alpha channel or create one
+        if img.mode == 'RGBA':
+            alpha = img.split()[3]
+        else:
+            # If no alpha, use the image itself
+            alpha = img.convert('L')
+
         # Create a grayscale version for better edge detection
         bg = PILImage.new('RGBA', img.size, (255, 255, 255, 255))
         composite = PILImage.alpha_composite(bg, img)
         gray = composite.convert('L')
 
-        # Get bounding box (auto-crop whitespace)
-        bbox = gray.getbbox()
+        # Apply threshold to detect non-white pixels more aggressively
+        # Pixels darker than 250 (out of 255) are considered content
+        threshold = 250
+        bbox_img = gray.point(lambda x: 0 if x > threshold else 255)
+
+        # Get bounding box with aggressive detection
+        bbox = bbox_img.getbbox()
 
         if bbox:
-            # Crop to bounding box with small padding
-            padding = 5
+            # Use minimal padding - just 2 pixels to avoid cutting edges
+            padding = 2
             bbox = (
                 max(0, bbox[0] - padding),
                 max(0, bbox[1] - padding),
@@ -105,7 +116,7 @@ def trim_signature_whitespace(image_path):
         trimmed_path = image_path.replace('.png', '_trimmed.png')
         img.save(trimmed_path, 'PNG')
 
-        print(f"[OK] Trimmed signature from {img.size} saved to: {trimmed_path}")
+        print(f"[OK] Aggressively trimmed signature to {img.size}, saved to: {trimmed_path}")
         return trimmed_path
 
     except Exception as e:
@@ -913,17 +924,17 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
             try:
                 # Trim whitespace from signature for better display
                 trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
-                # Load customer signature image - larger size now that whitespace is trimmed
-                customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
+                # Load customer signature image - larger size now that whitespace is aggressively trimmed
+                customer_sig_img = Image(trimmed_sig_path, width=1.5*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.6*inch, 0.65*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch, 0.75*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Small gap between signature and label
+                    ('RIGHTPADDING', (0, 0), (0, 0), 0),   # No gap - label touches signature
                     ('RIGHTPADDING', (1, 0), (1, 0), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
@@ -1621,17 +1632,17 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
             try:
                 # Trim whitespace from signature for better display
                 trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
-                # Load customer signature image - larger size now that whitespace is trimmed
-                customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
+                # Load customer signature image - larger size now that whitespace is aggressively trimmed
+                customer_sig_img = Image(trimmed_sig_path, width=1.5*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.6*inch, 0.65*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.5*inch, 0.75*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Small gap between signature and label
+                    ('RIGHTPADDING', (0, 0), (0, 0), 0),   # No gap - label touches signature
                     ('RIGHTPADDING', (1, 0), (1, 0), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
