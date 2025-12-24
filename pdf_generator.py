@@ -1415,10 +1415,9 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
 
         # Build cash flow table data
         cashflow_table_data = []
-        # Header row - LEASING: "לקוח" instead of "הכנסה", cumulative cashflow based on 25% income
+        # Header row - LEASING: Removed "רווח נקי" column, only cumulative, client, investment, year
         cashflow_table_data.append([
             reshape_hebrew('תזרים מצטבר'),
-            reshape_hebrew('רווח נקי'),
             reshape_hebrew('לקוח'),  # Changed from 'הכנסה' to 'לקוח'
             reshape_hebrew('השקעה'),
             reshape_hebrew('שנה')
@@ -1427,7 +1426,6 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         # Year 0 - LEASING: Investment set to '0', cumulative starts at 0
         cashflow_table_data.append([
             '0',  # LEASING: Cumulative starts at 0 since investment is 0
-            '-',
             '-',
             '0',  # LEASING: Set to 0 instead of showing actual investment
             '0'
@@ -1453,26 +1451,24 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
             # Format cumulative cashflow
             cumulative_display = f"₪{format_number(cumulative_cashflow)}"
 
-            # LEASING: Include cumulative cashflow column (based on 25% accumulation)
+            # LEASING: Removed net profit column - only cumulative, client, investment, year
             cashflow_table_data.append([
                 cumulative_display,
-                f"₪{format_number(year_net_profit)}",
                 f"₪{format_number(year_customer)}",  # Customer column shows 25% of revenue
                 '-',
                 str(year)
             ])
 
-        # Total row - LEASING: investment shown as '0', cumulative is total 25% income
+        # Total row - LEASING: Removed net profit column - only cumulative, client total, investment, label
         cashflow_table_data.append([
             f"₪{format_number(cumulative_cashflow)}",
-            f"₪{format_number(total_net_profit_sum)}",
             f"₪{format_number(total_revenue_sum)}",
             '0',  # LEASING: Show 0 for total investment
             reshape_hebrew('סה״כ')
         ])
 
-        # Create cash flow table (smaller font to fit all rows) - LEASING: 5 columns with cumulative cashflow
-        cashflow_table = Table(cashflow_table_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch, 0.8*inch])
+        # Create cash flow table (smaller font to fit all rows) - LEASING: 4 columns (removed net profit)
+        cashflow_table = Table(cashflow_table_data, colWidths=[1.7*inch, 1.7*inch, 1.7*inch, 1.1*inch])
         cashflow_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
