@@ -1020,7 +1020,7 @@ def send_email_notification(customer_data: dict, signature_path: str):
                     <!-- Main content -->
                     <tr>
                         <td style="padding: 40px 30px;">
-                            <h2 style="color: #000080; margin: 0 0 20px 0; font-size: 22px; text-align: right;">לידיעתך - פנייה חדשה מהאתר 💡</h2>
+                            <h2 style="color: #000080; margin: 0 0 20px 0; font-size: 22px; text-align: right;">לידיעתך - פנייה חדשה מהאתר</h2>
 
                             <p style="color: #333; font-size: 16px; line-height: 1.6; text-align: right; margin: 0 0 25px 0;">
                                 התקבלה פנייה חדשה ממלא/ת טופס יצירת קשר באתר. להלן פרטי הלקוח:
@@ -1119,7 +1119,7 @@ def send_email_notification(customer_data: dict, signature_path: str):
         message = Mail(
             from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
             to_emails=EMAIL_CONFIG["recipient_email"],
-            subject=f"🌞 פנייה חדשה מהאתר - {customer_data.get('customer_name', 'לקוח חדש')}",
+            subject=f"פנייה חדשה מהאתר - {customer_data.get('customer_name', 'לקוח חדש')}",
             html_content=email_body,
             plain_text_content=plain_text
         )
@@ -1249,7 +1249,7 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
                             <!-- PDF attachment notice -->
                             <div style="background-color: #e8f4f8; border-right: 4px solid #000080; padding: 20px; margin: 25px 0; text-align: right;">
                                 <p style="margin: 0 0 10px 0; color: #000080; font-size: 16px; font-weight: bold;">
-                                    📎 הצעת המחיר המלאה מצורפת
+                                    הצעת המחיר המלאה מצורפת
                                 </p>
                                 <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.6;">
                                     ההצעה כוללת את כל הפרטים הטכניים, החישובים הפיננסיים, והחתימה שלכם.
@@ -1313,7 +1313,7 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
         message = Mail(
             from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
             to_emails=customer_email,
-            subject=f"🌞 הצעת מחיר מספר {quote_number} - מערכת סולארית",
+            subject=f"הצעת מחיר מספר {quote_number} - מערכת סולארית",
             html_content=email_body,
             plain_text_content=plain_text
         )
@@ -1352,7 +1352,11 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
 
 @app.get("/contact", response_class=HTMLResponse)
 async def contact_form(request: Request):
-    """Public contact form page"""
+    """Contact form - only accessible via calculator with parameters"""
+    # Check if request has calculator parameters
+    if not request.query_params.get('roof_area'):
+        # Redirect to calculator if accessed directly
+        return RedirectResponse(url="/widget", status_code=302)
     return templates.TemplateResponse("contact.html", {"request": request})
 
 @app.post("/api/submit-contact")
@@ -1731,12 +1735,12 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
                 <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <tr>
                         <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">✅ הצעת מחיר נחתמה!</h1>
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">הצעת מחיר נחתמה!</h1>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 40px 30px;">
-                            <h2 style="color: #28a745; margin: 0 0 20px 0; font-size: 22px; text-align: right;">מזל טוב! 🎉</h2>
+                            <h2 style="color: #28a745; margin: 0 0 20px 0; font-size: 22px; text-align: right;">מזל טוב!</h2>
 
                             <p style="color: #333; font-size: 16px; line-height: 1.8; text-align: right; margin: 0 0 25px 0;">
                                 הלקוח חתם על הצעת המחיר באופן דיגיטלי.
@@ -1777,7 +1781,7 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
 
                             <div style="background-color: #d4edda; border-right: 4px solid #28a745; padding: 20px; margin: 25px 0; text-align: right;">
                                 <p style="margin: 0 0 10px 0; color: #155724; font-size: 16px; font-weight: bold;">
-                                    📎 הצעת המחיר החתומה מצורפת
+                                    הצעת המחיר החתומה מצורפת
                                 </p>
                                 <p style="margin: 0; color: #155724; font-size: 14px;">
                                     ההצעה כוללת את החתימה הדיגיטלית של הלקוח.
@@ -1808,7 +1812,7 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
 """
 
         plain_text = f"""
-✅ הצעת מחיר נחתמה!
+הצעת מחיר נחתמה!
 
 מזל טוב! הלקוח חתם על הצעת המחיר באופן דיגיטלי.
 
@@ -1834,7 +1838,7 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
         message = Mail(
             from_email=(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_name"]),
             to_emails=EMAIL_CONFIG["recipient_email"],
-            subject=f"✅ הצעת מחיר נחתמה - {quote_number} - {customer_name}",
+            subject=f"הצעת מחיר נחתמה - {quote_number} - {customer_name}",
             html_content=email_body,
             plain_text_content=plain_text
         )
