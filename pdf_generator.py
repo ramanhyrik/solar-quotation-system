@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from chart_generator import generate_monthly_production_chart, generate_directional_production_chart
 import os
 import traceback
+from PIL import Image as PILImage
 
 # Try to import libraries for proper RTL text handling
 try:
@@ -61,6 +62,56 @@ def reshape_hebrew(text):
             print(f"[WARNING] RTL text processing error: {e}")
             return text_str
     return text_str
+
+def trim_signature_whitespace(image_path):
+    """
+    Trim whitespace from signature image and return path to trimmed version
+
+    Args:
+        image_path: Path to original signature image
+
+    Returns:
+        Path to trimmed signature image (temporary file)
+    """
+    try:
+        # Open the image
+        img = PILImage.open(image_path)
+
+        # Convert to RGBA if not already
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+
+        # Get the bounding box of non-transparent/non-white pixels
+        # Create a grayscale version for better edge detection
+        bg = PILImage.new('RGBA', img.size, (255, 255, 255, 255))
+        composite = PILImage.alpha_composite(bg, img)
+        gray = composite.convert('L')
+
+        # Get bounding box (auto-crop whitespace)
+        bbox = gray.getbbox()
+
+        if bbox:
+            # Crop to bounding box with small padding
+            padding = 5
+            bbox = (
+                max(0, bbox[0] - padding),
+                max(0, bbox[1] - padding),
+                min(img.width, bbox[2] + padding),
+                min(img.height, bbox[3] + padding)
+            )
+            img = img.crop(bbox)
+
+        # Save trimmed image to temporary location
+        trimmed_path = image_path.replace('.png', '_trimmed.png')
+        img.save(trimmed_path, 'PNG')
+
+        print(f"[OK] Trimmed signature from {img.size} saved to: {trimmed_path}")
+        return trimmed_path
+
+    except Exception as e:
+        print(f"[WARNING] Could not trim signature whitespace: {e}")
+        # Return original path if trimming fails
+        return image_path
 
 # Register Hebrew-supporting font
 def register_hebrew_font():
@@ -860,11 +911,13 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         # Left column: Customer signature - use actual signature if provided, otherwise placeholder
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
-                # Load customer signature image - smaller size to fit properly
-                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.5*inch, kind='proportional')
+                # Trim whitespace from signature for better display
+                trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
+                # Load customer signature image - larger size now that whitespace is trimmed
+                customer_sig_img = Image(trimmed_sig_path, width=1.3*inch, height=0.6*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.7*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.3*inch, 0.7*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -879,7 +932,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.7*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -891,7 +944,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.7*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -934,7 +987,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
 
         # Create three-column footer table: customer signature on left, company signature in middle, company info on right
         footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[1.5*inch, 1.8*inch, 2.7*inch])
+        footer_table = Table(footer_data, colWidths=[2.0*inch, 1.8*inch, 2.2*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
             ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
@@ -1565,11 +1618,13 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         # Left column: Customer signature - use actual signature if provided, otherwise placeholder
         if customer_signature_path and os.path.exists(customer_signature_path):
             try:
-                # Load customer signature image - smaller size to fit properly
-                customer_sig_img = Image(customer_signature_path, width=1.0*inch, height=0.5*inch, kind='proportional')
+                # Trim whitespace from signature for better display
+                trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
+                # Load customer signature image - larger size now that whitespace is trimmed
+                customer_sig_img = Image(trimmed_sig_path, width=1.3*inch, height=0.6*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
                 customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.0*inch, 0.7*inch])
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.3*inch, 0.7*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -1584,7 +1639,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.7*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1596,7 +1651,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.7*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1639,7 +1694,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
 
         # Create three-column footer table: customer signature on left, company signature in middle, company info on right
         footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[1.5*inch, 1.8*inch, 2.7*inch])
+        footer_table = Table(footer_data, colWidths=[2.0*inch, 1.8*inch, 2.2*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
             ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
