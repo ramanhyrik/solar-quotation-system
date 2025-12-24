@@ -914,25 +914,25 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
                 # Trim whitespace from signature for better display
                 trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
                 # Load customer signature image - larger size now that whitespace is trimmed
-                customer_sig_img = Image(trimmed_sig_path, width=1.3*inch, height=0.6*inch, kind='proportional')
+                customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.3*inch, 0.7*inch])
+                customer_sig_data = [[customer_sig_label, customer_sig_img]]  # Label first (RTL: appears on right)
+                customer_sig_element = Table(customer_sig_data, colWidths=[0.65*inch, 1.6*inch])
                 customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),   # Label aligned right
+                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),    # Signature aligned left (close to label)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),  # Minimal 2pt gap between label and signature
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                 ]))
                 print(f"[OK] Customer signature loaded from: {customer_signature_path}")
             except Exception as e:
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.25*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -944,7 +944,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.25*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -987,7 +987,7 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
 
         # Create three-column footer table: customer signature on left, company signature in middle, company info on right
         footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[2.0*inch, 1.8*inch, 2.2*inch])
+        footer_table = Table(footer_data, colWidths=[2.25*inch, 1.8*inch, 1.95*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
             ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
@@ -1621,25 +1621,25 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
                 # Trim whitespace from signature for better display
                 trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
                 # Load customer signature image - larger size now that whitespace is trimmed
-                customer_sig_img = Image(trimmed_sig_path, width=1.3*inch, height=0.6*inch, kind='proportional')
+                customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img, customer_sig_label]]
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.3*inch, 0.7*inch])
+                customer_sig_data = [[customer_sig_label, customer_sig_img]]  # Label first (RTL: appears on right)
+                customer_sig_element = Table(customer_sig_data, colWidths=[0.65*inch, 1.6*inch])
                 customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),   # Label aligned right
+                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),    # Signature aligned left (close to label)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),  # Minimal 2pt gap between label and signature
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                 ]))
                 print(f"[OK] Customer signature loaded from: {customer_signature_path}")
             except Exception as e:
                 print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
                 # Fallback to placeholder
                 customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
+                customer_sig_element = Table([[customer_sig_para]], colWidths=[2.25*inch])
                 customer_sig_element.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                     ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1651,7 +1651,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         else:
             # Placeholder if no signature provided
             customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.0*inch])
+            customer_sig_element = Table([[customer_sig_para]], colWidths=[2.25*inch])
             customer_sig_element.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
@@ -1694,7 +1694,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
 
         # Create three-column footer table: customer signature on left, company signature in middle, company info on right
         footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[2.0*inch, 1.8*inch, 2.2*inch])
+        footer_table = Table(footer_data, colWidths=[2.25*inch, 1.8*inch, 1.95*inch])
         footer_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
             ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
