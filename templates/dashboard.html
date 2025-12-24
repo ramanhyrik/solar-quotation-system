@@ -840,7 +840,7 @@
 
     <script src="/static/dashboard.js"></script>
     <script>
-        let currentModel = 'purchase';
+        window.currentModel = 'purchase';
         let currentDirection = 'south';
         let noShading = true;
 
@@ -924,7 +924,7 @@
         }
 
         function setModel(model) {
-            currentModel = model;
+            window.currentModel = model;
 
             // Update tab styles
             document.getElementById('tab-leasing').classList.remove('active');
@@ -949,7 +949,7 @@
         }
 
         function setQuoteModel(model) {
-            currentModel = model;
+            window.currentModel = model;
 
             // Update tab styles for quote section
             document.getElementById('quote-tab-leasing').classList.remove('active');
@@ -997,7 +997,7 @@
                 let totalRevenue = annualRevenue * 25;
 
                 // Adjust for leasing model
-                if (currentModel === 'leasing') {
+                if (window.currentModel === 'leasing') {
                     // Leasing takes about 30% of revenue as payment
                     const monthlyPayment = Math.round(annualRevenue * 0.3 / 12);
                     const yearlyPayment = monthlyPayment * 12;
