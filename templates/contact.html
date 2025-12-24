@@ -77,60 +77,6 @@
             box-shadow: 0 0 0 4px rgba(0, 53, 138, 0.1);
         }
 
-        .signature-section {
-            margin: 30px 0;
-            padding: 20px;
-            background: #f7fafc;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-        }
-
-        .signature-label {
-            font-weight: 600;
-            color: #000080;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-
-        .signature-canvas-container {
-            position: relative;
-            background: white;
-            border: 2px solid #000080;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
-
-        #signatureCanvas {
-            border-radius: 10px;
-            touch-action: none;
-            display: block;
-            width: 100%;
-            height: 200px;
-            cursor: crosshair;
-        }
-
-        .signature-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .btn-clear {
-            padding: 10px 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        .btn-clear:hover {
-            background: #c82333;
-        }
-
         .submit-btn {
             width: 100%;
             padding: 16px;
@@ -197,10 +143,6 @@
             h1 {
                 font-size: 24px;
             }
-
-            #signatureCanvas {
-                height: 150px;
-            }
         }
     </style>
 </head>
@@ -238,17 +180,6 @@
                 <input type="number" id="roofArea" name="roof_area" placeholder="לדוגמה: 135" min="0" step="1">
             </div>
 
-            <div class="signature-section">
-                <div class="signature-label">חתימה דיגיטלית <span class="required">*</span></div>
-                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">אנא חתמו במסגרת באמצעות העכבר או האצבע</p>
-                <div class="signature-canvas-container">
-                    <canvas id="signatureCanvas"></canvas>
-                </div>
-                <div class="signature-buttons">
-                    <button type="button" class="btn-clear" onclick="clearSignature()">נקה חתימה</button>
-                </div>
-            </div>
-
             <div id="errorMessage" class="error-message"></div>
 
             <button type="submit" class="submit-btn" id="submitBtn">שלח פרטים</button>
@@ -260,33 +191,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <script>
-        // Initialize signature pad
-        const canvas = document.getElementById('signatureCanvas');
-        const signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgba(0, 0, 0, 0)',
-            penColor: 'rgb(0, 0, 0)',
-            minWidth: 1,
-            maxWidth: 3
-        });
-
-        // Resize canvas
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear();
-        }
-
-        window.addEventListener("resize", resizeCanvas);
-        resizeCanvas();
-
-        function clearSignature() {
-            signaturePad.clear();
-        }
-
         // Form submission
         document.getElementById('contactForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -294,23 +199,12 @@
             const errorDiv = document.getElementById('errorMessage');
             const submitBtn = document.getElementById('submitBtn');
 
-            // Validate signature
-            if (signaturePad.isEmpty()) {
-                errorDiv.textContent = 'אנא חתמו במסגרת החתימה';
-                errorDiv.classList.add('show');
-                return;
-            }
-
             errorDiv.classList.remove('show');
             submitBtn.disabled = true;
             submitBtn.textContent = 'שולח...';
 
             try {
                 const formData = new FormData(this);
-
-                // Add signature as blob
-                const signatureBlob = await fetch(signaturePad.toDataURL()).then(r => r.blob());
-                formData.append('signature', signatureBlob, 'signature.png');
 
                 const response = await fetch('/api/submit-contact', {
                     method: 'POST',

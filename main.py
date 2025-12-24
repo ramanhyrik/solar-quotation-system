@@ -1071,13 +1071,6 @@ def send_email_notification(customer_data: dict, signature_path: str):
                                 <strong>תאריך הפנייה:</strong> {customer_data.get('submission_date', 'לא זמין')}
                             </p>
 
-                            <!-- Signature note -->
-                            <div style="background-color: #e8f4f8; border-right: 4px solid #000080; padding: 15px; margin: 20px 0; text-align: right;">
-                                <p style="margin: 0; color: #333; font-size: 14px;">
-                                    📎 <strong>חתימה דיגיטלית:</strong> החתימה הדיגיטלית של הלקוח מצורפת לאימייל זה.
-                                </p>
-                            </div>
-
                             <!-- Call to action -->
                             <p style="color: #333; font-size: 15px; text-align: right; margin: 25px 0 0 0; line-height: 1.6;">
                                 מומלץ ליצור קשר עם הלקוח בהקדם האפשרי כדי לספק שירות מקצועי ולהגדיל את סיכויי ההמרה.
@@ -1117,8 +1110,6 @@ def send_email_notification(customer_data: dict, signature_path: str):
 שטח גג: {customer_data.get('roof_area', 'לא צוין')} מ"ר
 
 תאריך הפנייה: {customer_data.get('submission_date', 'לא זמין')}
-
-החתימה הדיגיטלית של הלקוח מצורפת לאימייל זה.
 
 ---
 זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
@@ -1370,24 +1361,11 @@ async def submit_contact(
     customer_phone: str = Form(...),
     customer_email: Optional[str] = Form(None),
     customer_address: Optional[str] = Form(None),
-    roof_area: Optional[float] = Form(None),
-    signature: UploadFile = File(...)
+    roof_area: Optional[float] = Form(None)
 ):
-    """Handle contact form submission with signature"""
+    """Handle contact form submission (signature removed)"""
     try:
-        # Create signatures directory if it doesn't exist
-        signatures_dir = os.path.join("static", "signatures")
-        os.makedirs(signatures_dir, exist_ok=True)
-
-        # Save signature image
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        signature_filename = f"signature_{timestamp}_{secrets.token_hex(4)}.png"
-        signature_path = os.path.join(signatures_dir, signature_filename)
-
-        with open(signature_path, "wb") as buffer:
-            shutil.copyfileobj(signature.file, buffer)
-
-        # Save to database
+        # Save to database (no signature)
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -1400,7 +1378,7 @@ async def submit_contact(
                 customer_email or None,
                 customer_address or None,
                 roof_area,
-                signature_path,
+                None,  # No signature
                 datetime.now(),
                 'new'
             ))
@@ -1417,9 +1395,9 @@ async def submit_contact(
             "submission_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
-        # Send email notification (don't fail if email fails)
+        # Send email notification without signature (don't fail if email fails)
         print(f"[EMAIL] Attempting to send email notification for {customer_name}")
-        email_sent = send_email_notification(customer_data, signature_path)
+        email_sent = send_email_notification(customer_data, None)  # No signature path
         if email_sent:
             print(f"[EMAIL] Email notification sent successfully")
         else:
