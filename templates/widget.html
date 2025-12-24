@@ -445,6 +445,26 @@
             box-shadow: 0 5px 15px rgba(217, 255, 13, 0.3);
         }
 
+        .btn-contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #00358A 0%, #003d9e 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.2);
+        }
+
+        .btn-contact-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.4);
+        }
+
         @media (max-width: 600px) {
             .calculator-container {
                 padding: 25px;
@@ -599,8 +619,12 @@
                 </div>
             </div>
 
-            <div style="background: #fff3e0; border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center; border-right: 4px solid #ff9800;">
-                <p style="color: #e65100; font-size: 13px; font-weight: 600; margin: 0;">גודל המערכת והמחיר הסופי ייקבעו לאחר פגישה עם מומחה סולארי</p>
+            <div style="background: #fff3e0; border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; border-right: 4px solid #ff9800;">
+                <p style="color: #e65100; font-size: 13px; font-weight: 600; margin: 0 0 15px 0;">גודל המערכת והמחיר הסופי ייקבעו לאחר פגישה עם מומחה סולארי</p>
+                <a href="/contact" class="btn-contact-link" onclick="passCalculatorData(event)">
+                    <i data-lucide="phone" style="width: 18px; height: 18px;"></i>
+                    השאירו פרטים לקבלת ייעוץ חינם
+                </a>
             </div>
 
             <div class="calc-actions">
@@ -721,6 +745,25 @@
         function resetCalculator() {
             document.getElementById('calcResults').style.display = 'none';
             document.getElementById('roofArea').value = '135';
+        }
+
+        function passCalculatorData(event) {
+            // Get calculator data
+            const roofArea = document.getElementById('roofArea').value;
+            const systemSize = (parseFloat(roofArea) / 7).toFixed(1);
+
+            // Build URL with parameters
+            const params = new URLSearchParams({
+                roof_area: roofArea,
+                system_size: systemSize,
+                model: currentModel,
+                roof_type: currentRoofType,
+                direction: currentDirection
+            });
+
+            // Navigate to contact page with parameters
+            window.location.href = '/contact?' + params.toString();
+            event.preventDefault();
         }
     </script>
 </body>
