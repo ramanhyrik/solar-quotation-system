@@ -232,6 +232,9 @@
         </div>
 
         <form id="contactForm" enctype="multipart/form-data">
+            <!-- Hidden fields for calculator data -->
+            <input type="hidden" id="modelType" name="model_type" value="purchase">
+
             <div class="form-group">
                 <label for="customerName">שם מלא <span class="required">*</span></label>
                 <input type="text" id="customerName" name="customer_name" required placeholder="הזן שם מלא">
@@ -291,9 +294,10 @@
                 document.getElementById('infoRoofArea').textContent = roofArea + ' m²';
                 document.getElementById('infoSystemSize').textContent = systemSize + ' kW';
 
-                // Translate model
+                // Translate model and populate hidden field
                 const modelText = model === 'leasing' ? 'ליסינג' : 'רכישה';
                 document.getElementById('infoModel').textContent = modelText;
+                document.getElementById('modelType').value = model || 'purchase';
 
                 // Translate direction
                 const directionMap = {
