@@ -916,14 +916,15 @@ def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=No
                 # Load customer signature image - larger size now that whitespace is trimmed
                 customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_label, customer_sig_img]]  # Label first (RTL: appears on right)
-                customer_sig_element = Table(customer_sig_data, colWidths=[0.65*inch, 1.6*inch])
+                customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.6*inch, 0.65*inch])
                 customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),   # Label aligned right
-                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),    # Signature aligned left (close to label)
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),  # Minimal 2pt gap between label and signature
+                    ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Small gap between signature and label
+                    ('RIGHTPADDING', (1, 0), (1, 0), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                 ]))
@@ -1623,14 +1624,15 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
                 # Load customer signature image - larger size now that whitespace is trimmed
                 customer_sig_img = Image(trimmed_sig_path, width=1.6*inch, height=0.7*inch, kind='proportional')
                 customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_label, customer_sig_img]]  # Label first (RTL: appears on right)
-                customer_sig_element = Table(customer_sig_data, colWidths=[0.65*inch, 1.6*inch])
+                customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
+                customer_sig_element = Table(customer_sig_data, colWidths=[1.6*inch, 0.65*inch])
                 customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),   # Label aligned right
-                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),    # Signature aligned left (close to label)
+                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
+                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
                     ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),  # Minimal 2pt gap between label and signature
+                    ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Small gap between signature and label
+                    ('RIGHTPADDING', (1, 0), (1, 0), 0),
                     ('TOPPADDING', (0, 0), (-1, -1), 0),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                 ]))
