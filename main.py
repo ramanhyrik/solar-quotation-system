@@ -985,7 +985,7 @@ if not SENDGRID_API_KEY:
 EMAIL_CONFIG = {
     "sender_email": os.getenv("SENDER_EMAIL", "baydon.maximus@gmail.com"),  # SendGrid verified sender
     "sender_name": "Solar Quotation System",
-    "recipient_email": os.getenv("RECIPIENT_EMAIL", "usolarisrael@gmail.com")  # Where to receive notifications
+    "recipient_email": os.getenv("RECIPIENT_EMAIL", "engr.ramankamran@gmail.com")  # Where to receive notifications
 }
 
 def send_email_notification(customer_data: dict, signature_path: str):
