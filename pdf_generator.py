@@ -1349,11 +1349,18 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
         elements.append(financial_heading)
         elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
 
-        # LEASING: 25-year savings calculated as 25% of total revenue
+        # LEASING: 25-year savings calculated as 25% of total revenue with degradation, investment shown as 0
+        # Calculate accurate 25-year total with 0.4% annual degradation
+        degradation_rate_calc = 0.004
+        total_25_years_client = sum(int(annual_revenue * (1 - degradation_rate_calc * year) * 0.25) for year in range(25))
+        # Calculate annual customer income (25% of annual revenue)
+        annual_customer_income = int(annual_revenue * 0.25)
+
         financial_data = [
             [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
-            [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"₪{format_number(int(annual_revenue * 25 * 0.25))}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
+            ["0", reshape_hebrew('סך ההשקעה')],
+            [f"₪{format_number(annual_customer_income)}", reshape_hebrew('הכנסה שנתית משוערת')],
+            [f"₪{format_number(total_25_years_client)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
         ]
 
         financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
@@ -1408,7 +1415,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
 
         # Build cash flow table data
         cashflow_table_data = []
-        # Header row - LEASING: "לקוח" instead of "הכנסה"
+        # Header row - LEASING: "לקוח" instead of "הכנסה", cumulative cashflow based on 25% income
         cashflow_table_data.append([
             reshape_hebrew('תזרים מצטבר'),
             reshape_hebrew('רווח נקי'),
@@ -1417,9 +1424,9 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
             reshape_hebrew('שנה')
         ])
 
-        # Year 0 - LEASING: Investment set to '0'
+        # Year 0 - LEASING: Investment set to '0', cumulative starts at 0
         cashflow_table_data.append([
-            f"(₪{format_number(int(total_price))})",  # Negative cumulative in parentheses
+            '0',  # LEASING: Cumulative starts at 0 since investment is 0
             '-',
             '-',
             '0',  # LEASING: Set to 0 instead of showing actual investment
@@ -1440,14 +1447,13 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
 
             total_revenue_sum += year_customer  # Track customer income
             total_net_profit_sum += year_net_profit
-            cumulative_cashflow = total_net_profit_sum - total_price
+            # LEASING: Cumulative is just the sum of 25% income (no investment to subtract)
+            cumulative_cashflow = total_net_profit_sum
 
-            # Format cumulative cashflow - use parentheses for negative values
-            if cumulative_cashflow < 0:
-                cumulative_display = f"(₪{format_number(abs(cumulative_cashflow))})"
-            else:
-                cumulative_display = f"₪{format_number(cumulative_cashflow)}"
+            # Format cumulative cashflow
+            cumulative_display = f"₪{format_number(cumulative_cashflow)}"
 
+            # LEASING: Include cumulative cashflow column (based on 25% accumulation)
             cashflow_table_data.append([
                 cumulative_display,
                 f"₪{format_number(year_net_profit)}",
@@ -1456,7 +1462,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
                 str(year)
             ])
 
-        # Total row - LEASING: investment shown as '0'
+        # Total row - LEASING: investment shown as '0', cumulative is total 25% income
         cashflow_table_data.append([
             f"₪{format_number(cumulative_cashflow)}",
             f"₪{format_number(total_net_profit_sum)}",
@@ -1465,7 +1471,7 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
             reshape_hebrew('סה״כ')
         ])
 
-        # Create cash flow table (smaller font to fit all rows) - adjusted widths for 5 columns
+        # Create cash flow table (smaller font to fit all rows) - LEASING: 5 columns with cumulative cashflow
         cashflow_table = Table(cashflow_table_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch, 0.8*inch])
         cashflow_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -1507,29 +1513,10 @@ def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature
             leftIndent=0
         )
 
-        # Assumption 1 (combined)
+        # Assumption 1 (combined) - LEASING: Removed assumption 2 and technical details line
         assumption1_text = '1.החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר,החישוב מניח תחזוקה נאותה של מערכת לאורך כל תקופת הפעולה.'
         assumption1_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption1_text)), assumptions_style)
         elements.append(assumption1_para)
-
-        # Assumption 2
-        assumption2_text = '2. כל הנתונים והחישובים המוצגים הינם הערכות בלבד, והכנסות מדויקות יתאפשרו רק לאחר התקנת המערכת וביצועיה בפועל.'
-        assumption2_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption2_text)), assumptions_style)
-        elements.append(assumption2_para)
-        elements.append(Spacer(1, 0.06*inch))
-
-        # Additional technical details
-        technical_details_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת.'
-        technical_para = Paragraph(escape_for_paragraph(reshape_hebrew(technical_details_text)), ParagraphStyle(
-            'TechnicalDetails',
-            parent=normal_style,
-            fontSize=8,
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=10
-        ))
-        elements.append(technical_para)
         elements.append(Spacer(1, 0.1*inch))
 
         # Closing remarks
