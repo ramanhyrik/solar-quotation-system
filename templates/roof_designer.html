@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manual Roof Designer - Solar Panel Layout Calculator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         :root {
@@ -55,10 +56,25 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
         }
 
         .step-container.active {
             display: block;
+            animation: fadeSlideIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .upload-zone {
@@ -127,7 +143,17 @@
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            transform: translateY(0);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-primary {
@@ -209,6 +235,209 @@
             display: inline-block;
             margin-bottom: 15px;
         }
+
+        .tool-btn i,
+        .btn i {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        /* Modal System */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-header h3 {
+            flex: 1;
+            margin: 0;
+            font-size: 18px;
+            color: var(--text-dark);
+        }
+
+        .modal-header i {
+            width: 24px;
+            height: 24px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+        }
+
+        .modal-close i {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 24px;
+            color: var(--text-medium);
+            line-height: 1.6;
+        }
+
+        .modal-body p {
+            margin: 0;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-spinner p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Tooltips */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: #1F2937;
+            color: white;
+            font-size: 13px;
+            white-space: nowrap;
+            border-radius: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        [data-tooltip]::after {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1F2937;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after {
+            opacity: 1;
+        }
+
+        /* For form inputs, show tooltip on the label */
+        .form-group label[data-tooltip] {
+            cursor: help;
+        }
     </style>
 </head>
 <body>
@@ -288,27 +517,37 @@
                     <div style="margin-bottom: 25px;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
 
-                        <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()">
-                            🏠 Draw Roof Boundary
+                        <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()"
+                                data-tooltip="Click points on the image to define the roof boundary">
+                            <i data-lucide="home"></i>
+                            <span>Draw Roof Boundary</span>
                         </button>
-                        <button class="tool-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()">
-                            ⛔ Add Exclusion Polygon
+                        <button class="tool-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()"
+                                data-tooltip="Draw areas where panels cannot be placed (chimneys, vents, etc.)">
+                            <i data-lucide="octagon-x"></i>
+                            <span>Add Exclusion Polygon</span>
                         </button>
-                        <button class="tool-btn" onclick="closePolygon()">
-                            ✓ Close Polygon
+                        <button class="tool-btn" onclick="closePolygon()"
+                                data-tooltip="Complete the current polygon shape">
+                            <i data-lucide="check-circle"></i>
+                            <span>Close Polygon</span>
                         </button>
-                        <button class="tool-btn" onclick="deleteSelected()">
-                            🗑 Delete Selected
+                        <button class="tool-btn" onclick="deleteSelected()"
+                                data-tooltip="Delete the selected polygon (click polygon first, then delete)">
+                            <i data-lucide="trash-2"></i>
+                            <span>Delete Selected</span>
                         </button>
-                        <button class="tool-btn" onclick="clearAll()">
-                            ↺ Clear All
+                        <button class="tool-btn" onclick="clearAll()"
+                                data-tooltip="Remove all polygons and start over">
+                            <i data-lucide="rotate-ccw"></i>
+                            <span>Clear All</span>
                         </button>
                     </div>
 
                     <div style="margin-bottom: 25px;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Scale Calibration</h3>
                         <div class="form-group">
-                            <label>Pixels per Meter:</label>
+                            <label data-tooltip="Adjust based on your satellite image scale">Pixels per Meter:</label>
                             <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10">
                             <small style="color: #666; display: block; margin-top: 5px;">
                                 Adjust if panels appear too large/small
@@ -342,22 +581,22 @@
                         <h3 style="font-size: 16px; margin-bottom: 15px;">Panel Specifications</h3>
 
                         <div class="form-group">
-                            <label>Panel Width (m):</label>
+                            <label data-tooltip="Standard solar panel is 1.7m x 1.0m">Panel Width (m):</label>
                             <input type="number" id="panelWidth" value="1.7" min="0.5" max="3" step="0.1">
                         </div>
 
                         <div class="form-group">
-                            <label>Panel Height (m):</label>
+                            <label data-tooltip="Standard solar panel is 1.7m x 1.0m">Panel Height (m):</label>
                             <input type="number" id="panelHeight" value="1.0" min="0.5" max="3" step="0.1">
                         </div>
 
                         <div class="form-group">
-                            <label>Panel Power (W):</label>
+                            <label data-tooltip="Typical range: 300W - 450W per panel">Panel Power (W):</label>
                             <input type="number" id="panelPower" value="400" min="100" max="1000" step="50">
                         </div>
 
                         <div class="form-group">
-                            <label>Orientation:</label>
+                            <label data-tooltip="Auto tries both orientations for optimal coverage">Orientation:</label>
                             <select id="orientation">
                                 <option value="auto" selected>Auto (Optimal Mix)</option>
                                 <option value="landscape">Landscape Only</option>
@@ -366,7 +605,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Spacing (cm):</label>
+                            <label data-tooltip="Gap between panels for installation clearance">Spacing (cm):</label>
                             <input type="number" id="spacing" value="5" min="0" max="20" step="1">
                         </div>
 
@@ -443,6 +682,35 @@
         </div>
     </div>
 
+    <!-- Custom Modal System -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <i data-lucide="alert-circle" id="modalIcon"></i>
+                <h3 id="modalTitle">Alert</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">OK</button>
+                <button class="btn" style="background: #6B7280; color: white; display: none;"
+                        onclick="closeModal(false)" id="modalCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loadingMessage">Processing...</p>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let currentStep = 1;
@@ -456,6 +724,78 @@
         let roofPolygonObject = null;
         let drawingMode = null; // 'roof' or 'exclusion'
         let panels = [];
+
+        // Modal system
+        function showModal(message, type = 'info', title = null, onConfirm = null) {
+            const modal = document.getElementById('modalOverlay');
+            const messageEl = document.getElementById('modalMessage');
+            const titleEl = document.getElementById('modalTitle');
+            const iconEl = document.getElementById('modalIcon');
+            const okBtn = document.getElementById('modalOkBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            messageEl.textContent = message;
+
+            // Set icon and title based on type
+            const config = {
+                error: { icon: 'alert-circle', title: 'Error', color: '#EF4444' },
+                warning: { icon: 'alert-triangle', title: 'Warning', color: '#F59E0B' },
+                success: { icon: 'check-circle', title: 'Success', color: '#10B981' },
+                info: { icon: 'info', title: 'Information', color: '#3B82F6' },
+                confirm: { icon: 'help-circle', title: 'Confirm', color: '#F59E0B' }
+            };
+
+            const cfg = config[type] || config.info;
+            titleEl.textContent = title || cfg.title;
+            iconEl.setAttribute('data-lucide', cfg.icon);
+            iconEl.style.color = cfg.color;
+
+            // Show/hide cancel button for confirmations
+            if (type === 'confirm') {
+                cancelBtn.style.display = 'inline-block';
+                okBtn.textContent = 'Confirm';
+                okBtn.onclick = () => {
+                    closeModal();
+                    if (onConfirm) onConfirm(true);
+                };
+                cancelBtn.onclick = () => {
+                    closeModal();
+                    if (onConfirm) onConfirm(false);
+                };
+            } else {
+                cancelBtn.style.display = 'none';
+                okBtn.textContent = 'OK';
+                okBtn.onclick = closeModal;
+            }
+
+            modal.classList.add('active');
+            lucide.createIcons(); // Re-render icon
+
+            // ESC key to close
+            document.addEventListener('keydown', handleModalEscape);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modalOverlay');
+            modal.classList.remove('active');
+            document.removeEventListener('keydown', handleModalEscape);
+        }
+
+        function handleModalEscape(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        }
+
+        // Loading system
+        function showLoading(message = 'Processing...') {
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
 
         // Step navigation
         function goToStep(step) {
@@ -507,6 +847,8 @@
             reader.readAsDataURL(file);
 
             // Upload to server
+            showLoading('Uploading image...');
+
             const formData = new FormData();
             formData.append('file', file);
 
@@ -528,17 +870,19 @@
                     console.log('[UPLOAD] Design ID:', designId);
                     console.log('[UPLOAD] Image dimensions:', result.image_dimensions);
                 } else {
-                    alert('Error: ' + (result.error || 'Failed to upload image'));
+                    showModal(result.error || 'Failed to upload image', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to upload image. Please try again.');
+                showModal('Failed to upload image. Please try again.', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
         function proceedToDrawing() {
             if (!designId) {
-                alert('Please upload an image first.');
+                showModal('Please upload an image first.', 'warning');
                 return;
             }
 
@@ -568,6 +912,43 @@
             canvas.on('mouse:down', handleCanvasClick);
             canvas.on('mouse:move', handleCanvasMove);
             canvas.on('mouse:up', handleCanvasUp);
+
+            // Canvas selection animations
+            canvas.on('selection:created', function(e) {
+                if (e.selected && e.selected[0]) {
+                    e.selected[0].set({
+                        strokeWidth: e.selected[0].isRoofPolygon ? 4 : 3,
+                        shadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                    });
+                    canvas.renderAll();
+                }
+            });
+
+            canvas.on('selection:updated', function(e) {
+                if (e.selected && e.selected[0]) {
+                    e.selected[0].set({
+                        strokeWidth: e.selected[0].isRoofPolygon ? 4 : 3,
+                        shadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                    });
+                }
+                if (e.deselected && e.deselected[0]) {
+                    e.deselected[0].set({
+                        strokeWidth: e.deselected[0].isRoofPolygon ? 3 : 2,
+                        shadow: null
+                    });
+                }
+                canvas.renderAll();
+            });
+
+            canvas.on('selection:cleared', function(e) {
+                if (e.deselected && e.deselected[0]) {
+                    e.deselected[0].set({
+                        strokeWidth: e.deselected[0].isRoofPolygon ? 3 : 2,
+                        shadow: null
+                    });
+                    canvas.renderAll();
+                }
+            });
         }
 
         function handleCanvasClick(options) {
@@ -677,13 +1058,13 @@
             } else if (drawingMode === 'exclusion' || currentExclusionPoints.length >= 3) {
                 closeExclusionPolygon();
             } else {
-                alert('Please add at least 3 points to create a polygon.');
+                showModal('Please add at least 3 points to create a polygon.', 'info');
             }
         }
 
         function closeRoofPolygon() {
             if (roofPolygonPoints.length < 3) {
-                alert('Please add at least 3 points to create roof polygon.');
+                showModal('Please add at least 3 points to create roof polygon.', 'info');
                 return;
             }
 
@@ -714,7 +1095,7 @@
 
         function closeExclusionPolygon() {
             if (currentExclusionPoints.length < 3) {
-                alert('Please add at least 3 points to create exclusion zone.');
+                showModal('Please add at least 3 points to create exclusion zone.', 'info');
                 return;
             }
 
@@ -796,7 +1177,7 @@
 
         function proceedToLayout() {
             if (!roofPolygonObject || roofPolygonPoints.length < 3) {
-                alert('Please draw and close the roof boundary polygon first.');
+                showModal('Please draw and close the roof boundary polygon first.', 'warning');
                 return;
             }
 
@@ -846,6 +1227,8 @@
         }
 
         async function calculatePanelLayout() {
+            showLoading('Calculating optimal panel layout...');
+
             const panelWidth = parseFloat(document.getElementById('panelWidth').value);
             const panelHeight = parseFloat(document.getElementById('panelHeight').value);
             const panelPower = parseInt(document.getElementById('panelPower').value);
@@ -883,11 +1266,13 @@
                     displayResults(result);
                     document.getElementById('saveBtn').disabled = result.total_panels === 0;
                 } else {
-                    alert('Error: ' + (result.error || 'Failed to calculate layout'));
+                    showModal(result.error || 'Failed to calculate layout', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to calculate layout. Please try again.');
+                showModal('Failed to calculate layout. Please try again.', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
@@ -1028,7 +1413,7 @@
 
         async function saveDesign() {
             if (!designId || panels.length === 0) {
-                alert('Please calculate panel layout first.');
+                showModal('Please calculate panel layout first.', 'warning');
                 return;
             }
 
@@ -1053,6 +1438,9 @@
 
         // Initialize
         startDrawingRoof();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
