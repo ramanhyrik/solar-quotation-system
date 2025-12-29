@@ -289,19 +289,19 @@
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
 
                         <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()">
-                            Draw Roof Boundary
+                            🏠 Draw Roof Boundary
                         </button>
                         <button class="tool-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()">
-                            Add Exclusion Zone
+                            ⛔ Add Exclusion Polygon
                         </button>
                         <button class="tool-btn" onclick="closePolygon()">
-                            Close Roof Polygon
+                            ✓ Close Polygon
                         </button>
                         <button class="tool-btn" onclick="deleteSelected()">
-                            Delete Selected
+                            🗑 Delete Selected
                         </button>
                         <button class="tool-btn" onclick="clearAll()">
-                            Clear All
+                            ↺ Clear All
                         </button>
                     </div>
 
@@ -359,8 +359,9 @@
                         <div class="form-group">
                             <label>Orientation:</label>
                             <select id="orientation">
-                                <option value="landscape">Landscape</option>
-                                <option value="portrait">Portrait</option>
+                                <option value="auto" selected>Auto (Optimal Mix)</option>
+                                <option value="landscape">Landscape Only</option>
+                                <option value="portrait">Portrait Only</option>
                             </select>
                         </div>
 
@@ -450,10 +451,10 @@
         let designId = null;
         let uploadedImage = null;
         let roofPolygonPoints = [];
-        let exclusionZones = [];
+        let exclusionZones = []; // Array of {points: [{x, y}, ...], polygon: fabric.Polygon}
+        let currentExclusionPoints = []; // Points for exclusion polygon being drawn
         let roofPolygonObject = null;
         let drawingMode = null; // 'roof' or 'exclusion'
-        let tempExclusionRect = null;
         let panels = [];
 
         // Step navigation
@@ -569,9 +570,6 @@
             canvas.on('mouse:up', handleCanvasUp);
         }
 
-        let isDrawingExclusion = false;
-        let exclusionStartX, exclusionStartY;
-
         function handleCanvasClick(options) {
             if (drawingMode === 'roof') {
                 const pointer = canvas.getPointer(options.e);
@@ -585,7 +583,8 @@
                     fill: '#00358A',
                     originX: 'center',
                     originY: 'center',
-                    selectable: false
+                    selectable: false,
+                    roofMarker: true
                 });
                 canvas.add(circle);
 
@@ -595,7 +594,8 @@
                     const line = new fabric.Line([prevPoint.x, prevPoint.y, pointer.x, pointer.y], {
                         stroke: '#00358A',
                         strokeWidth: 2,
-                        selectable: false
+                        selectable: false,
+                        roofMarker: true
                     });
                     canvas.add(line);
                 }
@@ -603,68 +603,50 @@
                 canvas.renderAll();
 
                 document.getElementById('drawingInstruction').textContent =
-                    `${roofPolygonPoints.length} points added. Click "Close Polygon" when done.`;
+                    `${roofPolygonPoints.length} points added. Click "Close Roof Polygon" when done.`;
+
             } else if (drawingMode === 'exclusion') {
                 const pointer = canvas.getPointer(options.e);
-                exclusionStartX = pointer.x;
-                exclusionStartY = pointer.y;
-                isDrawingExclusion = true;
+                currentExclusionPoints.push({ x: pointer.x, y: pointer.y });
 
-                tempExclusionRect = new fabric.Rect({
-                    left: exclusionStartX,
-                    top: exclusionStartY,
-                    width: 0,
-                    height: 0,
-                    fill: 'rgba(255, 0, 0, 0.3)',
-                    stroke: '#ff0000',
-                    strokeWidth: 2,
-                    selectable: true
+                // Draw point marker
+                const circle = new fabric.Circle({
+                    left: pointer.x,
+                    top: pointer.y,
+                    radius: 4,
+                    fill: '#ff0000',
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    exclusionMarker: true
                 });
-                canvas.add(tempExclusionRect);
+                canvas.add(circle);
+
+                // Draw line from previous point
+                if (currentExclusionPoints.length > 1) {
+                    const prevPoint = currentExclusionPoints[currentExclusionPoints.length - 2];
+                    const line = new fabric.Line([prevPoint.x, prevPoint.y, pointer.x, pointer.y], {
+                        stroke: '#ff0000',
+                        strokeWidth: 2,
+                        selectable: false,
+                        exclusionMarker: true
+                    });
+                    canvas.add(line);
+                }
+
+                canvas.renderAll();
+
+                document.getElementById('drawingInstruction').textContent =
+                    `Exclusion zone: ${currentExclusionPoints.length} points. Click "Close Exclusion" or continue adding points.`;
             }
         }
 
         function handleCanvasMove(options) {
-            if (drawingMode === 'exclusion' && isDrawingExclusion && tempExclusionRect) {
-                const pointer = canvas.getPointer(options.e);
-                const width = pointer.x - exclusionStartX;
-                const height = pointer.y - exclusionStartY;
-
-                if (width < 0) {
-                    tempExclusionRect.set({ left: pointer.x });
-                }
-                if (height < 0) {
-                    tempExclusionRect.set({ top: pointer.y });
-                }
-
-                tempExclusionRect.set({
-                    width: Math.abs(width),
-                    height: Math.abs(height)
-                });
-                canvas.renderAll();
-            }
+            // No drag operations needed - using click-based polygon drawing
         }
 
         function handleCanvasUp(options) {
-            if (drawingMode === 'exclusion' && isDrawingExclusion) {
-                isDrawingExclusion = false;
-
-                if (tempExclusionRect && tempExclusionRect.width > 10 && tempExclusionRect.height > 10) {
-                    exclusionZones.push({
-                        x: tempExclusionRect.left,
-                        y: tempExclusionRect.top,
-                        width: tempExclusionRect.width,
-                        height: tempExclusionRect.height
-                    });
-                    console.log('[EXCLUSION] Added zone:', exclusionZones[exclusionZones.length - 1]);
-                }
-
-                tempExclusionRect = null;
-                drawingMode = null;
-                document.getElementById('drawExclusionBtn').classList.remove('active');
-                document.getElementById('drawingInstruction').textContent =
-                    'Exclusion zone added. Continue drawing or proceed to layout.';
-            }
+            // No drag operations needed - using click-based polygon drawing
         }
 
         function startDrawingRoof() {
@@ -676,22 +658,38 @@
         }
 
         function startDrawingExclusion() {
+            // First close any in-progress exclusion zone
+            if (currentExclusionPoints.length > 0) {
+                closeExclusionPolygon();
+            }
+
             drawingMode = 'exclusion';
+            currentExclusionPoints = []; // Reset for new exclusion zone
             document.getElementById('drawExclusionBtn').classList.add('active');
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawingInstruction').textContent =
-                'Click and drag to draw an exclusion zone (chimney, vent, etc.).';
+                'Click on image to add exclusion zone points (chimney, vent, etc.). Click "Close Exclusion" when done.';
         }
 
         function closePolygon() {
-            if (roofPolygonPoints.length < 3) {
+            if (drawingMode === 'roof' || (!drawingMode && roofPolygonPoints.length >= 3)) {
+                closeRoofPolygon();
+            } else if (drawingMode === 'exclusion' || currentExclusionPoints.length >= 3) {
+                closeExclusionPolygon();
+            } else {
                 alert('Please add at least 3 points to create a polygon.');
+            }
+        }
+
+        function closeRoofPolygon() {
+            if (roofPolygonPoints.length < 3) {
+                alert('Please add at least 3 points to create roof polygon.');
                 return;
             }
 
-            // Remove all temporary circles and lines
+            // Remove all temporary circles and lines for roof
             canvas.getObjects().forEach(obj => {
-                if (!obj.isType || obj.isType('circle') || obj.isType('line')) {
+                if (obj.roofMarker) {
                     canvas.remove(obj);
                 }
             });
@@ -702,7 +700,8 @@
                 stroke: '#00358A',
                 strokeWidth: 3,
                 selectable: true,
-                lockRotation: true
+                lockRotation: true,
+                isRoofPolygon: true
             });
             canvas.add(roofPolygonObject);
             canvas.renderAll();
@@ -713,19 +712,61 @@
                 'Roof boundary complete! Add exclusion zones or proceed to panel layout.';
         }
 
+        function closeExclusionPolygon() {
+            if (currentExclusionPoints.length < 3) {
+                alert('Please add at least 3 points to create exclusion zone.');
+                return;
+            }
+
+            // Remove temporary markers for this exclusion zone
+            canvas.getObjects().forEach(obj => {
+                if (obj.exclusionMarker) {
+                    canvas.remove(obj);
+                }
+            });
+
+            // Create filled exclusion polygon
+            const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
+                fill: 'rgba(255, 0, 0, 0.3)',
+                stroke: '#ff0000',
+                strokeWidth: 2,
+                selectable: true,
+                lockRotation: true,
+                isExclusionZone: true
+            });
+            canvas.add(exclusionPoly);
+
+            // Save to exclusion zones array
+            exclusionZones.push({
+                points: [...currentExclusionPoints],
+                polygon: exclusionPoly
+            });
+
+            console.log('[EXCLUSION] Added polygon zone:', currentExclusionPoints.length, 'points');
+
+            canvas.renderAll();
+
+            // Reset for next exclusion zone
+            currentExclusionPoints = [];
+            drawingMode = null;
+            document.getElementById('drawExclusionBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent =
+                `Exclusion zone added (${exclusionZones.length} total). Add more zones or proceed to layout.`;
+        }
+
         function deleteSelected() {
             const activeObject = canvas.getActiveObject();
             if (activeObject) {
-                canvas.remove(activeObject);
-
-                // Remove from exclusionZones array if it's an exclusion zone
-                const index = exclusionZones.findIndex(zone =>
-                    zone.x === activeObject.left && zone.y === activeObject.top
-                );
-                if (index !== -1) {
-                    exclusionZones.splice(index, 1);
+                // Remove from exclusionZones array if it's an exclusion zone polygon
+                if (activeObject.isExclusionZone) {
+                    const index = exclusionZones.findIndex(zone => zone.polygon === activeObject);
+                    if (index !== -1) {
+                        exclusionZones.splice(index, 1);
+                        console.log('[EXCLUSION] Removed zone. Remaining:', exclusionZones.length);
+                    }
                 }
 
+                canvas.remove(activeObject);
                 canvas.renderAll();
             }
         }
@@ -734,6 +775,7 @@
             canvas.clear();
             roofPolygonPoints = [];
             exclusionZones = [];
+            currentExclusionPoints = [];
             roofPolygonObject = null;
             drawingMode = null;
 
@@ -786,19 +828,15 @@
                     });
                     layoutCanvas.add(poly);
 
-                    // Draw exclusion zones
+                    // Draw polygon exclusion zones
                     exclusionZones.forEach(zone => {
-                        const rect = new fabric.Rect({
-                            left: zone.x,
-                            top: zone.y,
-                            width: zone.width,
-                            height: zone.height,
+                        const exclusionPoly = new fabric.Polygon(zone.points, {
                             fill: 'rgba(255, 0, 0, 0.3)',
                             stroke: '#ff0000',
                             strokeWidth: 2,
                             selectable: false
                         });
-                        layoutCanvas.add(rect);
+                        layoutCanvas.add(exclusionPoly);
                     });
 
                     layoutCanvas.renderAll();
@@ -815,10 +853,15 @@
             const spacing = parseFloat(document.getElementById('spacing').value) / 100; // Convert cm to m
             const pixelsPerMeter = parseFloat(document.getElementById('pixelsPerMeter').value);
 
+            // Prepare obstacle data - send only points, not fabric objects
+            const obstacleData = exclusionZones.map(zone => ({
+                points: zone.points
+            }));
+
             const formData = new FormData();
             formData.append('design_id', designId);
             formData.append('roof_polygon', JSON.stringify(roofPolygonPoints));
-            formData.append('obstacles', JSON.stringify(exclusionZones));
+            formData.append('obstacles', JSON.stringify(obstacleData));
             formData.append('panel_width_m', panelWidth);
             formData.append('panel_height_m', panelHeight);
             formData.append('panel_power_w', panelPower);
@@ -856,57 +899,124 @@
                 }
             });
 
-            // Draw panels with realistic solar panel appearance
-            panels.forEach(panel => {
-                // Main panel rectangle - dark blue/black
-                const rect = new fabric.Rect({
-                    left: panel.x,
-                    top: panel.y,
+            console.log(`[DISPLAY] Rendering ${panels.length} panels...`);
+
+            // Draw panels with photo-realistic solar panel appearance
+            panels.forEach((panel, idx) => {
+                const elements = [];
+
+                // 1. Drop shadow for 3D effect
+                const shadow = new fabric.Rect({
+                    left: 2,
+                    top: 2,
                     width: panel.width,
                     height: panel.height,
-                    fill: '#1a2332', // Dark blue-grey (solar panel color)
-                    stroke: '#0d1117', // Darker border
-                    strokeWidth: 1,
-                    selectable: false,
-                    panelRect: true
+                    fill: 'rgba(0, 0, 0, 0.3)',
+                    selectable: false
                 });
+                elements.push(shadow);
 
-                // Add grid lines to simulate solar cells
-                const group = new fabric.Group([rect], {
+                // 2. Aluminum frame (silver border)
+                const frame = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: panel.width,
+                    height: panel.height,
+                    fill: '#bfc5d0', // Aluminum silver
+                    stroke: '#8b95a3',
+                    strokeWidth: 1,
+                    selectable: false
+                });
+                elements.push(frame);
+
+                // 3. Glass surface (dark blue-black with slight gradient effect)
+                const glass = new fabric.Rect({
+                    left: 3,
+                    top: 3,
+                    width: panel.width - 6,
+                    height: panel.height - 6,
+                    fill: '#0a1628', // Very dark blue-black (photovoltaic color)
+                    selectable: false
+                });
+                elements.push(glass);
+
+                // 4. Solar cells grid - 6x10 typical configuration
+                const cellRows = 6;
+                const cellCols = 10;
+                const cellGap = 2; // Gap between cells
+                const cellWidth = (panel.width - 6 - (cellCols + 1) * cellGap) / cellCols;
+                const cellHeight = (panel.height - 6 - (cellRows + 1) * cellGap) / cellRows;
+
+                // Draw individual solar cells with subtle blue tint
+                for (let row = 0; row < cellRows; row++) {
+                    for (let col = 0; col < cellCols; col++) {
+                        const cellX = 3 + cellGap + col * (cellWidth + cellGap);
+                        const cellY = 3 + cellGap + row * (cellHeight + cellGap);
+
+                        // Individual cell with darker blue
+                        const cell = new fabric.Rect({
+                            left: cellX,
+                            top: cellY,
+                            width: cellWidth,
+                            height: cellHeight,
+                            fill: '#1a2942', // Dark blue for cells
+                            stroke: '#0d1421',
+                            strokeWidth: 0.3,
+                            selectable: false
+                        });
+                        elements.push(cell);
+
+                        // Add subtle highlight to cells for realism
+                        const highlight = new fabric.Rect({
+                            left: cellX,
+                            top: cellY,
+                            width: cellWidth,
+                            height: cellHeight * 0.3,
+                            fill: 'rgba(255, 255, 255, 0.03)',
+                            selectable: false
+                        });
+                        elements.push(highlight);
+                    }
+                }
+
+                // 5. Add busbars (thin silver lines connecting cells)
+                const busbarColor = '#4a5568';
+                for (let row = 0; row < cellRows; row++) {
+                    const y = 3 + cellGap + row * (cellHeight + cellGap) + cellHeight / 2;
+                    const busbar = new fabric.Line([3, y, panel.width - 3, y], {
+                        stroke: busbarColor,
+                        strokeWidth: 0.5,
+                        selectable: false,
+                        opacity: 0.4
+                    });
+                    elements.push(busbar);
+                }
+
+                // 6. Glass reflection effect (top-left corner)
+                const reflection = new fabric.Rect({
+                    left: 3,
+                    top: 3,
+                    width: panel.width * 0.3,
+                    height: panel.height * 0.2,
+                    fill: 'rgba(255, 255, 255, 0.08)',
+                    selectable: false
+                });
+                elements.push(reflection);
+
+                // Group all elements
+                const panelGroup = new fabric.Group(elements, {
                     left: panel.x,
                     top: panel.y,
                     selectable: false,
-                    panelRect: true
+                    panelRect: true,
+                    hoverCursor: 'default'
                 });
 
-                // Add horizontal lines (simulate cell rows)
-                const cellRows = 6;
-                for (let i = 1; i < cellRows; i++) {
-                    const y = (panel.height / cellRows) * i;
-                    const line = new fabric.Line([0, y, panel.width, y], {
-                        stroke: '#0d1117',
-                        strokeWidth: 0.5,
-                        selectable: false
-                    });
-                    group.addWithUpdate(line);
-                }
-
-                // Add vertical lines (simulate cell columns)
-                const cellCols = 10;
-                for (let i = 1; i < cellCols; i++) {
-                    const x = (panel.width / cellCols) * i;
-                    const line = new fabric.Line([x, 0, x, panel.height], {
-                        stroke: '#0d1117',
-                        strokeWidth: 0.5,
-                        selectable: false
-                    });
-                    group.addWithUpdate(line);
-                }
-
-                layoutCanvas.add(group);
+                layoutCanvas.add(panelGroup);
             });
 
             layoutCanvas.renderAll();
+            console.log(`[DISPLAY] Rendered ${panels.length} photo-realistic panels`);
         }
 
         function displayResults(result) {
