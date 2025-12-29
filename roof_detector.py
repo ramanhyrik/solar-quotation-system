@@ -106,27 +106,22 @@ class AdvancedPanelLayoutCalculator:
         """
         panel_box = box(x, y, x + width, y + height)
 
-        # Check roof containment (98% threshold - stricter)
-        intersection = self.roof_polygon.intersection(panel_box)
-        containment_ratio = intersection.area / panel_box.area if panel_box.area > 0 else 0
-
-        if containment_ratio < 0.98:
+        # Check roof containment - 100% inside required (no overlap at all)
+        if not self.roof_polygon.contains(panel_box):
+            # Panel extends outside roof boundary
             return False
 
         # Check obstacles - STRICT no overlap policy
         for obstacle in self.obstacle_geoms:
             if panel_box.intersects(obstacle):
-                obstacle_intersection = panel_box.intersection(obstacle)
-                # Any overlap > 0.1% is rejected
-                if obstacle_intersection.area / panel_box.area > 0.001:
-                    return False
+                # ANY intersection with obstacle is rejected
+                return False
 
         # Check overlap with already placed panels
         for placed_box in placed_panels:
             if panel_box.intersects(placed_box):
-                overlap = panel_box.intersection(placed_box)
-                if overlap.area > 0.1:  # Minimal tolerance
-                    return False
+                # ANY overlap with existing panels is rejected
+                return False
 
         return True
 
