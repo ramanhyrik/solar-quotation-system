@@ -19,7 +19,6 @@ from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
-from download_sam_model import download_sam_model
 
 # Detect if running in production (on Render or other HTTPS environment)
 IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") is not None
@@ -97,13 +96,15 @@ async def lifespan(app: FastAPI):
     # Startup
     init_database()
 
-    # Download SAM model if not present (non-interactive mode)
+    # Check SAM model availability (don't download automatically to save memory)
     print("[*] Checking SAM model availability...")
-    try:
-        download_sam_model(interactive=False)
-    except Exception as e:
-        print(f"[WARNING] SAM model download failed: {e}")
-        print("[WARNING] Roof detection will not be available until model is downloaded")
+    sam_model_path = os.path.join("models", "sam_vit_h_4b8939.pth")
+    if os.path.exists(sam_model_path):
+        file_size_gb = os.path.getsize(sam_model_path) / (1024 ** 3)
+        print(f"[*] SAM model found ({file_size_gb:.2f} GB) - Roof detection available")
+    else:
+        print("[WARNING] SAM model not found - Roof detection unavailable")
+        print("[WARNING] Run 'python download_sam_model.py --auto' to download")
 
     print("[*] Solar Quotation System started!")
     print("[*] Visit: http://localhost:8000")

@@ -4,15 +4,19 @@
 
 This application uses Meta's SAM (Segment Anything Model) for roof detection. The model file is **2.4 GB** and is **not included in the git repository** to keep the repo lightweight.
 
-### Automatic Download (Recommended)
+### Download Before Starting Server (Recommended)
 
-The server will **automatically download the SAM model** on first startup if it's not present:
+**You must download the SAM model BEFORE starting the server** for the first time:
 
-1. Deploy your application to the server
-2. Run `uvicorn main:app` or your deployment command
-3. The server will check for the SAM model during startup
-4. If missing, it will download automatically (takes 10-30 minutes on first run)
-5. The model persists on the server - **no need to download again**
+```bash
+# After deploying your code, run this first:
+python download_sam_model.py --auto
+
+# Then start the server:
+uvicorn main:app
+```
+
+The server checks for the model during startup but **does not download automatically** to avoid memory issues. The model persists on the server - you only need to download once.
 
 The model is saved to `models/sam_vit_h_4b8939.pth` and excluded from git via `.gitignore`.
 
@@ -30,23 +34,32 @@ python download_sam_model.py --auto
 
 ### Deployment Options
 
-#### Option 1: Let Server Download (Recommended)
-- Just deploy and start the server
-- Model downloads automatically on first startup
-- Persists across restarts
-- ✓ Simple and clean
-
-#### Option 2: Pre-download Before Deployment
+#### Option 1: Direct Download on Server (Recommended)
 ```bash
-# SSH into your server
+# SSH into your server after deployment
 python download_sam_model.py --auto
 # Then start your server
+uvicorn main:app
 ```
+- Simple and straightforward
+- Model persists across restarts
+- One-time setup
+
+#### Option 2: Download Locally, Then Upload
+```bash
+# On your local machine
+python download_sam_model.py
+# Upload models/sam_vit_h_4b8939.pth to server
+scp models/sam_vit_h_4b8939.pth user@server:/path/to/app/models/
+```
+- Useful if server has slow internet
+- Download once, deploy multiple times
 
 #### Option 3: Cloud Storage (Advanced)
 - Upload model to S3/Google Cloud Storage
 - Modify `download_sam_model.py` to fetch from your cloud storage
 - Faster downloads, more control
+- Good for multiple servers
 
 ### Storage Requirements
 
