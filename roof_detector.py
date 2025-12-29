@@ -125,6 +125,179 @@ class AdvancedPanelLayoutCalculator:
 
         return True
 
+    def _place_panels_greedy_mixed(self, minx, miny, maxx, maxy,
+                                    panel_w, panel_h, spacing):
+        """
+        Greedy mixed-orientation algorithm: Try BOTH orientations at EVERY position
+        This maximizes coverage by placing whichever orientation fits at each location
+
+        Args:
+            minx, miny, maxx, maxy: Roof boundary
+            panel_w, panel_h: Panel dimensions (landscape orientation)
+            spacing: Spacing between panels
+
+        Returns:
+            List of placed panels
+        """
+        panels = []
+        placed_boxes = []
+
+        # Define both possible orientations
+        orientations = [
+            ("landscape", panel_w, panel_h),
+            ("portrait", panel_h, panel_w)
+        ]
+
+        print("[PANEL CALCULATOR] ===== Multi-Pass Greedy Mixed-Orientation Placement =====")
+
+        # PASS 1: Coarse grid (20% step size) - fast initial placement
+        step_coarse = min(panel_w, panel_h) * 0.2
+        print(f"[PANEL CALCULATOR] Pass 1: Coarse scan (step={step_coarse:.1f}px)")
+        pass1_count = 0
+
+        y = miny
+        while y + max(panel_w, panel_h) <= maxy:
+            x = minx
+            while x + max(panel_w, panel_h) <= maxx:
+                # Try both orientations at this position
+                placed = False
+                for orient_name, w, h in orientations:
+                    if self._try_place_panel(x, y, w, h, placed_boxes):
+                        panel_box = box(x, y, x + w, y + h)
+                        placed_boxes.append(panel_box)
+                        panels.append({
+                            "x": int(x),
+                            "y": int(y),
+                            "width": int(w),
+                            "height": int(h),
+                            "row": -1,
+                            "col": -1,
+                            "orientation": orient_name
+                        })
+                        pass1_count += 1
+                        placed = True
+                        x += w + spacing  # Jump past placed panel
+                        break
+
+                if not placed:
+                    x += step_coarse  # Small step to find next position
+            y += step_coarse
+
+        print(f"[PANEL CALCULATOR] Pass 1 complete: {pass1_count} panels placed")
+
+        # PASS 2: Medium scan (12% step size) - fill medium gaps
+        step_medium = min(panel_w, panel_h) * 0.12
+        print(f"[PANEL CALCULATOR] Pass 2: Medium scan (step={step_medium:.1f}px)")
+        pass2_count = 0
+
+        y = miny
+        while y + max(panel_w, panel_h) <= maxy:
+            x = minx
+            while x + max(panel_w, panel_h) <= maxx:
+                # Try both orientations
+                placed = False
+                for orient_name, w, h in orientations:
+                    if self._try_place_panel(x, y, w, h, placed_boxes):
+                        panel_box = box(x, y, x + w, y + h)
+                        placed_boxes.append(panel_box)
+                        panels.append({
+                            "x": int(x),
+                            "y": int(y),
+                            "width": int(w),
+                            "height": int(h),
+                            "row": -1,
+                            "col": -1,
+                            "orientation": orient_name
+                        })
+                        pass2_count += 1
+                        placed = True
+                        x += w + spacing
+                        break
+
+                if not placed:
+                    x += step_medium
+            y += step_medium
+
+        print(f"[PANEL CALCULATOR] Pass 2 complete: {pass2_count} additional panels")
+
+        # PASS 3: Fine scan (8% step size) - fill small gaps
+        step_fine = min(panel_w, panel_h) * 0.08
+        print(f"[PANEL CALCULATOR] Pass 3: Fine scan (step={step_fine:.1f}px)")
+        pass3_count = 0
+
+        y = miny
+        while y + max(panel_w, panel_h) <= maxy:
+            x = minx
+            while x + max(panel_w, panel_h) <= maxx:
+                # Try both orientations
+                placed = False
+                for orient_name, w, h in orientations:
+                    if self._try_place_panel(x, y, w, h, placed_boxes):
+                        panel_box = box(x, y, x + w, y + h)
+                        placed_boxes.append(panel_box)
+                        panels.append({
+                            "x": int(x),
+                            "y": int(y),
+                            "width": int(w),
+                            "height": int(h),
+                            "row": -1,
+                            "col": -1,
+                            "orientation": orient_name
+                        })
+                        pass3_count += 1
+                        placed = True
+                        x += w + spacing
+                        break
+
+                if not placed:
+                    x += step_fine
+            y += step_fine
+
+        print(f"[PANEL CALCULATOR] Pass 3 complete: {pass3_count} additional panels")
+
+        # PASS 4: Ultra-fine scan (5% step size) - catch any remaining tiny gaps
+        step_ultra = min(panel_w, panel_h) * 0.05
+        print(f"[PANEL CALCULATOR] Pass 4: Ultra-fine scan (step={step_ultra:.1f}px)")
+        pass4_count = 0
+
+        y = miny
+        while y + max(panel_w, panel_h) <= maxy:
+            x = minx
+            while x + max(panel_w, panel_h) <= maxx:
+                # Try both orientations
+                placed = False
+                for orient_name, w, h in orientations:
+                    if self._try_place_panel(x, y, w, h, placed_boxes):
+                        panel_box = box(x, y, x + w, y + h)
+                        placed_boxes.append(panel_box)
+                        panels.append({
+                            "x": int(x),
+                            "y": int(y),
+                            "width": int(w),
+                            "height": int(h),
+                            "row": -1,
+                            "col": -1,
+                            "orientation": orient_name
+                        })
+                        pass4_count += 1
+                        placed = True
+                        x += w + spacing
+                        break
+
+                if not placed:
+                    x += step_ultra
+            y += step_ultra
+
+        print(f"[PANEL CALCULATOR] Pass 4 complete: {pass4_count} additional panels")
+        print(f"[PANEL CALCULATOR] ===== Total: {len(panels)} panels placed =====")
+
+        # Count orientation breakdown
+        landscape_count = sum(1 for p in panels if p['orientation'] == 'landscape')
+        portrait_count = sum(1 for p in panels if p['orientation'] == 'portrait')
+        print(f"[PANEL CALCULATOR] Orientation mix: {landscape_count} landscape, {portrait_count} portrait")
+
+        return panels
+
     def calculate_layout(self,
                         panel_width_m: float = 1.7,
                         panel_height_m: float = 1.0,
@@ -164,45 +337,13 @@ class AdvancedPanelLayoutCalculator:
 
         # Multi-pass placement algorithm
         if orientation == "auto":
-            # Try both orientations and pick the best
-            result_landscape = self._place_panels_optimized(
+            # GREEDY MIXED-ORIENTATION ALGORITHM
+            # Try BOTH orientations at EVERY position for maximum coverage
+            print("[PANEL CALCULATOR] Using greedy mixed-orientation algorithm...")
+            panels = self._place_panels_greedy_mixed(
                 minx, miny, maxx, maxy,
-                panel_w_px, panel_h_px, spacing_px, "landscape"
+                panel_w_px, panel_h_px, spacing_px
             )
-            result_portrait = self._place_panels_optimized(
-                minx, miny, maxx, maxy,
-                panel_h_px, panel_w_px, spacing_px, "portrait"  # Swapped dimensions
-            )
-
-            # Pick orientation with more panels
-            if len(result_portrait['panels']) > len(result_landscape['panels']):
-                print(f"[PANEL CALCULATOR] Auto-selected PORTRAIT: {len(result_portrait['panels'])} panels vs {len(result_landscape['panels'])} landscape")
-                panels = result_portrait['panels']
-                final_orientation = "portrait"
-            else:
-                print(f"[PANEL CALCULATOR] Auto-selected LANDSCAPE: {len(result_landscape['panels'])} panels vs {len(result_portrait['panels'])} portrait")
-                panels = result_landscape['panels']
-                final_orientation = "landscape"
-
-            # Try mixed orientation (fill gaps with alternate orientation)
-            print(f"[PANEL CALCULATOR] Attempting gap-filling with alternate orientation...")
-            placed_boxes = [box(p['x'], p['y'], p['x'] + p['width'], p['y'] + p['height'])
-                          for p in panels]
-
-            # Try filling gaps with the other orientation
-            if final_orientation == "landscape":
-                gap_w, gap_h = panel_h_px, panel_w_px  # Portrait for gaps
-                gap_orient = "portrait"
-            else:
-                gap_w, gap_h = panel_w_px, panel_h_px  # Landscape for gaps
-                gap_orient = "landscape"
-
-            gap_panels = self._fill_gaps(minx, miny, maxx, maxy, gap_w, gap_h,
-                                        spacing_px, placed_boxes, gap_orient)
-
-            if gap_panels:
-                print(f"[PANEL CALCULATOR] Added {len(gap_panels)} panels in gaps with {gap_orient} orientation")
-                panels.extend(gap_panels)
 
         else:
             # Single orientation
