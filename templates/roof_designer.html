@@ -429,11 +429,11 @@
         <div class="header-content">
             <div>
                 <h1>🏠 Roof Designer</h1>
-                <p style="margin-top: 5px; opacity: 0.9;">AI-Powered Solar Panel Layout</p>
+                <p style="margin-top: 5px; opacity: 0.9;">AI-Powered Solar Panel Layout Calculator</p>
             </div>
             <div class="header-info">
-                <div>Quote: #{{ quote.quote_number }}</div>
-                <div>Customer: {{ quote.customer_name }}</div>
+                <div>Welcome, {{ user.name }}!</div>
+                <div><a href="/dashboard" style="color: #D9FF0D; text-decoration: none;">← Back to Dashboard</a></div>
             </div>
         </div>
     </div>
@@ -462,10 +462,25 @@
 
         <!-- Step 1: Upload Image -->
         <div id="step1" class="step-container active">
-            <h2 style="margin-bottom: 20px;">Upload Roof Image</h2>
+            <h2 style="margin-bottom: 20px;">Upload Roof Image & Customer Info</h2>
             <p style="margin-bottom: 20px; color: #666;">
                 Upload a clear, top-down image of the roof. Best results with drone photos or satellite imagery from Google Maps.
             </p>
+
+            <!-- Customer Info (Optional) -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;">Customer Information (Optional)</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Customer Name:</label>
+                        <input type="text" id="customerName" placeholder="Enter customer name">
+                    </div>
+                    <div class="form-group">
+                        <label>Address:</label>
+                        <input type="text" id="customerAddress" placeholder="Enter roof location">
+                    </div>
+                </div>
+            </div>
 
             <div class="upload-zone" id="uploadZone">
                 <div class="upload-icon">📷</div>
@@ -644,14 +659,13 @@
 
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="window.location.href='/dashboard'">← Back to Dashboard</button>
-                <button class="btn btn-success" onclick="viewQuote()">View Quote</button>
+                <button class="btn btn-success" onclick="startNewDesign()">Create New Design</button>
             </div>
         </div>
     </div>
 
     <script>
         // Global variables
-        const quoteId = {{ quote_id }};
         let currentStep = 1;
         let designId = null;
         let roofPolygon = null;
@@ -665,7 +679,6 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             setupUploadZone();
-            checkExistingDesign();
         });
 
         // Setup upload zone
@@ -733,7 +746,12 @@
 
             const formData = new FormData();
             formData.append('file', uploadedImage);
-            formData.append('quote_id', quoteId);
+
+            // Add optional customer info
+            const customerName = document.getElementById('customerName').value;
+            const customerAddress = document.getElementById('customerAddress').value;
+            if (customerName) formData.append('customer_name', customerName);
+            if (customerAddress) formData.append('customer_address', customerAddress);
 
             try {
                 const response = await fetch('/api/roof-designer/upload', {
@@ -1102,36 +1120,9 @@
             }
         }
 
-        // Check for existing design
-        async function checkExistingDesign() {
-            try {
-                const response = await fetch(`/api/roof-designer/quote/${quoteId}`);
-                const result = await response.json();
-
-                if (result.has_design) {
-                    // Load existing design
-                    designId = result.id;
-                    roofPolygon = result.roof_polygon;
-                    obstacles = result.obstacles || [];
-                    panels = result.panels || [];
-
-                    if (panels && panels.length > 0) {
-                        // Has full design, go to final step
-                        document.getElementById('finalPanels').textContent = result.panel_count;
-                        document.getElementById('finalPower').textContent = result.system_power_kw + ' kW';
-                        document.getElementById('finalCoverage').textContent = result.coverage_percent + '%';
-                        document.getElementById('finalArea').textContent = result.roof_area_m2 + ' m²';
-                        // User can choose to view or redesign
-                    }
-                }
-            } catch (error) {
-                console.error('Error checking existing design:', error);
-            }
-        }
-
-        // View quote
-        function viewQuote() {
-            window.location.href = `/dashboard`;
+        // Start new design
+        function startNewDesign() {
+            window.location.href = '/roof-designer';
         }
 
         // Navigation functions

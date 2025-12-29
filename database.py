@@ -128,7 +128,9 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS roof_designs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                quote_id INTEGER NOT NULL,
+                quote_id INTEGER,
+                customer_name TEXT,
+                customer_address TEXT,
                 original_image_path TEXT NOT NULL,
                 processed_image_path TEXT,
                 roof_polygon_json TEXT,
@@ -145,9 +147,11 @@ def init_database():
                 spacing_m REAL DEFAULT 0.05,
                 orientation TEXT DEFAULT 'landscape',
                 detection_confidence REAL,
+                created_by INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+                FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL,
+                FOREIGN KEY (created_by) REFERENCES users(id)
             )
         ''')
 

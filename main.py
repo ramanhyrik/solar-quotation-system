@@ -1881,11 +1881,12 @@ from roof_detector import process_roof_image, calculate_panel_layout_from_data, 
 @app.post("/api/roof-designer/upload")
 async def upload_roof_image_endpoint(
     file: UploadFile = File(...),
-    quote_id: int = Form(...),
+    customer_name: str = Form(None),
+    customer_address: str = Form(None),
     user=Depends(get_current_user)
 ):
     """
-    Upload roof image and run AI detection
+    Upload roof image and run AI detection (standalone - no quote required)
 
     Returns initial detected roof polygon and obstacles
     """
@@ -1893,13 +1894,6 @@ async def upload_roof_image_endpoint(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        # Verify quote exists and belongs to user
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM quotes WHERE id = ?", (quote_id,))
-            if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Quote not found")
-
         # Create uploads directory
         uploads_dir = os.path.join("static", "roof_images")
         os.makedirs(uploads_dir, exist_ok=True)
@@ -1907,7 +1901,7 @@ async def upload_roof_image_endpoint(
         # Save uploaded image
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
-        filename = f"roof_{quote_id}_{timestamp}.{file_extension}"
+        filename = f"roof_{timestamp}.{file_extension}"
         file_path = os.path.join(uploads_dir, filename)
 
         # Save file
@@ -1930,20 +1924,23 @@ async def upload_roof_image_endpoint(
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO roof_designs (
-                    quote_id, original_image_path, roof_polygon_json,
-                    obstacles_json, detection_confidence
-                ) VALUES (?, ?, ?, ?, ?)
+                    customer_name, customer_address, original_image_path,
+                    roof_polygon_json, obstacles_json, detection_confidence,
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                quote_id,
+                customer_name,
+                customer_address,
                 file_path,
                 json.dumps(analysis_result['roof_polygon']),
                 json.dumps(analysis_result['obstacles']),
-                analysis_result['confidence']
+                analysis_result['confidence'],
+                user['user_id']
             ))
             conn.commit()
             design_id = cursor.lastrowid
 
-        print(f"[ROOF DESIGNER] Created design #{design_id} for quote #{quote_id}")
+        print(f"[ROOF DESIGNER] Created design #{design_id}")
 
         return JSONResponse(content={
             "success": True,
@@ -2104,43 +2101,6 @@ async def get_roof_design(design_id: int, user=Depends(get_current_user)):
         print(f"[ERROR] Failed to get roof design: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/roof-designer/quote/{quote_id}")
-async def get_roof_design_by_quote(quote_id: int, user=Depends(get_current_user)):
-    """Get roof design for a specific quote"""
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    try:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT * FROM roof_designs
-                WHERE quote_id = ?
-                ORDER BY created_at DESC
-                LIMIT 1
-            ''', (quote_id,))
-            design = cursor.fetchone()
-
-            if not design:
-                return JSONResponse(content={"has_design": False})
-
-            design_data = dict(design)
-
-            # Parse JSON fields
-            if design_data.get('roof_polygon_json'):
-                design_data['roof_polygon'] = json.loads(design_data['roof_polygon_json'])
-            if design_data.get('obstacles_json'):
-                design_data['obstacles'] = json.loads(design_data['obstacles_json'])
-            if design_data.get('panels_json'):
-                design_data['panels'] = json.loads(design_data['panels_json'])
-
-            design_data['has_design'] = True
-            return design_data
-
-    except Exception as e:
-        print(f"[ERROR] Failed to get roof design by quote: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/api/roof-designer/save-visualization")
 async def save_visualization_endpoint(
     design_id: int = Form(...),
@@ -2199,29 +2159,50 @@ async def save_visualization_endpoint(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/roof-designer/{quote_id}", response_class=HTMLResponse)
-async def roof_designer_page(quote_id: int, request: Request, user=Depends(get_current_user)):
-    """Roof designer UI page"""
+@app.get("/roof-designer", response_class=HTMLResponse)
+async def roof_designer_page(request: Request, user=Depends(get_current_user)):
+    """Roof designer UI page - standalone tool"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    # Verify quote exists
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
-        quote = cursor.fetchone()
-
-        if not quote:
-            raise HTTPException(status_code=404, detail="Quote not found")
-
-        quote_data = dict(quote)
-
     return templates.TemplateResponse("roof_designer.html", {
         "request": request,
-        "user": user,
-        "quote": quote_data,
-        "quote_id": quote_id
+        "user": user
     })
+
+@app.get("/api/roof-designer/list")
+async def list_roof_designs(user=Depends(get_current_user)):
+    """List all roof designs for current user"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Admin can see all, others see only their own
+            if user["role"] == "ADMIN":
+                cursor.execute('''
+                    SELECT id, customer_name, customer_address, panel_count,
+                           system_power_kw, roof_area_m2, created_at
+                    FROM roof_designs
+                    ORDER BY created_at DESC
+                ''')
+            else:
+                cursor.execute('''
+                    SELECT id, customer_name, customer_address, panel_count,
+                           system_power_kw, roof_area_m2, created_at
+                    FROM roof_designs
+                    WHERE created_by = ?
+                    ORDER BY created_at DESC
+                ''', (user['user_id'],))
+
+            designs = [dict(row) for row in cursor.fetchall()]
+            return {"designs": designs}
+
+    except Exception as e:
+        print(f"[ERROR] Failed to list designs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
