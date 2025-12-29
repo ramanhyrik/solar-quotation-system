@@ -485,8 +485,15 @@
         <!-- Step 1: Upload Image -->
         <div id="step1" class="step-container active">
             <h2 style="margin-bottom: 20px;">Upload Roof Image & Customer Info</h2>
+            <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-blue);">
+                <strong>SAM-Powered Detection</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
+                    This tool uses Meta's Segment Anything Model (SAM) for highly accurate roof boundary detection.
+                    Upload a clear, top-down image of the roof for best results.
+                </p>
+            </div>
             <p style="margin-bottom: 20px; color: #666;">
-                Upload a clear, top-down image of the roof. Best results with drone photos or satellite imagery from Google Maps.
+                Best results with drone photos or satellite imagery from Google Maps.
             </p>
 
             <!-- Customer Info (Optional) -->
@@ -800,7 +807,9 @@
                     // Update confidence badge
                     const badge = document.getElementById('confidenceBadge');
                     const confidence = result.confidence;
-                    badge.textContent = `Confidence: ${(confidence * 100).toFixed(0)}%`;
+                    const detectionMethod = result.detection_method || 'unknown';
+
+                    badge.textContent = `SAM Detection - Confidence: ${(confidence * 100).toFixed(0)}%`;
 
                     if (confidence > 0.7) {
                         badge.className = 'confidence-badge confidence-high';

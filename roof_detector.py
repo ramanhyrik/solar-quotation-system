@@ -44,7 +44,7 @@ class RoofDetector:
 
     def detect_roof_area(self, min_area_ratio: float = 0.1, use_sam: bool = True) -> Dict:
         """
-        Detect main roof area using SAM or advanced edge detection
+        Detect main roof area using SAM (Segment Anything Model) ONLY
 
         Args:
             min_area_ratio: Minimum area ratio (compared to image) to consider as roof
@@ -53,57 +53,48 @@ class RoofDetector:
         Returns:
             Dictionary with roof polygon, area, and confidence score
         """
-        print("[ROOF DETECTOR] Starting roof area detection...")
+        print("[ROOF DETECTOR] ========== SAM-ONLY MODE ==========")
+        print("[ROOF DETECTOR] Starting SAM-exclusive roof area detection...")
 
+        # Check if SAM is available
+        if not SAM_AVAILABLE:
+            print("[ROOF DETECTOR] ERROR: SAM is not available!")
+            print("[ROOF DETECTOR] Install SAM dependencies:")
+            print("                pip install torch torchvision segment-anything")
+            return None
+
+        # Use SAM exclusively
         roof_polygon = None
-        detection_method = "unknown"
+        detection_method = "sam"
 
-        # Method 1: Try SAM if available and enabled
-        if use_sam and SAM_AVAILABLE:
-            print("[ROOF DETECTOR] Attempting SAM-based detection...")
-            try:
-                roof_polygon = self._detect_roof_sam()
-                if roof_polygon:
-                    detection_method = "sam"
-                    print("[ROOF DETECTOR] SAM detection successful")
-            except Exception as e:
-                print(f"[ROOF DETECTOR] SAM detection failed: {e}")
-
-        # Method 2: Edge-based detection with morphological operations
-        if roof_polygon is None:
-            print("[ROOF DETECTOR] Using edge-based detection...")
-            roof_polygon = self._detect_roof_edges()
+        print("[ROOF DETECTOR] Attempting SAM-based detection...")
+        try:
+            roof_polygon = self._detect_roof_sam()
             if roof_polygon:
-                detection_method = "edges"
-
-        # Method 3: Fallback to color-based segmentation
-        if roof_polygon is None:
-            print("[ROOF DETECTOR] Edge detection failed, trying color segmentation...")
-            roof_polygon = self._detect_roof_color_segmentation()
-            if roof_polygon:
-                detection_method = "color"
-
-        # Method 4: Last resort - use largest contour
-        if roof_polygon is None:
-            print("[ROOF DETECTOR] Color segmentation failed, using largest contour...")
-            roof_polygon = self._detect_largest_contour(min_area_ratio)
-            if roof_polygon:
-                detection_method = "contour"
+                print("[ROOF DETECTOR] SAM detection successful!")
+            else:
+                print("[ROOF DETECTOR] SAM returned no valid roof segment")
+                return None
+        except Exception as e:
+            print(f"[ROOF DETECTOR] SAM detection FAILED: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
         if roof_polygon:
             area_pixels = cv2.contourArea(np.array(roof_polygon, dtype=np.int32))
             area_ratio = area_pixels / (self.width * self.height)
 
-            # Calculate confidence based on various factors and detection method
+            # Calculate confidence (SAM is highly reliable)
             confidence = self._calculate_confidence(roof_polygon, area_pixels)
+            confidence = min(0.95, confidence * 1.2)  # SAM confidence boost
 
-            # Boost confidence for SAM-based detection
-            if detection_method == "sam":
-                confidence = min(0.95, confidence * 1.2)  # SAM is more reliable
-
-            print(f"[ROOF DETECTOR] Roof detected using '{detection_method}' method")
+            print(f"[ROOF DETECTOR] ========== SAM DETECTION COMPLETE ==========")
+            print(f"[ROOF DETECTOR] Detection Method: SAM")
+            print(f"[ROOF DETECTOR] Polygon Points: {len(roof_polygon)}")
             print(f"[ROOF DETECTOR] Area: {area_pixels:.0f} px² ({area_ratio*100:.1f}% of image)")
             print(f"[ROOF DETECTOR] Confidence: {confidence:.2f}")
+            print(f"[ROOF DETECTOR] ===============================================")
 
             return {
                 "roof_polygon": roof_polygon,
@@ -114,7 +105,7 @@ class RoofDetector:
                 "image_dimensions": {"width": self.width, "height": self.height}
             }
 
-        print("[ROOF DETECTOR] Failed to detect roof area")
+        print("[ROOF DETECTOR] Failed to detect roof area with SAM")
         return None
 
     def _detect_roof_edges(self) -> Optional[List[Tuple[int, int]]]:
