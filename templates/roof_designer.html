@@ -9,6 +9,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 
     <style>
+        :root {
+            --primary-blue: #00358A;
+            --primary-dark: #002060;
+            --accent-yellow: #FFC107;
+            --success-green: #10B981;
+            --text-dark: #1F2937;
+            --text-medium: #6B7280;
+            --text-light: #9CA3AF;
+            --bg-light: #F9FAFB;
+            --bg-white: #FFFFFF;
+            --border-color: #E5E7EB;
+            --error-red: #EF4444;
+            --warning-orange: #F59E0B;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,17 +31,18 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f6fa;
-            color: #2c3e50;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
         }
 
         /* Header */
         .header {
-            background: linear-gradient(135deg, #00358A 0%, #002060 100%);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 24px 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .header-content {
@@ -85,17 +101,17 @@
         }
 
         .wizard-step.active {
-            color: #00358A;
+            color: var(--primary-blue);
             font-weight: 600;
         }
 
         .wizard-step.active .step-number {
-            background: #00358A;
+            background: var(--primary-blue);
             color: white;
         }
 
         .wizard-step.completed .step-number {
-            background: #27ae60;
+            background: var(--success-green);
             color: white;
         }
 
@@ -126,7 +142,7 @@
 
         /* Upload Section */
         .upload-zone {
-            border: 3px dashed #00358A;
+            border: 3px dashed var(--primary-blue);
             border-radius: 8px;
             padding: 60px 20px;
             text-align: center;
@@ -136,17 +152,17 @@
 
         .upload-zone:hover {
             background: #f8f9ff;
-            border-color: #002060;
+            border-color: var(--primary-dark);
         }
 
         .upload-zone.dragging {
             background: #e6eeff;
-            border-color: #00358A;
+            border-color: var(--primary-blue);
         }
 
         .upload-icon {
             font-size: 60px;
-            color: #00358A;
+            color: var(--primary-blue);
             margin-bottom: 20px;
         }
 
@@ -185,9 +201,9 @@
         .tool-section h3 {
             font-size: 16px;
             margin-bottom: 15px;
-            color: #2c3e50;
+            color: var(--text-dark);
             padding-bottom: 10px;
-            border-bottom: 2px solid #00358A;
+            border-bottom: 2px solid var(--primary-blue);
         }
 
         .tool-btn {
@@ -205,13 +221,13 @@
 
         .tool-btn:hover {
             background: #f0f0f0;
-            border-color: #00358A;
+            border-color: var(--primary-blue);
         }
 
         .tool-btn.active {
-            background: #00358A;
+            background: var(--primary-blue);
             color: white;
-            border-color: #00358A;
+            border-color: var(--primary-blue);
         }
 
         /* Form Controls */
@@ -239,12 +255,12 @@
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #00358A;
+            border-color: var(--primary-blue);
         }
 
         /* Results Panel */
         .results-panel {
-            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%);
             color: white;
             padding: 20px;
             border-radius: 8px;
@@ -287,30 +303,36 @@
         }
 
         .btn-primary {
-            background: #00358A;
+            background: var(--primary-blue);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #002060;
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.3);
         }
 
         .btn-secondary {
-            background: #7f8c8d;
+            background: var(--text-medium);
             color: white;
         }
 
         .btn-secondary:hover {
-            background: #6c7a7b;
+            background: var(--text-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .btn-success {
-            background: #27ae60;
+            background: var(--success-green);
             color: white;
         }
 
         .btn-success:hover {
-            background: #229954;
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .btn:disabled {
@@ -327,7 +349,7 @@
         /* Loading Spinner */
         .spinner {
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #00358A;
+            border-top: 3px solid var(--primary-blue);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -428,12 +450,12 @@
     <div class="header">
         <div class="header-content">
             <div>
-                <h1>🏠 Roof Designer</h1>
+                <h1>Roof Designer</h1>
                 <p style="margin-top: 5px; opacity: 0.9;">AI-Powered Solar Panel Layout Calculator</p>
             </div>
             <div class="header-info">
                 <div>Welcome, {{ user.name }}!</div>
-                <div><a href="/dashboard" style="color: #D9FF0D; text-decoration: none;">← Back to Dashboard</a></div>
+                <div><a href="/dashboard" style="color: #D9FF0D; text-decoration: none;">Back to Dashboard</a></div>
             </div>
         </div>
     </div>
@@ -483,7 +505,9 @@
             </div>
 
             <div class="upload-zone" id="uploadZone">
-                <div class="upload-icon">📷</div>
+                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 60px; height: 60px; margin: 0 auto 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
                 <h3>Click to upload or drag & drop</h3>
                 <p style="color: #666; margin-top: 10px;">JPG, PNG, or JPEG (Max 10MB)</p>
                 <input type="file" id="imageInput" accept="image/*" style="display: none;">
@@ -516,25 +540,30 @@
                 <div class="tools-panel">
                     <div class="tool-section">
                         <h3>Edit Tools</h3>
-                        <button class="tool-btn" onclick="addObstacle()">➕ Add Obstacle</button>
-                        <button class="tool-btn" onclick="deleteSelected()">🗑️ Delete Selected</button>
-                        <button class="tool-btn" onclick="resetDetection()">🔄 Reset to AI Detection</button>
+                        <button class="tool-btn" onclick="addObstacle()">Add Obstacle</button>
+                        <button class="tool-btn" onclick="deleteSelected()">Delete Selected</button>
+                        <button class="tool-btn" onclick="resetDetection()">Reset to AI Detection</button>
                     </div>
 
                     <div class="tool-section">
                         <h3>Scale Calibration</h3>
                         <div class="form-group">
                             <label>Pixels per Meter:</label>
-                            <input type="number" id="pixelsPerMeter" value="100" min="10" max="500" step="10">
+                            <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10">
                             <small style="color: #666; display: block; margin-top: 5px;">
-                                Adjust based on image scale
+                                Adjust if panels appear too large/small
                             </small>
+                            <div id="scaleEstimate" style="margin-top: 10px; padding: 8px; background: #e8f4fd; border-radius: 4px; font-size: 12px; display: none;">
+                                <strong>Auto-estimated scale:</strong><br>
+                                <span id="suggestedScale"></span> pixels/meter
+                                <button onclick="useEstimatedScale()" style="margin-top: 5px; padding: 4px 8px; font-size: 11px; border: 1px solid var(--primary-blue); background: white; color: var(--primary-blue); border-radius: 4px; cursor: pointer;">Use This</button>
+                            </div>
                         </div>
                     </div>
 
                     <div class="btn-group" style="flex-direction: column;">
                         <button class="btn btn-primary" onclick="proceedToLayout()">Continue to Layout</button>
-                        <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+                        <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
                     </div>
                 </div>
             </div>
@@ -592,7 +621,7 @@
                         </div>
 
                         <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="calculatePanelLayout()">
-                            ⚡ Calculate Layout
+                            Calculate Layout
                         </button>
                     </div>
 
@@ -621,8 +650,8 @@
                     </div>
 
                     <div class="btn-group" style="flex-direction: column;">
-                        <button class="btn btn-success" onclick="saveDesign()" id="saveBtn" disabled>💾 Save Design</button>
-                        <button class="btn btn-secondary" onclick="goToStep(2)">← Back to Edit</button>
+                        <button class="btn btn-success" onclick="saveDesign()" id="saveBtn" disabled>Save Design</button>
+                        <button class="btn btn-secondary" onclick="goToStep(2)">Back to Edit</button>
                     </div>
                 </div>
             </div>
@@ -631,7 +660,7 @@
         <!-- Step 4: Finalize -->
         <div id="step4" class="step-container">
             <div class="alert alert-success">
-                <h3>✅ Roof Design Completed!</h3>
+                <h3>Roof Design Completed!</h3>
                 <p style="margin-top: 10px;">Your roof panel layout has been saved successfully.</p>
             </div>
 
@@ -658,7 +687,7 @@
             </div>
 
             <div class="btn-group">
-                <button class="btn btn-primary" onclick="window.location.href='/dashboard'">← Back to Dashboard</button>
+                <button class="btn btn-primary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
                 <button class="btn btn-success" onclick="startNewDesign()">Create New Design</button>
             </div>
         </div>
@@ -810,7 +839,53 @@
                 // Draw detected roof polygon
                 drawRoofPolygon();
                 drawObstacles();
+
+                // Estimate scale based on roof dimensions
+                estimateScale();
             });
+        }
+
+        // Estimate pixels per meter based on roof dimensions
+        function estimateScale() {
+            if (!roofPolygon || roofPolygon.length < 3) return;
+
+            // Calculate roof bounding box
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            roofPolygon.forEach(p => {
+                const x = p[0] || p.x || 0;
+                const y = p[1] || p.y || 0;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            });
+
+            const roofWidthPx = maxX - minX;
+            const roofHeightPx = maxY - minY;
+
+            console.log(`[SCALE ESTIMATE] Roof dimensions: ${roofWidthPx}px x ${roofHeightPx}px`);
+
+            // Assume typical residential roof is 8-15 meters wide
+            // Use conservative estimate of 10m for typical roof
+            const estimatedRoofWidthM = 10;
+            const estimatedScale = Math.round(roofWidthPx / estimatedRoofWidthM);
+
+            console.log(`[SCALE ESTIMATE] Estimated scale: ${estimatedScale} pixels/meter`);
+
+            // Show suggestion to user
+            document.getElementById('suggestedScale').textContent = estimatedScale;
+            document.getElementById('scaleEstimate').style.display = 'block';
+
+            // Store for later use
+            window.estimatedScaleValue = estimatedScale;
+        }
+
+        // Use estimated scale
+        function useEstimatedScale() {
+            if (window.estimatedScaleValue) {
+                document.getElementById('pixelsPerMeter').value = window.estimatedScaleValue;
+                alert(`Scale updated to ${window.estimatedScaleValue} pixels/meter`);
+            }
         }
 
         // Draw roof polygon
@@ -1051,11 +1126,30 @@
                 const result = await response.json();
                 hideLoading();
 
+                console.log('[LAYOUT RESULT]', result);
+
                 if (result.success) {
                     panels = result.panels;
+
+                    if (result.total_panels === 0) {
+                        // Show helpful message when no panels fit
+                        let message = 'No panels could be placed on the roof.\n\n';
+                        message += 'Possible reasons:\n';
+                        message += '• Scale calibration (pixels per meter) may be incorrect\n';
+                        message += '• Panel size is too large for the detected roof area\n';
+                        message += '• Obstacles are covering too much of the roof\n\n';
+                        message += 'Try adjusting the "Pixels per Meter" value in Step 2.';
+
+                        if (window.estimatedScaleValue) {
+                            message += `\n\nSuggested scale: ${window.estimatedScaleValue} pixels/meter`;
+                        }
+
+                        alert(message);
+                    }
+
                     displayPanels();
                     displayResults(result);
-                    document.getElementById('saveBtn').disabled = false;
+                    document.getElementById('saveBtn').disabled = result.total_panels === 0;
                 } else {
                     alert('Error: ' + (result.error || 'Failed to calculate layout'));
                 }

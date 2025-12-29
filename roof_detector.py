@@ -454,9 +454,20 @@ class PanelLayoutCalculator:
         Returns:
             Dictionary with panel positions and statistics
         """
-        print("[PANEL CALCULATOR] Calculating panel layout...")
-        print(f"[PANEL CALCULATOR] Panel: {panel_width_m}m x {panel_height_m}m, {panel_power_w}W")
+        print("[PANEL CALCULATOR] ========== Starting Panel Layout Calculation ==========")
+        print(f"[PANEL CALCULATOR] Panel Specifications: {panel_width_m}m x {panel_height_m}m, {panel_power_w}W")
         print(f"[PANEL CALCULATOR] Orientation: {orientation}, Spacing: {spacing_m}m")
+        print(f"[PANEL CALCULATOR] Scale: {pixels_per_meter} pixels/meter")
+
+        # Get roof bounds and dimensions
+        minx, miny, maxx, maxy = self.roof_polygon.bounds
+        roof_width_px = maxx - minx
+        roof_height_px = maxy - miny
+        roof_area_px = self.roof_polygon.area
+
+        print(f"[PANEL CALCULATOR] Roof bounds: ({minx:.1f}, {miny:.1f}) to ({maxx:.1f}, {maxy:.1f})")
+        print(f"[PANEL CALCULATOR] Roof dimensions: {roof_width_px:.1f}px x {roof_height_px:.1f}px")
+        print(f"[PANEL CALCULATOR] Roof area: {roof_area_px:.0f} px²")
 
         # Convert measurements to pixels
         panel_w_px = panel_width_m * pixels_per_meter
@@ -467,34 +478,53 @@ class PanelLayoutCalculator:
         if orientation == "portrait":
             panel_w_px, panel_h_px = panel_h_px, panel_w_px
 
-        # Get roof bounds
-        minx, miny, maxx, maxy = self.roof_polygon.bounds
+        print(f"[PANEL CALCULATOR] Panel size in pixels: {panel_w_px:.1f}px x {panel_h_px:.1f}px")
+        print(f"[PANEL CALCULATOR] Spacing in pixels: {spacing_px:.1f}px")
+
+        # Sanity check: panel size shouldn't be larger than roof
+        if panel_w_px > roof_width_px or panel_h_px > roof_height_px:
+            print(f"[PANEL CALCULATOR] WARNING: Panel size ({panel_w_px:.0f}x{panel_h_px:.0f}px) larger than roof ({roof_width_px:.0f}x{roof_height_px:.0f}px)")
+            print(f"[PANEL CALCULATOR] Consider adjusting pixels_per_meter. Current value: {pixels_per_meter}")
+            # Suggest better scale
+            suggested_scale = min(roof_width_px / (panel_width_m * 10), roof_height_px / (panel_height_m * 10))
+            print(f"[PANEL CALCULATOR] Suggested pixels_per_meter: {suggested_scale:.0f}")
 
         # Grid-based placement with optimization
         panels = []
         current_y = miny + spacing_px
         row_num = 0
+        attempts = 0
+        fits_in_roof = 0
+        blocked_by_obstacles = 0
 
         while current_y + panel_h_px <= maxy:
             current_x = minx + spacing_px
             col_num = 0
 
             while current_x + panel_w_px <= maxx:
+                attempts += 1
+
                 # Create panel box
                 panel_box = box(current_x, current_y,
                               current_x + panel_w_px,
                               current_y + panel_h_px)
 
-                # Check if panel fits completely in roof
-                if self.roof_polygon.contains(panel_box):
+                # Check if panel fits in roof (allow 5% tolerance for edge cases)
+                intersection = self.roof_polygon.intersection(panel_box)
+                containment_ratio = intersection.area / panel_box.area if panel_box.area > 0 else 0
+
+                if containment_ratio >= 0.95:  # At least 95% of panel must be within roof
+                    fits_in_roof += 1
+
                     # Check overlap with obstacles
                     overlaps = False
                     for obstacle in self.obstacle_geoms:
                         if panel_box.intersects(obstacle):
                             # Check if significant overlap (>10%)
-                            intersection = panel_box.intersection(obstacle)
-                            if intersection.area / panel_box.area > 0.1:
+                            obstacle_intersection = panel_box.intersection(obstacle)
+                            if obstacle_intersection.area / panel_box.area > 0.1:
                                 overlaps = True
+                                blocked_by_obstacles += 1
                                 break
 
                     if not overlaps:
@@ -513,6 +543,10 @@ class PanelLayoutCalculator:
 
             current_y += panel_h_px + spacing_px
             row_num += 1
+
+        print(f"[PANEL CALCULATOR] Grid attempts: {attempts}")
+        print(f"[PANEL CALCULATOR] Panels fitting in roof: {fits_in_roof}")
+        print(f"[PANEL CALCULATOR] Panels blocked by obstacles: {blocked_by_obstacles}")
 
         # Calculate statistics
         total_panels = len(panels)
