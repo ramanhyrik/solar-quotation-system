@@ -124,6 +124,33 @@ def init_database():
             )
         ''')
 
+        # Roof designs table (for AI-powered panel layout)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS roof_designs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                quote_id INTEGER NOT NULL,
+                original_image_path TEXT NOT NULL,
+                processed_image_path TEXT,
+                roof_polygon_json TEXT,
+                obstacles_json TEXT,
+                panels_json TEXT,
+                panel_count INTEGER,
+                system_power_kw REAL,
+                roof_area_m2 REAL,
+                coverage_percent REAL,
+                pixels_per_meter REAL DEFAULT 100,
+                panel_width_m REAL DEFAULT 1.7,
+                panel_height_m REAL DEFAULT 1.0,
+                panel_power_w INTEGER DEFAULT 400,
+                spacing_m REAL DEFAULT 0.05,
+                orientation TEXT DEFAULT 'landscape',
+                detection_confidence REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+            )
+        ''')
+
         conn.commit()
 
         # Add model_type column to quotes table if it doesn't exist (migration)

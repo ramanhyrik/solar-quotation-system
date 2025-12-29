@@ -11,3 +11,8 @@ python-bidi==0.4.2
 arabic-reshaper==3.0.0
 requests==2.31.0
 sendgrid==6.11.0
+opencv-python==4.9.0.80
+numpy==1.26.4
+shapely==2.0.2
+scikit-image==0.22.0
+scipy==1.11.4

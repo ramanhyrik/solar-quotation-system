@@ -1872,6 +1872,357 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
         traceback.print_exc()
         return False
 
+# ========================================
+# ROOF DESIGNER API ENDPOINTS
+# ========================================
+
+from roof_detector import process_roof_image, calculate_panel_layout_from_data, RoofDetector
+
+@app.post("/api/roof-designer/upload")
+async def upload_roof_image_endpoint(
+    file: UploadFile = File(...),
+    quote_id: int = Form(...),
+    user=Depends(get_current_user)
+):
+    """
+    Upload roof image and run AI detection
+
+    Returns initial detected roof polygon and obstacles
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Verify quote exists and belongs to user
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM quotes WHERE id = ?", (quote_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Quote not found")
+
+        # Create uploads directory
+        uploads_dir = os.path.join("static", "roof_images")
+        os.makedirs(uploads_dir, exist_ok=True)
+
+        # Save uploaded image
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        filename = f"roof_{quote_id}_{timestamp}.{file_extension}"
+        file_path = os.path.join(uploads_dir, filename)
+
+        # Save file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        print(f"[ROOF DESIGNER] Processing roof image: {file_path}")
+
+        # Run AI detection
+        analysis_result = process_roof_image(file_path, min_obstacle_size=500)
+
+        if not analysis_result['success']:
+            return JSONResponse(
+                status_code=400,
+                content={"error": analysis_result.get('error', 'Detection failed')}
+            )
+
+        # Save initial detection to database
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO roof_designs (
+                    quote_id, original_image_path, roof_polygon_json,
+                    obstacles_json, detection_confidence
+                ) VALUES (?, ?, ?, ?, ?)
+            ''', (
+                quote_id,
+                file_path,
+                json.dumps(analysis_result['roof_polygon']),
+                json.dumps(analysis_result['obstacles']),
+                analysis_result['confidence']
+            ))
+            conn.commit()
+            design_id = cursor.lastrowid
+
+        print(f"[ROOF DESIGNER] Created design #{design_id} for quote #{quote_id}")
+
+        return JSONResponse(content={
+            "success": True,
+            "design_id": design_id,
+            "roof_polygon": analysis_result['roof_polygon'],
+            "obstacles": analysis_result['obstacles'],
+            "confidence": analysis_result['confidence'],
+            "image_url": f"/static/roof_images/{filename}",
+            "image_dimensions": analysis_result['image_dimensions']
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Roof image upload failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/roof-designer/calculate-layout")
+async def calculate_layout_endpoint(
+    design_id: int = Form(...),
+    roof_polygon: str = Form(...),
+    obstacles: str = Form(...),
+    panel_width_m: float = Form(1.7),
+    panel_height_m: float = Form(1.0),
+    panel_power_w: int = Form(400),
+    spacing_m: float = Form(0.05),
+    pixels_per_meter: float = Form(100.0),
+    orientation: str = Form("landscape"),
+    user=Depends(get_current_user)
+):
+    """
+    Calculate optimal panel layout based on roof data
+
+    User can edit the detected polygon/obstacles before calculation
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Parse JSON data
+        roof_polygon_data = json.loads(roof_polygon)
+        obstacles_data = json.loads(obstacles)
+
+        # Convert roof polygon to list of tuples
+        if isinstance(roof_polygon_data[0], dict):
+            roof_poly_points = [(p['x'], p['y']) for p in roof_polygon_data]
+        else:
+            roof_poly_points = [(p[0], p[1]) for p in roof_polygon_data]
+
+        print(f"[ROOF DESIGNER] Calculating layout for design #{design_id}")
+        print(f"[ROOF DESIGNER] Panel: {panel_width_m}x{panel_height_m}m, {panel_power_w}W")
+
+        # Calculate panel layout
+        layout_result = calculate_panel_layout_from_data(
+            roof_polygon=roof_poly_points,
+            obstacles=obstacles_data,
+            panel_width_m=panel_width_m,
+            panel_height_m=panel_height_m,
+            panel_power_w=panel_power_w,
+            spacing_m=spacing_m,
+            pixels_per_meter=pixels_per_meter,
+            orientation=orientation
+        )
+
+        if not layout_result['success']:
+            return JSONResponse(
+                status_code=400,
+                content={"error": layout_result.get('error', 'Calculation failed')}
+            )
+
+        # Update database with results
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE roof_designs SET
+                    roof_polygon_json = ?,
+                    obstacles_json = ?,
+                    panels_json = ?,
+                    panel_count = ?,
+                    system_power_kw = ?,
+                    roof_area_m2 = ?,
+                    coverage_percent = ?,
+                    pixels_per_meter = ?,
+                    panel_width_m = ?,
+                    panel_height_m = ?,
+                    panel_power_w = ?,
+                    spacing_m = ?,
+                    orientation = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (
+                roof_polygon,
+                obstacles,
+                json.dumps(layout_result['panels']),
+                layout_result['total_panels'],
+                layout_result['total_power_kw'],
+                layout_result['roof_area_m2'],
+                layout_result['coverage_percent'],
+                pixels_per_meter,
+                panel_width_m,
+                panel_height_m,
+                panel_power_w,
+                spacing_m,
+                orientation,
+                design_id
+            ))
+            conn.commit()
+
+        print(f"[ROOF DESIGNER] Layout calculated: {layout_result['total_panels']} panels, {layout_result['total_power_kw']} kW")
+
+        return JSONResponse(content={
+            "success": True,
+            "panels": layout_result['panels'],
+            "total_panels": layout_result['total_panels'],
+            "total_power_kw": layout_result['total_power_kw'],
+            "coverage_percent": layout_result['coverage_percent'],
+            "roof_area_m2": layout_result['roof_area_m2']
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Panel layout calculation failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/roof-designer/design/{design_id}")
+async def get_roof_design(design_id: int, user=Depends(get_current_user)):
+    """Get roof design data by ID"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM roof_designs WHERE id = ?", (design_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            design_data = dict(design)
+
+            # Parse JSON fields
+            if design_data.get('roof_polygon_json'):
+                design_data['roof_polygon'] = json.loads(design_data['roof_polygon_json'])
+            if design_data.get('obstacles_json'):
+                design_data['obstacles'] = json.loads(design_data['obstacles_json'])
+            if design_data.get('panels_json'):
+                design_data['panels'] = json.loads(design_data['panels_json'])
+
+            return design_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to get roof design: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/roof-designer/quote/{quote_id}")
+async def get_roof_design_by_quote(quote_id: int, user=Depends(get_current_user)):
+    """Get roof design for a specific quote"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM roof_designs
+                WHERE quote_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            ''', (quote_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                return JSONResponse(content={"has_design": False})
+
+            design_data = dict(design)
+
+            # Parse JSON fields
+            if design_data.get('roof_polygon_json'):
+                design_data['roof_polygon'] = json.loads(design_data['roof_polygon_json'])
+            if design_data.get('obstacles_json'):
+                design_data['obstacles'] = json.loads(design_data['obstacles_json'])
+            if design_data.get('panels_json'):
+                design_data['panels'] = json.loads(design_data['panels_json'])
+
+            design_data['has_design'] = True
+            return design_data
+
+    except Exception as e:
+        print(f"[ERROR] Failed to get roof design by quote: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/roof-designer/save-visualization")
+async def save_visualization_endpoint(
+    design_id: int = Form(...),
+    user=Depends(get_current_user)
+):
+    """Generate and save visualization image with roof, obstacles, and panels"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Get design data
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM roof_designs WHERE id = ?", (design_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            design_data = dict(design)
+
+        # Parse data
+        roof_polygon = json.loads(design_data['roof_polygon_json'])
+        obstacles = json.loads(design_data['obstacles_json']) if design_data.get('obstacles_json') else []
+        panels = json.loads(design_data['panels_json']) if design_data.get('panels_json') else []
+
+        # Create visualization
+        detector = RoofDetector(design_data['original_image_path'])
+
+        vis_dir = os.path.join("static", "roof_visualizations")
+        os.makedirs(vis_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        vis_filename = f"vis_{design_id}_{timestamp}.jpg"
+        vis_path = os.path.join(vis_dir, vis_filename)
+
+        detector.save_visualization(vis_path, roof_polygon, obstacles, panels)
+
+        # Update database
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE roof_designs SET processed_image_path = ? WHERE id = ?
+            ''', (vis_path, design_id))
+            conn.commit()
+
+        return JSONResponse(content={
+            "success": True,
+            "visualization_url": f"/static/roof_visualizations/{vis_filename}"
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to save visualization: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/roof-designer/{quote_id}", response_class=HTMLResponse)
+async def roof_designer_page(quote_id: int, request: Request, user=Depends(get_current_user)):
+    """Roof designer UI page"""
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    # Verify quote exists
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
+        quote = cursor.fetchone()
+
+        if not quote:
+            raise HTTPException(status_code=404, detail="Quote not found")
+
+        quote_data = dict(quote)
+
+    return templates.TemplateResponse("roof_designer.html", {
+        "request": request,
+        "user": user,
+        "quote": quote_data,
+        "quote_id": quote_id
+    })
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
