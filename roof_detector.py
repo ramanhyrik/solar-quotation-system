@@ -1,6 +1,6 @@
 """
 AI-Powered Roof Detection and Solar Panel Layout Calculator
-Uses Computer Vision to detect roof areas, obstacles, and calculate optimal panel placement
+Uses Computer Vision and SAM (Segment Anything Model) to detect roof areas, obstacles, and calculate optimal panel placement
 """
 
 import cv2
@@ -10,6 +10,17 @@ from shapely.ops import unary_union
 from typing import List, Dict, Tuple, Optional
 import json
 from datetime import datetime
+import os
+
+# SAM (Segment Anything Model) - optional, fallback to traditional CV if not available
+try:
+    from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+    import torch
+    SAM_AVAILABLE = True
+    print("[ROOF DETECTOR] SAM (Segment Anything Model) is available")
+except ImportError:
+    SAM_AVAILABLE = False
+    print("[ROOF DETECTOR] SAM not available, using traditional computer vision methods")
 
 
 class RoofDetector:
@@ -31,39 +42,67 @@ class RoofDetector:
         self.height, self.width = self.image.shape[:2]
         self.gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
-    def detect_roof_area(self, min_area_ratio: float = 0.1) -> Dict:
+    def detect_roof_area(self, min_area_ratio: float = 0.1, use_sam: bool = True) -> Dict:
         """
-        Detect main roof area using advanced edge detection and segmentation
+        Detect main roof area using SAM or advanced edge detection
 
         Args:
             min_area_ratio: Minimum area ratio (compared to image) to consider as roof
+            use_sam: Whether to use SAM (Segment Anything Model) if available
 
         Returns:
             Dictionary with roof polygon, area, and confidence score
         """
         print("[ROOF DETECTOR] Starting roof area detection...")
 
-        # Method 1: Edge-based detection with morphological operations
-        roof_polygon = self._detect_roof_edges()
+        roof_polygon = None
+        detection_method = "unknown"
 
+        # Method 1: Try SAM if available and enabled
+        if use_sam and SAM_AVAILABLE:
+            print("[ROOF DETECTOR] Attempting SAM-based detection...")
+            try:
+                roof_polygon = self._detect_roof_sam()
+                if roof_polygon:
+                    detection_method = "sam"
+                    print("[ROOF DETECTOR] SAM detection successful")
+            except Exception as e:
+                print(f"[ROOF DETECTOR] SAM detection failed: {e}")
+
+        # Method 2: Edge-based detection with morphological operations
         if roof_polygon is None:
-            # Method 2: Fallback to color-based segmentation
+            print("[ROOF DETECTOR] Using edge-based detection...")
+            roof_polygon = self._detect_roof_edges()
+            if roof_polygon:
+                detection_method = "edges"
+
+        # Method 3: Fallback to color-based segmentation
+        if roof_polygon is None:
             print("[ROOF DETECTOR] Edge detection failed, trying color segmentation...")
             roof_polygon = self._detect_roof_color_segmentation()
+            if roof_polygon:
+                detection_method = "color"
 
+        # Method 4: Last resort - use largest contour
         if roof_polygon is None:
-            # Method 3: Last resort - use largest contour
             print("[ROOF DETECTOR] Color segmentation failed, using largest contour...")
             roof_polygon = self._detect_largest_contour(min_area_ratio)
+            if roof_polygon:
+                detection_method = "contour"
 
         if roof_polygon:
             area_pixels = cv2.contourArea(np.array(roof_polygon, dtype=np.int32))
             area_ratio = area_pixels / (self.width * self.height)
 
-            # Calculate confidence based on various factors
+            # Calculate confidence based on various factors and detection method
             confidence = self._calculate_confidence(roof_polygon, area_pixels)
 
-            print(f"[ROOF DETECTOR] Roof detected - Area: {area_pixels:.0f} px² ({area_ratio*100:.1f}% of image)")
+            # Boost confidence for SAM-based detection
+            if detection_method == "sam":
+                confidence = min(0.95, confidence * 1.2)  # SAM is more reliable
+
+            print(f"[ROOF DETECTOR] Roof detected using '{detection_method}' method")
+            print(f"[ROOF DETECTOR] Area: {area_pixels:.0f} px² ({area_ratio*100:.1f}% of image)")
             print(f"[ROOF DETECTOR] Confidence: {confidence:.2f}")
 
             return {
@@ -71,6 +110,7 @@ class RoofDetector:
                 "area_pixels": float(area_pixels),
                 "area_ratio": float(area_ratio),
                 "confidence": float(confidence),
+                "detection_method": detection_method,
                 "image_dimensions": {"width": self.width, "height": self.height}
             }
 
@@ -178,6 +218,95 @@ class RoofDetector:
 
         points = [(int(pt[0][0]), int(pt[0][1])) for pt in approx_polygon]
         return points
+
+    def _detect_roof_sam(self) -> Optional[List[Tuple[int, int]]]:
+        """
+        Detect roof using SAM (Segment Anything Model)
+
+        Uses automatic mask generation to find the largest meaningful segment
+        """
+        if not SAM_AVAILABLE:
+            return None
+
+        try:
+            # Get or load SAM model
+            sam_checkpoint = os.path.join("models", "sam_vit_h_4b8939.pth")
+
+            # Check if model exists, if not use a lighter version or skip
+            if not os.path.exists(sam_checkpoint):
+                print(f"[SAM] Model checkpoint not found at {sam_checkpoint}")
+                print("[SAM] Skipping SAM detection. Download SAM model from:")
+                print("      https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth")
+                return None
+
+            # Load SAM model
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"[SAM] Loading model on {device}...")
+
+            sam = sam_model_registry["vit_h"](checkpoint=sam_checkpoint)
+            sam.to(device=device)
+
+            # Create mask generator
+            mask_generator = SamAutomaticMaskGenerator(
+                model=sam,
+                points_per_side=32,
+                pred_iou_thresh=0.86,
+                stability_score_thresh=0.92,
+                crop_n_layers=1,
+                crop_n_points_downscale_factor=2,
+                min_mask_region_area=1000,
+            )
+
+            # Convert image to RGB (SAM expects RGB)
+            rgb_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+
+            print("[SAM] Generating masks...")
+            masks = mask_generator.generate(rgb_image)
+
+            if not masks:
+                print("[SAM] No masks generated")
+                return None
+
+            # Sort masks by area (largest first)
+            masks = sorted(masks, key=lambda x: x['area'], reverse=True)
+
+            # Get the largest mask that covers a reasonable portion of the image
+            total_pixels = self.width * self.height
+            for mask_data in masks:
+                mask_area = mask_data['area']
+                area_ratio = mask_area / total_pixels
+
+                # Roof should be between 10% and 90% of image
+                if 0.1 <= area_ratio <= 0.9:
+                    # Get the segmentation mask
+                    mask = mask_data['segmentation'].astype(np.uint8) * 255
+
+                    # Find contour from mask
+                    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    if contours:
+                        largest_contour = max(contours, key=cv2.contourArea)
+
+                        # Simplify polygon
+                        epsilon = 0.002 * cv2.arcLength(largest_contour, True)
+                        approx_polygon = cv2.approxPolyDP(largest_contour, epsilon, True)
+
+                        # Convert to list of tuples
+                        points = [(int(pt[0][0]), int(pt[0][1])) for pt in approx_polygon]
+
+                        # Validate polygon
+                        if len(points) >= 3:
+                            print(f"[SAM] Found roof segment: {len(points)} points, {area_ratio*100:.1f}% of image")
+                            return points
+
+            print("[SAM] No suitable roof segment found in masks")
+            return None
+
+        except Exception as e:
+            print(f"[SAM] Error during detection: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def _calculate_confidence(self, polygon: List[Tuple[int, int]], area: float) -> float:
         """Calculate detection confidence score based on multiple factors"""
@@ -422,7 +551,40 @@ class PanelLayoutCalculator:
             roof_polygon: List of (x, y) tuples defining roof boundary
             obstacles: List of obstacle dictionaries
         """
-        self.roof_polygon = Polygon(roof_polygon)
+        # Create polygon and fix if invalid (self-intersecting, etc.)
+        try:
+            poly = Polygon(roof_polygon)
+
+            # Check if polygon is valid
+            if not poly.is_valid:
+                print(f"[PANEL CALCULATOR] WARNING: Invalid polygon detected: {poly.is_valid_reason}")
+                # Use buffer(0) trick to fix self-intersecting polygons
+                poly = poly.buffer(0)
+
+                # If still invalid or became a MultiPolygon, try simplification
+                if not poly.is_valid or isinstance(poly, MultiPolygon):
+                    print("[PANEL CALCULATOR] Attempting polygon simplification...")
+                    poly = Polygon(roof_polygon).simplify(tolerance=2.0, preserve_topology=True)
+                    poly = poly.buffer(0)
+
+                # If it's a MultiPolygon after repair, use the largest polygon
+                if isinstance(poly, MultiPolygon):
+                    print("[PANEL CALCULATOR] MultiPolygon detected, using largest component")
+                    poly = max(poly.geoms, key=lambda p: p.area)
+
+                print(f"[PANEL CALCULATOR] Polygon repaired. Valid: {poly.is_valid}")
+
+            self.roof_polygon = poly
+        except Exception as e:
+            print(f"[PANEL CALCULATOR] ERROR creating polygon: {e}")
+            # Fallback: create a bounding box from points
+            import numpy as np
+            coords = np.array(roof_polygon)
+            min_x, min_y = coords.min(axis=0)
+            max_x, max_y = coords.max(axis=0)
+            self.roof_polygon = box(min_x, min_y, max_x, max_y)
+            print(f"[PANEL CALCULATOR] Using bounding box fallback")
+
         self.obstacles = obstacles or []
 
         # Create obstacle geometries
