@@ -62,7 +62,7 @@ class AdvancedPanelLayoutCalculator:
 
         # Create obstacle geometries - support both polygons and rectangles
         self.obstacle_geoms = []
-        for obs in self.obstacles:
+        for idx, obs in enumerate(self.obstacles):
             try:
                 if 'points' in obs and obs['points']:
                     # Polygon obstacle
@@ -70,17 +70,26 @@ class AdvancedPanelLayoutCalculator:
                     if len(points) >= 3:
                         obs_poly = Polygon(points)
                         if not obs_poly.is_valid:
+                            print(f"[PANEL CALCULATOR] WARNING: Obstacle {idx} polygon invalid, repairing...")
                             obs_poly = obs_poly.buffer(0)
                         self.obstacle_geoms.append(obs_poly)
+                        bounds = obs_poly.bounds
+                        area = obs_poly.area
+                        print(f"[PANEL CALCULATOR] Obstacle {idx}: Polygon with {len(points)} points")
+                        print(f"  Bounds: ({bounds[0]:.0f}, {bounds[1]:.0f}) to ({bounds[2]:.0f}, {bounds[3]:.0f})")
+                        print(f"  Area: {area:.0f} px²")
                 elif 'x' in obs and 'y' in obs and 'width' in obs and 'height' in obs:
                     # Rectangle obstacle (backward compatibility)
                     obs_box = box(obs['x'], obs['y'],
                                 obs['x'] + obs['width'],
                                 obs['y'] + obs['height'])
                     self.obstacle_geoms.append(obs_box)
+                    print(f"[PANEL CALCULATOR] Obstacle {idx}: Rectangle at ({obs['x']:.0f}, {obs['y']:.0f}) size {obs['width']:.0f}x{obs['height']:.0f}")
             except Exception as e:
-                print(f"[PANEL CALCULATOR] Error creating obstacle geometry: {e}")
+                print(f"[PANEL CALCULATOR] ERROR creating obstacle {idx} geometry: {e}")
                 continue
+
+        print(f"[PANEL CALCULATOR] Total obstacles created: {len(self.obstacle_geoms)}")
 
     def _try_place_panel(self, x: float, y: float, width: float, height: float,
                         placed_panels: List[box]) -> bool:
@@ -97,25 +106,26 @@ class AdvancedPanelLayoutCalculator:
         """
         panel_box = box(x, y, x + width, y + height)
 
-        # Check roof containment (95% threshold)
+        # Check roof containment (98% threshold - stricter)
         intersection = self.roof_polygon.intersection(panel_box)
         containment_ratio = intersection.area / panel_box.area if panel_box.area > 0 else 0
 
-        if containment_ratio < 0.95:
+        if containment_ratio < 0.98:
             return False
 
-        # Check obstacles
+        # Check obstacles - STRICT no overlap policy
         for obstacle in self.obstacle_geoms:
             if panel_box.intersects(obstacle):
                 obstacle_intersection = panel_box.intersection(obstacle)
-                if obstacle_intersection.area / panel_box.area > 0.05:  # 5% tolerance
+                # Any overlap > 0.1% is rejected
+                if obstacle_intersection.area / panel_box.area > 0.001:
                     return False
 
         # Check overlap with already placed panels
         for placed_box in placed_panels:
             if panel_box.intersects(placed_box):
                 overlap = panel_box.intersection(placed_box)
-                if overlap.area > 1:  # Allow 1px² tolerance
+                if overlap.area > 0.1:  # Minimal tolerance
                     return False
 
         return True
@@ -236,25 +246,26 @@ class AdvancedPanelLayoutCalculator:
     def _place_panels_optimized(self, minx, miny, maxx, maxy,
                                 panel_w, panel_h, spacing, orientation):
         """
-        Optimized panel placement starting from edges with fine-grained grid
+        Highly optimized panel placement with fine-grained multi-pass scanning
         """
         panels = []
         placed_boxes = []
 
-        # Use smaller step size for better coverage (50% overlap in scan)
-        step_x = max(panel_w / 2, spacing * 2)
-        step_y = max(panel_h / 2, spacing * 2)
+        # Very fine-grained step size (25% of panel size for thorough coverage)
+        step_x = max(panel_w / 4, spacing)
+        step_y = max(panel_h / 4, spacing)
 
-        print(f"[PANEL CALCULATOR] Scanning with step: {step_x:.1f}px x {step_y:.1f}px")
+        print(f"[PANEL CALCULATOR] Fine-grained scan with step: {step_x:.1f}px x {step_y:.1f}px")
 
-        row_num = 0
+        # Pass 1: Regular grid from top-left
         current_y = miny + spacing
+        row_num = 0
 
-        while current_y + panel_h <= maxy + spacing:
-            col_num = 0
+        while current_y + panel_h <= maxy:
             current_x = minx + spacing
+            col_num = 0
 
-            while current_x + panel_w <= maxx + spacing:
+            while current_x + panel_w <= maxx:
                 if self._try_place_panel(current_x, current_y, panel_w, panel_h, placed_boxes):
                     panel_box = box(current_x, current_y, current_x + panel_w, current_y + panel_h)
                     placed_boxes.append(panel_box)
@@ -269,7 +280,6 @@ class AdvancedPanelLayoutCalculator:
                         "orientation": orientation
                     })
                     col_num += 1
-
                     # Jump to next non-overlapping position
                     current_x += panel_w + spacing
                 else:
@@ -279,23 +289,58 @@ class AdvancedPanelLayoutCalculator:
             current_y += panel_h + spacing
             row_num += 1
 
+        initial_count = len(panels)
+        print(f"[PANEL CALCULATOR] Pass 1 complete: {initial_count} panels placed")
+
+        # Pass 2: Fine scan for remaining gaps
+        print(f"[PANEL CALCULATOR] Pass 2: Scanning for gaps...")
+        gaps_filled = 0
+
+        y = miny
+        while y + panel_h <= maxy:
+            x = minx
+            while x + panel_w <= maxx:
+                if self._try_place_panel(x, y, panel_w, panel_h, placed_boxes):
+                    panel_box = box(x, y, x + panel_w, y + panel_h)
+                    placed_boxes.append(panel_box)
+
+                    panels.append({
+                        "x": int(x),
+                        "y": int(y),
+                        "width": int(panel_w),
+                        "height": int(panel_h),
+                        "row": -1,  # Gap-fill panels
+                        "col": -1,
+                        "orientation": orientation
+                    })
+                    gaps_filled += 1
+                    x += panel_w + spacing
+                else:
+                    x += step_x
+            y += step_y
+
+        if gaps_filled > 0:
+            print(f"[PANEL CALCULATOR] Pass 2 complete: {gaps_filled} additional panels placed in gaps")
+
         return {"panels": panels}
 
     def _fill_gaps(self, minx, miny, maxx, maxy, panel_w, panel_h, spacing,
                    placed_boxes, orientation):
         """
-        Fill remaining gaps with panels in alternate orientation
+        Aggressively fill remaining gaps with panels in alternate orientation
+        Multi-pass approach for maximum coverage
         """
         gap_panels = []
 
-        # Fine-grained grid search for gaps
-        step = min(panel_w, panel_h) / 3
+        # Ultra-fine step for gap filling (20% of smallest dimension)
+        step = min(panel_w, panel_h) / 5
 
-        y = miny
-        row_num = 0
+        print(f"[PANEL CALCULATOR] Gap-fill step size: {step:.1f}px")
+
+        # Pass 1: Standard grid with alternate orientation
+        y = miny + spacing
         while y + panel_h <= maxy:
-            x = minx
-            col_num = 0
+            x = minx + spacing
             while x + panel_w <= maxx:
                 if self._try_place_panel(x, y, panel_w, panel_h, placed_boxes):
                     panel_box = box(x, y, x + panel_w, y + panel_h)
@@ -306,17 +351,43 @@ class AdvancedPanelLayoutCalculator:
                         "y": int(y),
                         "width": int(panel_w),
                         "height": int(panel_h),
-                        "row": row_num,
-                        "col": col_num,
+                        "row": -1,
+                        "col": -1,
                         "orientation": orientation
                     })
-                    col_num += 1
                     x += panel_w + spacing
                 else:
                     x += step
+            y += panel_h + spacing
 
+        pass1_count = len(gap_panels)
+
+        # Pass 2: Very fine scan for tiny remaining gaps
+        y = miny
+        while y + panel_h <= maxy:
+            x = minx
+            while x + panel_w <= maxx:
+                if self._try_place_panel(x, y, panel_w, panel_h, placed_boxes):
+                    panel_box = box(x, y, x + panel_w, y + panel_h)
+                    placed_boxes.append(panel_box)
+
+                    gap_panels.append({
+                        "x": int(x),
+                        "y": int(y),
+                        "width": int(panel_w),
+                        "height": int(panel_h),
+                        "row": -1,
+                        "col": -1,
+                        "orientation": orientation
+                    })
+                    x += panel_w + spacing
+                else:
+                    x += step
             y += step
-            row_num += 1
+
+        pass2_count = len(gap_panels) - pass1_count
+        if pass2_count > 0:
+            print(f"[PANEL CALCULATOR] Gap-fill pass 2: {pass2_count} additional panels")
 
         return gap_panels
 
