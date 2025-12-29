@@ -1887,7 +1887,7 @@ def send_admin_signed_quote_notification(quote_data: dict, company_info: dict, p
 # ROOF DESIGNER API ENDPOINTS
 # ========================================
 
-from roof_detector import process_roof_image, calculate_panel_layout_from_data, RoofDetector
+from roof_detector import calculate_panel_layout_from_data
 
 @app.post("/api/roof-designer/upload")
 async def upload_roof_image_endpoint(
@@ -1897,9 +1897,9 @@ async def upload_roof_image_endpoint(
     user=Depends(get_current_user)
 ):
     """
-    Upload roof image and run AI detection (standalone - no quote required)
+    Upload roof image for manual drawing (no AI detection)
 
-    Returns initial detected roof polygon and obstacles
+    Returns image URL for user to draw on
     """
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -1919,33 +1919,25 @@ async def upload_roof_image_endpoint(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        print(f"[ROOF DESIGNER] Processing roof image: {file_path}")
+        print(f"[ROOF DESIGNER] Uploaded roof image: {file_path}")
 
-        # Run AI detection
-        analysis_result = process_roof_image(file_path, min_obstacle_size=500)
+        # Get image dimensions using PIL
+        from PIL import Image
+        with Image.open(file_path) as img:
+            width, height = img.size
 
-        if not analysis_result['success']:
-            return JSONResponse(
-                status_code=400,
-                content={"error": analysis_result.get('error', 'Detection failed')}
-            )
-
-        # Save initial detection to database
+        # Save to database (without polygons - user will draw them)
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO roof_designs (
                     customer_name, customer_address, original_image_path,
-                    roof_polygon_json, obstacles_json, detection_confidence,
                     created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?)
             ''', (
                 customer_name,
                 customer_address,
                 file_path,
-                json.dumps(analysis_result['roof_polygon']),
-                json.dumps(analysis_result['obstacles']),
-                analysis_result['confidence'],
                 user['user_id']
             ))
             conn.commit()
@@ -1956,11 +1948,8 @@ async def upload_roof_image_endpoint(
         return JSONResponse(content={
             "success": True,
             "design_id": design_id,
-            "roof_polygon": analysis_result['roof_polygon'],
-            "obstacles": analysis_result['obstacles'],
-            "confidence": analysis_result['confidence'],
             "image_url": f"/static/roof_images/{filename}",
-            "image_dimensions": analysis_result['image_dimensions']
+            "image_dimensions": {"width": width, "height": height}
         })
 
     except HTTPException:
