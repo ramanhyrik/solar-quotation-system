@@ -914,20 +914,40 @@
         function proceedToLayout() {
             // Extract current roof polygon and obstacles from canvas
             if (canvas.roofPolygon) {
-                roofPolygon = canvas.roofPolygon.points.map(p => [p.x, p.y]);
+                // Get absolute polygon points considering transformations
+                const matrix = canvas.roofPolygon.calcTransformMatrix();
+                const points = canvas.roofPolygon.points;
+
+                roofPolygon = points.map(p => {
+                    const point = fabric.util.transformPoint(
+                        { x: p.x, y: p.y },
+                        matrix
+                    );
+                    return [
+                        Math.round(point.x),
+                        Math.round(point.y)
+                    ];
+                });
+
+                console.log('[DEBUG] Extracted roof polygon:', roofPolygon);
             }
 
             obstacles = [];
             canvas.getObjects().forEach(obj => {
                 if (obj.type === 'rect' && obj !== canvas.roofPolygon) {
+                    const scaleX = obj.scaleX || 1;
+                    const scaleY = obj.scaleY || 1;
+
                     obstacles.push({
-                        x: obj.left,
-                        y: obj.top,
-                        width: obj.width * obj.scaleX,
-                        height: obj.height * obj.scaleY
+                        x: Math.round(obj.left || 0),
+                        y: Math.round(obj.top || 0),
+                        width: Math.round((obj.width || 0) * scaleX),
+                        height: Math.round((obj.height || 0) * scaleY)
                     });
                 }
             });
+
+            console.log('[DEBUG] Extracted obstacles:', obstacles);
 
             goToStep(3);
             initializeLayoutCanvas();

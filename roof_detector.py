@@ -603,7 +603,50 @@ def calculate_panel_layout_from_data(
         Panel layout results
     """
     try:
-        calculator = PanelLayoutCalculator(roof_polygon, obstacles)
+        # Validate and clean roof polygon
+        if not roof_polygon or len(roof_polygon) < 3:
+            return {
+                "success": False,
+                "error": "Roof polygon must have at least 3 points"
+            }
+
+        # Clean polygon points - remove None values
+        cleaned_polygon = []
+        for point in roof_polygon:
+            try:
+                if isinstance(point, (list, tuple)) and len(point) >= 2:
+                    x = float(point[0]) if point[0] is not None else 0.0
+                    y = float(point[1]) if point[1] is not None else 0.0
+                    cleaned_polygon.append((x, y))
+                else:
+                    print(f"[WARNING] Invalid point format: {point}")
+            except (TypeError, ValueError) as e:
+                print(f"[WARNING] Could not convert point {point}: {e}")
+                continue
+
+        if len(cleaned_polygon) < 3:
+            return {
+                "success": False,
+                "error": "Not enough valid polygon points after cleaning"
+            }
+
+        # Clean obstacles
+        cleaned_obstacles = []
+        for obs in obstacles:
+            try:
+                cleaned_obs = {
+                    'x': float(obs.get('x', 0)) if obs.get('x') is not None else 0.0,
+                    'y': float(obs.get('y', 0)) if obs.get('y') is not None else 0.0,
+                    'width': float(obs.get('width', 0)) if obs.get('width') is not None else 0.0,
+                    'height': float(obs.get('height', 0)) if obs.get('height') is not None else 0.0
+                }
+                if cleaned_obs['width'] > 0 and cleaned_obs['height'] > 0:
+                    cleaned_obstacles.append(cleaned_obs)
+            except (TypeError, ValueError) as e:
+                print(f"[WARNING] Could not convert obstacle {obs}: {e}")
+                continue
+
+        calculator = PanelLayoutCalculator(cleaned_polygon, cleaned_obstacles)
 
         results = calculator.calculate_layout(
             panel_width_m=panel_width_m,
