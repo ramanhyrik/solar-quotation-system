@@ -56,3 +56,7 @@ nul
 
 # Claude Code settings
 .claude/
+
+# SAM Model files (too large for git - 2.4 GB)
+models/
+*.pth
