@@ -3,25 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Designer - Solar Panel Layout Calculator</title>
-
-    <!-- Fabric.js for interactive canvas -->
+    <title>Manual Roof Designer - Solar Panel Layout Calculator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 
     <style>
         :root {
             --primary-blue: #00358A;
             --primary-dark: #002060;
-            --accent-yellow: #FFC107;
             --success-green: #10B981;
             --text-dark: #1F2937;
             --text-medium: #6B7280;
-            --text-light: #9CA3AF;
-            --bg-light: #F9FAFB;
-            --bg-white: #FFFFFF;
-            --border-color: #E5E7EB;
-            --error-red: #EF4444;
-            --warning-orange: #F59E0B;
         }
 
         * {
@@ -32,12 +23,11 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-light);
+            background: #F9FAFB;
             color: var(--text-dark);
             line-height: 1.6;
         }
 
-        /* Header */
         .header {
             background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
             color: white;
@@ -53,94 +43,24 @@
             align-items: center;
         }
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        .header-info {
-            text-align: right;
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        /* Main Container */
         .container {
             max-width: 1400px;
             margin: 30px auto;
             padding: 0 20px;
         }
 
-        /* Wizard Steps */
-        .wizard-steps {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        .wizard-step {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            position: relative;
-        }
-
-        .wizard-step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            top: 20px;
-            right: -50%;
-            width: 100%;
-            height: 2px;
-            background: #ddd;
-            z-index: -1;
-        }
-
-        .wizard-step.active {
-            color: var(--primary-blue);
-            font-weight: 600;
-        }
-
-        .wizard-step.active .step-number {
-            background: var(--primary-blue);
-            color: white;
-        }
-
-        .wizard-step.completed .step-number {
-            background: var(--success-green);
-            color: white;
-        }
-
-        .step-number {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            line-height: 40px;
-            border-radius: 50%;
-            background: #ddd;
-            color: #666;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        /* Step Containers */
         .step-container {
-            display: none;
             background: white;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: none;
         }
 
         .step-container.active {
             display: block;
         }
 
-        /* Upload Section */
         .upload-zone {
             border: 3px dashed var(--primary-blue);
             border-radius: 8px;
@@ -155,18 +75,6 @@
             border-color: var(--primary-dark);
         }
 
-        .upload-zone.dragging {
-            background: #e6eeff;
-            border-color: var(--primary-blue);
-        }
-
-        .upload-icon {
-            font-size: 60px;
-            color: var(--primary-blue);
-            margin-bottom: 20px;
-        }
-
-        /* Canvas Section */
         .canvas-wrapper {
             display: flex;
             gap: 20px;
@@ -178,32 +86,14 @@
             border: 2px solid #ddd;
             border-radius: 8px;
             overflow: hidden;
-            background: #f9f9f9;
             position: relative;
-        }
-
-        #roofCanvas {
-            display: block;
-            max-width: 100%;
         }
 
         .tools-panel {
             width: 300px;
             background: #f8f9fa;
-            border-radius: 8px;
             padding: 20px;
-        }
-
-        .tool-section {
-            margin-bottom: 25px;
-        }
-
-        .tool-section h3 {
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: var(--text-dark);
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-blue);
+            border-radius: 8px;
         }
 
         .tool-btn {
@@ -230,68 +120,6 @@
             border-color: var(--primary-blue);
         }
 
-        /* Form Controls */
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #555;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-        }
-
-        /* Results Panel */
-        .results-panel {
-            background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .result-item {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 6px;
-        }
-
-        .result-label {
-            font-size: 12px;
-            opacity: 0.9;
-            margin-bottom: 5px;
-        }
-
-        .result-value {
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        /* Buttons */
         .btn {
             padding: 12px 24px;
             border: none;
@@ -309,19 +137,6 @@
 
         .btn-primary:hover {
             background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.3);
-        }
-
-        .btn-secondary {
-            background: var(--text-medium);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: var(--text-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .btn-success {
@@ -329,131 +144,82 @@
             color: white;
         }
 
-        .btn-success:hover {
-            background: #059669;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        .form-group {
+            margin-bottom: 15px;
         }
 
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-dark);
         }
 
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
         }
 
-        /* Loading Spinner */
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-blue);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .loading-content {
-            background: white;
-            padding: 40px;
+        .info-box {
+            background: #e8f4fd;
+            padding: 15px;
             border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .results-panel {
+            background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .result-item {
             text-align: center;
         }
 
-        /* Alert Messages */
-        .alert {
-            padding: 15px 20px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert-warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-
-        /* Confidence Badge */
-        .confidence-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
+        .result-label {
             font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .instruction-badge {
+            background: #FFC107;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 6px;
             font-weight: 600;
-            margin-left: 10px;
-        }
-
-        .confidence-high {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .confidence-medium {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .confidence-low {
-            background: #f8d7da;
-            color: #721c24;
+            display: inline-block;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <p id="loadingText" style="margin-top: 20px; font-weight: 600;">Processing...</p>
-        </div>
-    </div>
-
     <!-- Header -->
     <div class="header">
         <div class="header-content">
             <div>
-                <h1>Roof Designer</h1>
-                <p style="margin-top: 5px; opacity: 0.9;">AI-Powered Solar Panel Layout Calculator</p>
+                <h1>Manual Roof Designer</h1>
+                <p style="margin-top: 5px; opacity: 0.9;">Draw Your Roof, Place Perfect Panels</p>
             </div>
-            <div class="header-info">
+            <div style="text-align: right; font-size: 14px;">
                 <div>Welcome, {{ user.name }}!</div>
                 <div><a href="/dashboard" style="color: #D9FF0D; text-decoration: none;">Back to Dashboard</a></div>
             </div>
@@ -462,41 +228,19 @@
 
     <!-- Main Container -->
     <div class="container">
-        <!-- Wizard Steps -->
-        <div class="wizard-steps">
-            <div class="wizard-step active" data-step="1">
-                <div class="step-number">1</div>
-                <div>Upload Image</div>
-            </div>
-            <div class="wizard-step" data-step="2">
-                <div class="step-number">2</div>
-                <div>Review & Edit</div>
-            </div>
-            <div class="wizard-step" data-step="3">
-                <div class="step-number">3</div>
-                <div>Calculate Layout</div>
-            </div>
-            <div class="wizard-step" data-step="4">
-                <div class="step-number">4</div>
-                <div>Finalize</div>
-            </div>
-        </div>
-
         <!-- Step 1: Upload Image -->
         <div id="step1" class="step-container active">
-            <h2 style="margin-bottom: 20px;">Upload Roof Image & Customer Info</h2>
-            <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-blue);">
-                <strong>SAM-Powered Detection</strong>
+            <h2 style="margin-bottom: 20px;">Step 1: Upload Roof Image</h2>
+
+            <div class="info-box">
+                <strong>Manual Drawing Workflow</strong>
                 <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">
-                    This tool uses Meta's Segment Anything Model (SAM) for highly accurate roof boundary detection.
-                    Upload a clear, top-down image of the roof for best results.
+                    Upload a clear, top-down image of the roof. You'll draw the roof boundary manually for complete control.
+                    Best results with drone photos or satellite imagery from Google Maps.
                 </p>
             </div>
-            <p style="margin-bottom: 20px; color: #666;">
-                Best results with drone photos or satellite imagery from Google Maps.
-            </p>
 
-            <!-- Customer Info (Optional) -->
+            <!-- Customer Info -->
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                 <h3 style="margin-bottom: 15px; font-size: 16px;">Customer Information (Optional)</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -512,7 +256,7 @@
             </div>
 
             <div class="upload-zone" id="uploadZone">
-                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 60px; height: 60px; margin: 0 auto 20px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 60px; height: 60px; margin: 0 auto 20px;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <h3>Click to upload or drag & drop</h3>
@@ -523,95 +267,93 @@
             <div id="uploadedImagePreview" style="display: none; margin-top: 20px;">
                 <h3>Preview:</h3>
                 <img id="previewImage" style="max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 10px;">
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="analyzeImage()">Analyze Roof with AI</button>
-                    <button class="btn btn-secondary" onclick="resetUpload()">Choose Different Image</button>
-                </div>
+                <button class="btn btn-primary" style="margin-top: 15px;" onclick="proceedToDrawing()">Next: Draw Roof Boundary</button>
             </div>
         </div>
 
-        <!-- Step 2: Review & Edit Detection -->
+        <!-- Step 2: Draw Roof & Exclusions -->
         <div id="step2" class="step-container">
-            <h2 style="margin-bottom: 20px;">Review AI Detection
-                <span id="confidenceBadge" class="confidence-badge"></span>
-            </h2>
-            <p style="margin-bottom: 20px; color: #666;">
-                Review the detected roof area and obstacles. You can edit the polygon points or add/remove obstacles manually.
-            </p>
+            <h2 style="margin-bottom: 20px;">Step 2: Draw Roof Boundary & Exclusion Zones</h2>
+
+            <div class="instruction-badge" id="drawingInstruction">
+                Click on the image to draw roof boundary points. Click "Close Polygon" when done.
+            </div>
 
             <div class="canvas-wrapper">
                 <div class="canvas-container">
-                    <canvas id="roofCanvas" width="800" height="600"></canvas>
+                    <canvas id="roofCanvas" width="900" height="700"></canvas>
                 </div>
 
                 <div class="tools-panel">
-                    <div class="tool-section">
-                        <h3>Edit Tools</h3>
-                        <button class="tool-btn" onclick="addObstacle()">Add Obstacle</button>
-                        <button class="tool-btn" onclick="deleteSelected()">Delete Selected</button>
-                        <button class="tool-btn" onclick="resetDetection()">Reset to AI Detection</button>
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
+
+                        <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()">
+                            Draw Roof Boundary
+                        </button>
+                        <button class="tool-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()">
+                            Add Exclusion Zone
+                        </button>
+                        <button class="tool-btn" onclick="closePolygon()">
+                            Close Roof Polygon
+                        </button>
+                        <button class="tool-btn" onclick="deleteSelected()">
+                            Delete Selected
+                        </button>
+                        <button class="tool-btn" onclick="clearAll()">
+                            Clear All
+                        </button>
                     </div>
 
-                    <div class="tool-section">
-                        <h3>Scale Calibration</h3>
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Scale Calibration</h3>
                         <div class="form-group">
                             <label>Pixels per Meter:</label>
                             <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10">
                             <small style="color: #666; display: block; margin-top: 5px;">
                                 Adjust if panels appear too large/small
                             </small>
-                            <div id="scaleEstimate" style="margin-top: 10px; padding: 8px; background: #e8f4fd; border-radius: 4px; font-size: 12px; display: none;">
-                                <strong>Auto-estimated scale:</strong><br>
-                                <span id="suggestedScale"></span> pixels/meter
-                                <button onclick="useEstimatedScale()" style="margin-top: 5px; padding: 4px 8px; font-size: 11px; border: 1px solid var(--primary-blue); background: white; color: var(--primary-blue); border-radius: 4px; cursor: pointer;">Use This</button>
-                            </div>
                         </div>
                     </div>
 
-                    <div class="btn-group" style="flex-direction: column;">
-                        <button class="btn btn-primary" onclick="proceedToLayout()">Continue to Layout</button>
-                        <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-primary" onclick="proceedToLayout()" style="width: 100%;">
+                            Continue to Panel Layout
+                        </button>
+                        <button class="btn" style="background: #6B7280; color: white; width: 100%;" onclick="goToStep(1)">
+                            Back
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Step 3: Panel Layout Configuration -->
+        <!-- Step 3: Panel Configuration -->
         <div id="step3" class="step-container">
-            <h2 style="margin-bottom: 20px;">Configure Solar Panel Layout</h2>
+            <h2 style="margin-bottom: 20px;">Step 3: Configure Solar Panel Layout</h2>
 
             <div class="canvas-wrapper">
                 <div class="canvas-container">
-                    <canvas id="layoutCanvas" width="800" height="600"></canvas>
+                    <canvas id="layoutCanvas" width="900" height="700"></canvas>
                 </div>
 
                 <div class="tools-panel">
-                    <div class="tool-section">
-                        <h3>Panel Specifications</h3>
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px;">Panel Specifications</h3>
 
                         <div class="form-group">
-                            <label>Panel Size:</label>
-                            <select id="panelSize" onchange="updatePanelDimensions()">
-                                <option value="1.7,1.0,400">1.7m × 1.0m (400W)</option>
-                                <option value="2.0,1.0,500">2.0m × 1.0m (500W)</option>
-                                <option value="1.6,1.0,350">1.6m × 1.0m (350W)</option>
-                                <option value="custom">Custom Size</option>
-                            </select>
+                            <label>Panel Width (m):</label>
+                            <input type="number" id="panelWidth" value="1.7" min="0.5" max="3" step="0.1">
                         </div>
 
-                        <div id="customPanelInputs" style="display: none;">
-                            <div class="form-group">
-                                <label>Width (m):</label>
-                                <input type="number" id="panelWidth" value="1.7" step="0.1" min="0.5" max="3">
-                            </div>
-                            <div class="form-group">
-                                <label>Height (m):</label>
-                                <input type="number" id="panelHeight" value="1.0" step="0.1" min="0.5" max="3">
-                            </div>
-                            <div class="form-group">
-                                <label>Power (W):</label>
-                                <input type="number" id="panelPower" value="400" step="50" min="100" max="1000">
-                            </div>
+                        <div class="form-group">
+                            <label>Panel Height (m):</label>
+                            <input type="number" id="panelHeight" value="1.0" min="0.5" max="3" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Panel Power (W):</label>
+                            <input type="number" id="panelPower" value="400" min="100" max="1000" step="50">
                         </div>
 
                         <div class="form-group">
@@ -628,7 +370,7 @@
                         </div>
 
                         <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="calculatePanelLayout()">
-                            Calculate Layout
+                            Calculate Panel Layout
                         </button>
                     </div>
 
@@ -637,38 +379,38 @@
                             <h3 style="margin-bottom: 10px;">Layout Results</h3>
                             <div class="results-grid">
                                 <div class="result-item">
-                                    <div class="result-label">Total Panels</div>
+                                    <div class="result-label">Panels</div>
                                     <div class="result-value" id="resultPanels">0</div>
                                 </div>
                                 <div class="result-item">
-                                    <div class="result-label">System Power</div>
+                                    <div class="result-label">Power</div>
                                     <div class="result-value" id="resultPower">0 kW</div>
                                 </div>
                                 <div class="result-item">
-                                    <div class="result-label">Roof Coverage</div>
+                                    <div class="result-label">Coverage</div>
                                     <div class="result-value" id="resultCoverage">0%</div>
-                                </div>
-                                <div class="result-item">
-                                    <div class="result-label">Roof Area</div>
-                                    <div class="result-value" id="resultArea">0 m²</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="btn-group" style="flex-direction: column;">
-                        <button class="btn btn-success" onclick="saveDesign()" id="saveBtn" disabled>Save Design</button>
-                        <button class="btn btn-secondary" onclick="goToStep(2)">Back to Edit</button>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                        <button class="btn btn-success" onclick="saveDesign()" id="saveBtn" style="width: 100%;" disabled>
+                            Save Design
+                        </button>
+                        <button class="btn" style="background: #6B7280; color: white; width: 100%;" onclick="goToStep(2)">
+                            Back to Drawing
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Step 4: Finalize -->
+        <!-- Step 4: Complete -->
         <div id="step4" class="step-container">
-            <div class="alert alert-success">
-                <h3>Roof Design Completed!</h3>
-                <p style="margin-top: 10px;">Your roof panel layout has been saved successfully.</p>
+            <div style="background: #d1fae5; padding: 20px; border-radius: 8px; border-left: 4px solid var(--success-green); margin-bottom: 20px;">
+                <h3 style="color: var(--success-green);">Roof Design Completed!</h3>
+                <p style="margin-top: 10px; color: #065f46;">Your roof panel layout has been saved successfully.</p>
             </div>
 
             <div class="results-panel">
@@ -683,7 +425,7 @@
                         <div class="result-value" id="finalPower">0 kW</div>
                     </div>
                     <div class="result-item">
-                        <div class="result-label">Roof Coverage</div>
+                        <div class="result-label">Coverage</div>
                         <div class="result-value" id="finalCoverage">0%</div>
                     </div>
                     <div class="result-item">
@@ -693,7 +435,7 @@
                 </div>
             </div>
 
-            <div class="btn-group">
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
                 <button class="btn btn-primary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
                 <button class="btn btn-success" onclick="startNewDesign()">Create New Design</button>
             </div>
@@ -703,87 +445,70 @@
     <script>
         // Global variables
         let currentStep = 1;
-        let designId = null;
-        let roofPolygon = null;
-        let obstacles = [];
-        let panels = [];
         let canvas = null;
         let layoutCanvas = null;
+        let designId = null;
         let uploadedImage = null;
-        let originalDetection = null;
+        let roofPolygonPoints = [];
+        let exclusionZones = [];
+        let roofPolygonObject = null;
+        let drawingMode = null; // 'roof' or 'exclusion'
+        let tempExclusionRect = null;
+        let panels = [];
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            setupUploadZone();
-        });
-
-        // Setup upload zone
-        function setupUploadZone() {
-            const uploadZone = document.getElementById('uploadZone');
-            const imageInput = document.getElementById('imageInput');
-
-            uploadZone.addEventListener('click', () => imageInput.click());
-
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadZone.classList.add('dragging');
-            });
-
-            uploadZone.addEventListener('dragleave', () => {
-                uploadZone.classList.remove('dragging');
-            });
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragging');
-                handleFileSelect(e.dataTransfer.files[0]);
-            });
-
-            imageInput.addEventListener('change', (e) => {
-                handleFileSelect(e.target.files[0]);
-            });
+        // Step navigation
+        function goToStep(step) {
+            document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+            currentStep = step;
         }
 
-        // Handle file selection
-        function handleFileSelect(file) {
-            if (!file || !file.type.startsWith('image/')) {
-                alert('Please select a valid image file');
-                return;
-            }
+        // Upload zone setup
+        const uploadZone = document.getElementById('uploadZone');
+        const imageInput = document.getElementById('imageInput');
 
-            if (file.size > 10 * 1024 * 1024) {
-                alert('File too large. Maximum size is 10MB');
-                return;
-            }
+        uploadZone.addEventListener('click', () => imageInput.click());
 
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragging');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragging');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragging');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleImageUpload(file);
+            }
+        });
+
+        async function handleImageUpload(file) {
             uploadedImage = file;
+
+            // Show preview
             const reader = new FileReader();
             reader.onload = (e) => {
                 document.getElementById('previewImage').src = e.target.result;
-                document.getElementById('uploadZone').style.display = 'none';
                 document.getElementById('uploadedImagePreview').style.display = 'block';
             };
             reader.readAsDataURL(file);
-        }
 
-        // Reset upload
-        function resetUpload() {
-            uploadedImage = null;
-            document.getElementById('uploadZone').style.display = 'block';
-            document.getElementById('uploadedImagePreview').style.display = 'none';
-            document.getElementById('imageInput').value = '';
-        }
-
-        // Analyze image with AI
-        async function analyzeImage() {
-            if (!uploadedImage) return;
-
-            showLoading('Analyzing roof with AI...');
-
+            // Upload to server
             const formData = new FormData();
-            formData.append('file', uploadedImage);
+            formData.append('file', file);
 
-            // Add optional customer info
             const customerName = document.getElementById('customerName').value;
             const customerAddress = document.getElementById('customerAddress').value;
             if (customerName) formData.append('customer_name', customerName);
@@ -796,329 +521,304 @@
                 });
 
                 const result = await response.json();
-                hideLoading();
 
                 if (result.success) {
                     designId = result.design_id;
-                    roofPolygon = result.roof_polygon;
-                    obstacles = result.obstacles;
-                    originalDetection = { roofPolygon: [...roofPolygon], obstacles: [...obstacles] };
-
-                    // Update confidence badge
-                    const badge = document.getElementById('confidenceBadge');
-                    const confidence = result.confidence;
-                    const detectionMethod = result.detection_method || 'unknown';
-
-                    badge.textContent = `SAM Detection - Confidence: ${(confidence * 100).toFixed(0)}%`;
-
-                    if (confidence > 0.7) {
-                        badge.className = 'confidence-badge confidence-high';
-                    } else if (confidence > 0.5) {
-                        badge.className = 'confidence-badge confidence-medium';
-                    } else {
-                        badge.className = 'confidence-badge confidence-low';
-                    }
-
-                    // Initialize canvas
-                    initializeCanvas(result.image_url);
-                    goToStep(2);
+                    console.log('[UPLOAD] Design ID:', designId);
+                    console.log('[UPLOAD] Image dimensions:', result.image_dimensions);
                 } else {
-                    alert('Error: ' + (result.error || 'Failed to analyze image'));
+                    alert('Error: ' + (result.error || 'Failed to upload image'));
                 }
             } catch (error) {
-                hideLoading();
                 console.error('Error:', error);
-                alert('Failed to analyze image. Please try again.');
+                alert('Failed to upload image. Please try again.');
             }
         }
 
-        // Initialize Fabric.js canvas
-        function initializeCanvas(imageUrl) {
-            canvas = new fabric.Canvas('roofCanvas', {
-                selection: true
-            });
-
-            // Load background image
-            fabric.Image.fromURL(imageUrl, (img) => {
-                const scale = Math.min(800 / img.width, 600 / img.height);
-                img.scale(scale);
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-                canvas.setDimensions({ width: img.width * scale, height: img.height * scale });
-
-                // Draw detected roof polygon
-                drawRoofPolygon();
-                drawObstacles();
-
-                // Estimate scale based on roof dimensions
-                estimateScale();
-            });
-        }
-
-        // Estimate pixels per meter based on roof dimensions
-        function estimateScale() {
-            if (!roofPolygon || roofPolygon.length < 3) return;
-
-            // Calculate roof bounding box
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            roofPolygon.forEach(p => {
-                const x = p[0] || p.x || 0;
-                const y = p[1] || p.y || 0;
-                minX = Math.min(minX, x);
-                minY = Math.min(minY, y);
-                maxX = Math.max(maxX, x);
-                maxY = Math.max(maxY, y);
-            });
-
-            const roofWidthPx = maxX - minX;
-            const roofHeightPx = maxY - minY;
-
-            console.log(`[SCALE ESTIMATE] Roof dimensions: ${roofWidthPx}px x ${roofHeightPx}px`);
-
-            // Assume typical residential roof is 8-15 meters wide
-            // Use conservative estimate of 10m for typical roof
-            const estimatedRoofWidthM = 10;
-            const estimatedScale = Math.round(roofWidthPx / estimatedRoofWidthM);
-
-            console.log(`[SCALE ESTIMATE] Estimated scale: ${estimatedScale} pixels/meter`);
-
-            // Show suggestion to user
-            document.getElementById('suggestedScale').textContent = estimatedScale;
-            document.getElementById('scaleEstimate').style.display = 'block';
-
-            // Store for later use
-            window.estimatedScaleValue = estimatedScale;
-        }
-
-        // Use estimated scale
-        function useEstimatedScale() {
-            if (window.estimatedScaleValue) {
-                document.getElementById('pixelsPerMeter').value = window.estimatedScaleValue;
-                alert(`Scale updated to ${window.estimatedScaleValue} pixels/meter`);
+        function proceedToDrawing() {
+            if (!designId) {
+                alert('Please upload an image first.');
+                return;
             }
+
+            goToStep(2);
+
+            // Initialize canvas
+            setTimeout(() => {
+                initializeCanvas();
+            }, 100);
         }
 
-        // Draw roof polygon
-        function drawRoofPolygon() {
-            if (!roofPolygon || !canvas) return;
+        function initializeCanvas() {
+            canvas = new fabric.Canvas('roofCanvas');
 
-            const points = roofPolygon.map(p => ({ x: p[0] || p.x, y: p[1] || p.y }));
-
-            const polygon = new fabric.Polygon(points, {
-                fill: 'rgba(0, 123, 255, 0.2)',
-                stroke: '#007bff',
-                strokeWidth: 3,
-                selectable: true,
-                hasControls: true,
-                hasBorders: true,
-                objectCaching: false
-            });
-
-            canvas.add(polygon);
-            canvas.roofPolygon = polygon;
-            canvas.renderAll();
-        }
-
-        // Draw obstacles
-        function drawObstacles() {
-            if (!obstacles || !canvas) return;
-
-            obstacles.forEach((obs, index) => {
-                const rect = new fabric.Rect({
-                    left: obs.x,
-                    top: obs.y,
-                    width: obs.width,
-                    height: obs.height,
-                    fill: 'rgba(255, 0, 0, 0.3)',
-                    stroke: '#dc3545',
-                    strokeWidth: 2,
-                    selectable: true,
-                    hasControls: true,
-                    hasBorders: true
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fabric.Image.fromURL(e.target.result, (img) => {
+                    const scale = Math.min(900 / img.width, 700 / img.height);
+                    img.scale(scale);
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                    canvas.setDimensions({ width: img.width * scale, height: img.height * scale });
                 });
+            };
+            reader.readAsDataURL(uploadedImage);
 
-                canvas.add(rect);
-            });
-
-            canvas.renderAll();
+            // Setup canvas click handler for polygon drawing
+            canvas.on('mouse:down', handleCanvasClick);
+            canvas.on('mouse:move', handleCanvasMove);
+            canvas.on('mouse:up', handleCanvasUp);
         }
 
-        // Add obstacle manually
-        function addObstacle() {
-            if (!canvas) return;
+        let isDrawingExclusion = false;
+        let exclusionStartX, exclusionStartY;
 
-            const rect = new fabric.Rect({
-                left: 100,
-                top: 100,
-                width: 80,
-                height: 80,
-                fill: 'rgba(255, 0, 0, 0.3)',
-                stroke: '#dc3545',
-                strokeWidth: 2,
-                selectable: true,
-                hasControls: true
-            });
+        function handleCanvasClick(options) {
+            if (drawingMode === 'roof') {
+                const pointer = canvas.getPointer(options.e);
+                roofPolygonPoints.push({ x: pointer.x, y: pointer.y });
 
-            canvas.add(rect);
-            canvas.setActiveObject(rect);
-            canvas.renderAll();
-        }
-
-        // Delete selected object
-        function deleteSelected() {
-            if (!canvas) return;
-
-            const activeObject = canvas.getActiveObject();
-            if (activeObject && activeObject !== canvas.roofPolygon) {
-                canvas.remove(activeObject);
-                canvas.renderAll();
-            } else if (activeObject === canvas.roofPolygon) {
-                alert('Cannot delete roof polygon');
-            }
-        }
-
-        // Reset to original AI detection
-        function resetDetection() {
-            if (!originalDetection || !canvas) return;
-
-            canvas.clear();
-            roofPolygon = [...originalDetection.roofPolygon];
-            obstacles = [...originalDetection.obstacles];
-
-            fabric.Image.fromURL(canvas.backgroundImage._originalElement.src, (img) => {
-                const scale = Math.min(800 / img.width, 600 / img.height);
-                img.scale(scale);
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-
-                drawRoofPolygon();
-                drawObstacles();
-            });
-        }
-
-        // Proceed to layout calculation
-        function proceedToLayout() {
-            // Extract current roof polygon and obstacles from canvas
-            if (canvas.roofPolygon) {
-                // Get absolute polygon points considering transformations
-                const matrix = canvas.roofPolygon.calcTransformMatrix();
-                const points = canvas.roofPolygon.points;
-
-                roofPolygon = points.map(p => {
-                    const point = fabric.util.transformPoint(
-                        { x: p.x, y: p.y },
-                        matrix
-                    );
-                    return [
-                        Math.round(point.x),
-                        Math.round(point.y)
-                    ];
+                // Draw point
+                const circle = new fabric.Circle({
+                    left: pointer.x,
+                    top: pointer.y,
+                    radius: 5,
+                    fill: '#00358A',
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false
                 });
+                canvas.add(circle);
 
-                console.log('[DEBUG] Extracted roof polygon:', roofPolygon);
-            }
-
-            obstacles = [];
-            canvas.getObjects().forEach(obj => {
-                if (obj.type === 'rect' && obj !== canvas.roofPolygon) {
-                    const scaleX = obj.scaleX || 1;
-                    const scaleY = obj.scaleY || 1;
-
-                    obstacles.push({
-                        x: Math.round(obj.left || 0),
-                        y: Math.round(obj.top || 0),
-                        width: Math.round((obj.width || 0) * scaleX),
-                        height: Math.round((obj.height || 0) * scaleY)
+                // Draw line from previous point
+                if (roofPolygonPoints.length > 1) {
+                    const prevPoint = roofPolygonPoints[roofPolygonPoints.length - 2];
+                    const line = new fabric.Line([prevPoint.x, prevPoint.y, pointer.x, pointer.y], {
+                        stroke: '#00358A',
+                        strokeWidth: 2,
+                        selectable: false
                     });
+                    canvas.add(line);
+                }
+
+                canvas.renderAll();
+
+                document.getElementById('drawingInstruction').textContent =
+                    `${roofPolygonPoints.length} points added. Click "Close Polygon" when done.`;
+            } else if (drawingMode === 'exclusion') {
+                const pointer = canvas.getPointer(options.e);
+                exclusionStartX = pointer.x;
+                exclusionStartY = pointer.y;
+                isDrawingExclusion = true;
+
+                tempExclusionRect = new fabric.Rect({
+                    left: exclusionStartX,
+                    top: exclusionStartY,
+                    width: 0,
+                    height: 0,
+                    fill: 'rgba(255, 0, 0, 0.3)',
+                    stroke: '#ff0000',
+                    strokeWidth: 2,
+                    selectable: true
+                });
+                canvas.add(tempExclusionRect);
+            }
+        }
+
+        function handleCanvasMove(options) {
+            if (drawingMode === 'exclusion' && isDrawingExclusion && tempExclusionRect) {
+                const pointer = canvas.getPointer(options.e);
+                const width = pointer.x - exclusionStartX;
+                const height = pointer.y - exclusionStartY;
+
+                if (width < 0) {
+                    tempExclusionRect.set({ left: pointer.x });
+                }
+                if (height < 0) {
+                    tempExclusionRect.set({ top: pointer.y });
+                }
+
+                tempExclusionRect.set({
+                    width: Math.abs(width),
+                    height: Math.abs(height)
+                });
+                canvas.renderAll();
+            }
+        }
+
+        function handleCanvasUp(options) {
+            if (drawingMode === 'exclusion' && isDrawingExclusion) {
+                isDrawingExclusion = false;
+
+                if (tempExclusionRect && tempExclusionRect.width > 10 && tempExclusionRect.height > 10) {
+                    exclusionZones.push({
+                        x: tempExclusionRect.left,
+                        y: tempExclusionRect.top,
+                        width: tempExclusionRect.width,
+                        height: tempExclusionRect.height
+                    });
+                    console.log('[EXCLUSION] Added zone:', exclusionZones[exclusionZones.length - 1]);
+                }
+
+                tempExclusionRect = null;
+                drawingMode = null;
+                document.getElementById('drawExclusionBtn').classList.remove('active');
+                document.getElementById('drawingInstruction').textContent =
+                    'Exclusion zone added. Continue drawing or proceed to layout.';
+            }
+        }
+
+        function startDrawingRoof() {
+            drawingMode = 'roof';
+            document.getElementById('drawRoofBtn').classList.add('active');
+            document.getElementById('drawExclusionBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent =
+                'Click on the image to add roof boundary points.';
+        }
+
+        function startDrawingExclusion() {
+            drawingMode = 'exclusion';
+            document.getElementById('drawExclusionBtn').classList.add('active');
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent =
+                'Click and drag to draw an exclusion zone (chimney, vent, etc.).';
+        }
+
+        function closePolygon() {
+            if (roofPolygonPoints.length < 3) {
+                alert('Please add at least 3 points to create a polygon.');
+                return;
+            }
+
+            // Remove all temporary circles and lines
+            canvas.getObjects().forEach(obj => {
+                if (!obj.isType || obj.isType('circle') || obj.isType('line')) {
+                    canvas.remove(obj);
                 }
             });
 
-            console.log('[DEBUG] Extracted obstacles:', obstacles);
+            // Create filled polygon
+            roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
+                fill: 'rgba(0, 123, 255, 0.2)',
+                stroke: '#00358A',
+                strokeWidth: 3,
+                selectable: true,
+                lockRotation: true
+            });
+            canvas.add(roofPolygonObject);
+            canvas.renderAll();
 
-            goToStep(3);
-            initializeLayoutCanvas();
+            drawingMode = null;
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent =
+                'Roof boundary complete! Add exclusion zones or proceed to panel layout.';
         }
 
-        // Initialize layout canvas
-        function initializeLayoutCanvas() {
-            layoutCanvas = new fabric.Canvas('layoutCanvas', {
-                selection: false
-            });
+        function deleteSelected() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
 
-            // Copy background from editing canvas
-            if (canvas.backgroundImage) {
-                fabric.Image.fromURL(canvas.backgroundImage._originalElement.src, (img) => {
-                    const scale = Math.min(800 / img.width, 600 / img.height);
+                // Remove from exclusionZones array if it's an exclusion zone
+                const index = exclusionZones.findIndex(zone =>
+                    zone.x === activeObject.left && zone.y === activeObject.top
+                );
+                if (index !== -1) {
+                    exclusionZones.splice(index, 1);
+                }
+
+                canvas.renderAll();
+            }
+        }
+
+        function clearAll() {
+            canvas.clear();
+            roofPolygonPoints = [];
+            exclusionZones = [];
+            roofPolygonObject = null;
+            drawingMode = null;
+
+            // Reload background image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fabric.Image.fromURL(e.target.result, (img) => {
+                    const scale = Math.min(900 / img.width, 700 / img.height);
+                    img.scale(scale);
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                });
+            };
+            reader.readAsDataURL(uploadedImage);
+
+            document.getElementById('drawingInstruction').textContent =
+                'Click on the image to draw roof boundary points.';
+        }
+
+        function proceedToLayout() {
+            if (!roofPolygonObject || roofPolygonPoints.length < 3) {
+                alert('Please draw and close the roof boundary polygon first.');
+                return;
+            }
+
+            goToStep(3);
+
+            // Initialize layout canvas
+            setTimeout(() => {
+                initializeLayoutCanvas();
+            }, 100);
+        }
+
+        function initializeLayoutCanvas() {
+            layoutCanvas = new fabric.Canvas('layoutCanvas');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fabric.Image.fromURL(e.target.result, (img) => {
+                    const scale = Math.min(900 / img.width, 700 / img.height);
                     img.scale(scale);
                     layoutCanvas.setBackgroundImage(img, layoutCanvas.renderAll.bind(layoutCanvas));
                     layoutCanvas.setDimensions({ width: img.width * scale, height: img.height * scale });
 
-                    // Redraw roof and obstacles (non-editable)
-                    drawLayoutBase();
+                    // Draw roof polygon
+                    const poly = new fabric.Polygon(roofPolygonPoints, {
+                        fill: 'rgba(0, 123, 255, 0.1)',
+                        stroke: '#00358A',
+                        strokeWidth: 2,
+                        selectable: false
+                    });
+                    layoutCanvas.add(poly);
+
+                    // Draw exclusion zones
+                    exclusionZones.forEach(zone => {
+                        const rect = new fabric.Rect({
+                            left: zone.x,
+                            top: zone.y,
+                            width: zone.width,
+                            height: zone.height,
+                            fill: 'rgba(255, 0, 0, 0.3)',
+                            stroke: '#ff0000',
+                            strokeWidth: 2,
+                            selectable: false
+                        });
+                        layoutCanvas.add(rect);
+                    });
+
+                    layoutCanvas.renderAll();
                 });
-            }
+            };
+            reader.readAsDataURL(uploadedImage);
         }
 
-        // Draw base layout (roof + obstacles)
-        function drawLayoutBase() {
-            if (!roofPolygon || !layoutCanvas) return;
-
-            const points = roofPolygon.map(p => ({ x: p[0], y: p[1] }));
-            const polygon = new fabric.Polygon(points, {
-                fill: 'rgba(0, 123, 255, 0.15)',
-                stroke: '#007bff',
-                strokeWidth: 2,
-                selectable: false
-            });
-
-            layoutCanvas.add(polygon);
-
-            obstacles.forEach(obs => {
-                const rect = new fabric.Rect({
-                    left: obs.x,
-                    top: obs.y,
-                    width: obs.width,
-                    height: obs.height,
-                    fill: 'rgba(255, 0, 0, 0.2)',
-                    stroke: '#dc3545',
-                    strokeWidth: 2,
-                    selectable: false
-                });
-                layoutCanvas.add(rect);
-            });
-
-            layoutCanvas.renderAll();
-        }
-
-        // Update panel dimensions from select
-        function updatePanelDimensions() {
-            const select = document.getElementById('panelSize');
-            const customInputs = document.getElementById('customPanelInputs');
-
-            if (select.value === 'custom') {
-                customInputs.style.display = 'block';
-            } else {
-                customInputs.style.display = 'none';
-                const [width, height, power] = select.value.split(',');
-                document.getElementById('panelWidth').value = width;
-                document.getElementById('panelHeight').value = height;
-                document.getElementById('panelPower').value = power;
-            }
-        }
-
-        // Calculate panel layout
         async function calculatePanelLayout() {
-            showLoading('Calculating optimal panel layout...');
-
             const panelWidth = parseFloat(document.getElementById('panelWidth').value);
             const panelHeight = parseFloat(document.getElementById('panelHeight').value);
             const panelPower = parseInt(document.getElementById('panelPower').value);
-            const spacing = parseFloat(document.getElementById('spacing').value) / 100; // Convert cm to m
             const orientation = document.getElementById('orientation').value;
+            const spacing = parseFloat(document.getElementById('spacing').value) / 100; // Convert cm to m
             const pixelsPerMeter = parseFloat(document.getElementById('pixelsPerMeter').value);
 
             const formData = new FormData();
             formData.append('design_id', designId);
-            formData.append('roof_polygon', JSON.stringify(roofPolygon));
-            formData.append('obstacles', JSON.stringify(obstacles));
+            formData.append('roof_polygon', JSON.stringify(roofPolygonPoints));
+            formData.append('obstacles', JSON.stringify(exclusionZones));
             formData.append('panel_width_m', panelWidth);
             formData.append('panel_height_m', panelHeight);
             formData.append('panel_power_w', panelPower);
@@ -1133,29 +833,9 @@
                 });
 
                 const result = await response.json();
-                hideLoading();
-
-                console.log('[LAYOUT RESULT]', result);
 
                 if (result.success) {
                     panels = result.panels;
-
-                    if (result.total_panels === 0) {
-                        // Show helpful message when no panels fit
-                        let message = 'No panels could be placed on the roof.\n\n';
-                        message += 'Possible reasons:\n';
-                        message += '• Scale calibration (pixels per meter) may be incorrect\n';
-                        message += '• Panel size is too large for the detected roof area\n';
-                        message += '• Obstacles are covering too much of the roof\n\n';
-                        message += 'Try adjusting the "Pixels per Meter" value in Step 2.';
-
-                        if (window.estimatedScaleValue) {
-                            message += `\n\nSuggested scale: ${window.estimatedScaleValue} pixels/meter`;
-                        }
-
-                        alert(message);
-                    }
-
                     displayPanels();
                     displayResults(result);
                     document.getElementById('saveBtn').disabled = result.total_panels === 0;
@@ -1163,122 +843,106 @@
                     alert('Error: ' + (result.error || 'Failed to calculate layout'));
                 }
             } catch (error) {
-                hideLoading();
                 console.error('Error:', error);
                 alert('Failed to calculate layout. Please try again.');
             }
         }
 
-        // Display panels on canvas
         function displayPanels() {
-            if (!layoutCanvas || !panels) return;
-
-            // Remove existing panels
+            // Clear existing panels
             layoutCanvas.getObjects().forEach(obj => {
-                if (obj.panelMarker) {
+                if (obj.panelRect) {
                     layoutCanvas.remove(obj);
                 }
             });
 
-            // Draw new panels
+            // Draw panels with realistic solar panel appearance
             panels.forEach(panel => {
+                // Main panel rectangle - dark blue/black
                 const rect = new fabric.Rect({
                     left: panel.x,
                     top: panel.y,
                     width: panel.width,
                     height: panel.height,
-                    fill: 'rgba(255, 193, 7, 0.6)',
-                    stroke: '#ff9800',
+                    fill: '#1a2332', // Dark blue-grey (solar panel color)
+                    stroke: '#0d1117', // Darker border
                     strokeWidth: 1,
                     selectable: false,
-                    panelMarker: true
+                    panelRect: true
                 });
-                layoutCanvas.add(rect);
+
+                // Add grid lines to simulate solar cells
+                const group = new fabric.Group([rect], {
+                    left: panel.x,
+                    top: panel.y,
+                    selectable: false,
+                    panelRect: true
+                });
+
+                // Add horizontal lines (simulate cell rows)
+                const cellRows = 6;
+                for (let i = 1; i < cellRows; i++) {
+                    const y = (panel.height / cellRows) * i;
+                    const line = new fabric.Line([0, y, panel.width, y], {
+                        stroke: '#0d1117',
+                        strokeWidth: 0.5,
+                        selectable: false
+                    });
+                    group.addWithUpdate(line);
+                }
+
+                // Add vertical lines (simulate cell columns)
+                const cellCols = 10;
+                for (let i = 1; i < cellCols; i++) {
+                    const x = (panel.width / cellCols) * i;
+                    const line = new fabric.Line([x, 0, x, panel.height], {
+                        stroke: '#0d1117',
+                        strokeWidth: 0.5,
+                        selectable: false
+                    });
+                    group.addWithUpdate(line);
+                }
+
+                layoutCanvas.add(group);
             });
 
             layoutCanvas.renderAll();
         }
 
-        // Display results
         function displayResults(result) {
             document.getElementById('resultPanels').textContent = result.total_panels;
-            document.getElementById('resultPower').textContent = result.total_power_kw + ' kW';
-            document.getElementById('resultCoverage').textContent = result.coverage_percent + '%';
-            document.getElementById('resultArea').textContent = result.roof_area_m2 + ' m²';
+            document.getElementById('resultPower').textContent = result.total_power_kw.toFixed(2) + ' kW';
+            document.getElementById('resultCoverage').textContent = result.coverage_percent.toFixed(1) + '%';
             document.getElementById('layoutResults').style.display = 'block';
         }
 
-        // Save design
         async function saveDesign() {
-            showLoading('Saving design...');
-
-            try {
-                // Generate visualization
-                const formData = new FormData();
-                formData.append('design_id', designId);
-
-                const response = await fetch('/api/roof-designer/save-visualization', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                hideLoading();
-
-                if (result.success) {
-                    // Copy results to final step
-                    document.getElementById('finalPanels').textContent = document.getElementById('resultPanels').textContent;
-                    document.getElementById('finalPower').textContent = document.getElementById('resultPower').textContent;
-                    document.getElementById('finalCoverage').textContent = document.getElementById('resultCoverage').textContent;
-                    document.getElementById('finalArea').textContent = document.getElementById('resultArea').textContent;
-
-                    goToStep(4);
-                } else {
-                    alert('Error saving design');
-                }
-            } catch (error) {
-                hideLoading();
-                console.error('Error:', error);
-                alert('Failed to save design. Please try again.');
+            if (!designId || panels.length === 0) {
+                alert('Please calculate panel layout first.');
+                return;
             }
+
+            goToStep(4);
+
+            // Copy results to final summary
+            document.getElementById('finalPanels').textContent = document.getElementById('resultPanels').textContent;
+            document.getElementById('finalPower').textContent = document.getElementById('resultPower').textContent;
+            document.getElementById('finalCoverage').textContent = document.getElementById('resultCoverage').textContent;
+
+            const roofArea = parseFloat(document.getElementById('resultPanels').textContent) *
+                           parseFloat(document.getElementById('panelWidth').value) *
+                           parseFloat(document.getElementById('panelHeight').value);
+            document.getElementById('finalArea').textContent = roofArea.toFixed(2) + ' m²';
+
+            console.log('[SAVE] Design saved successfully');
         }
 
-        // Start new design
         function startNewDesign() {
-            window.location.href = '/roof-designer';
+            window.location.reload();
         }
 
-        // Navigation functions
-        function goToStep(step) {
-            // Hide all steps
-            document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.wizard-step').forEach(el => {
-                el.classList.remove('active');
-                if (parseInt(el.dataset.step) < step) {
-                    el.classList.add('completed');
-                } else {
-                    el.classList.remove('completed');
-                }
-            });
-
-            // Show target step
-            document.getElementById(`step${step}`).classList.add('active');
-            document.querySelector(`[data-step="${step}"]`).classList.add('active');
-            currentStep = step;
-
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // Loading overlay
-        function showLoading(text = 'Processing...') {
-            document.getElementById('loadingText').textContent = text;
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
-
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
-        }
+        // Initialize
+        startDrawingRoof();
     </script>
 </body>
 </html>
