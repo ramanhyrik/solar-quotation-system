@@ -438,6 +438,55 @@
         .form-group label[data-tooltip] {
             cursor: help;
         }
+
+        /* Keyboard shortcut styling */
+        kbd {
+            background: linear-gradient(to bottom, #f9f9f9, #e9e9e9);
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2), 0 0 0 2px white inset;
+            color: #333;
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            padding: 4px 8px;
+            white-space: nowrap;
+        }
+
+        .shortcuts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .shortcuts-table th {
+            background: #f3f4f6;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .shortcuts-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .shortcuts-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .shortcuts-category {
+            background: var(--primary-blue);
+            color: white;
+            padding: 8px 12px;
+            margin: 15px 0 10px 0;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -585,6 +634,11 @@
                                 data-tooltip="Remove all polygons and start over">
                             <i data-lucide="rotate-ccw"></i>
                             <span>Clear All</span>
+                        </button>
+                        <button class="tool-btn" onclick="showKeyboardShortcuts()"
+                                data-tooltip="View all keyboard shortcuts">
+                            <i data-lucide="keyboard"></i>
+                            <span>Shortcuts</span>
                         </button>
                     </div>
 
@@ -979,6 +1033,83 @@
             }
 
             canvas.renderAll();
+        }
+
+        // Keyboard shortcuts guide
+        function showKeyboardShortcuts() {
+            const shortcutsHTML = `
+                <div class="shortcuts-category">
+                    <i data-lucide="edit-3" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                    Drawing & Editing
+                </div>
+                <table class="shortcuts-table">
+                    <tr>
+                        <td><kbd>Click</kbd></td>
+                        <td>Add point to polygon (in drawing mode)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td>
+                        <td>Undo last action</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td>
+                        <td>Redo action</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Delete</kbd></td>
+                        <td>Delete selected polygon</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Esc</kbd></td>
+                        <td>Clear selection / Exit edit mode</td>
+                    </tr>
+                </table>
+
+                <div class="shortcuts-category">
+                    <i data-lucide="move" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                    View Controls
+                </div>
+                <table class="shortcuts-table">
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>Scroll</kbd></td>
+                        <td>Zoom in/out at cursor position</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>0</kbd></td>
+                        <td>Reset zoom to 100%</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Space</kbd> + <kbd>Drag</kbd></td>
+                        <td>Pan canvas (move view)</td>
+                    </tr>
+                </table>
+
+                <div style="background: #e8f4fd; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; color: #1F2937;">
+                    <strong>💡 Pro Tip:</strong> Use <kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd> to undo/redo any drawing mistakes.
+                    All polygon operations are reversible!
+                </div>
+            `;
+
+            const modal = document.getElementById('modalOverlay');
+            const messageEl = document.getElementById('modalMessage');
+            const titleEl = document.getElementById('modalTitle');
+            const iconEl = document.getElementById('modalIcon');
+            const okBtn = document.getElementById('modalOkBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            messageEl.innerHTML = shortcutsHTML;
+            titleEl.textContent = 'Keyboard Shortcuts';
+            iconEl.setAttribute('data-lucide', 'keyboard');
+            iconEl.style.color = '#3B82F6';
+
+            cancelBtn.style.display = 'none';
+            okBtn.textContent = 'Got it!';
+            okBtn.onclick = closeModal;
+
+            modal.classList.add('active');
+            lucide.createIcons();
+
+            document.addEventListener('keydown', handleModalEscape);
         }
 
         // Modal system
