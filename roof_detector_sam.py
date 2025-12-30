@@ -69,7 +69,8 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
 
         # Resize image for faster inference (critical for CPU)
         # MobileSAM works well at lower resolutions, and CPU inference is VERY slow
-        max_dimension = 512  # Reduce from typical 1024 for speed
+        # Using 256px for maximum speed on CPU-only inference (4x faster than 512px)
+        max_dimension = 256  # Aggressive resize for sub-30s inference
         scale = 1.0
 
         if max(original_width, original_height) > max_dimension:
