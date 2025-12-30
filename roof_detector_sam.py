@@ -81,12 +81,13 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         print(f"[MOBILE-SAM] Image path: {image_path}")
         print(f"[MOBILE-SAM] Calling model.predict()...")
 
-        # Run MobileSAM with point prompt
+        # Run MobileSAM with point prompt (single point syntax: points=[x, y])
         try:
-            results = model(
+            results = model.predict(
                 image_path,
-                points=[[center_x, center_y]],
-                labels=[1]  # 1 = foreground point
+                points=[center_x, center_y],  # Single point: flat list [x, y]
+                labels=[1],  # 1 = foreground point
+                verbose=False  # Reduce output
             )
             print(f"[MOBILE-SAM] Model call completed. Results type: {type(results)}")
             print(f"[MOBILE-SAM] Results length: {len(results) if results else 'None'}")
