@@ -515,6 +515,23 @@
 
                 <div class="tools-panel">
                     <div style="margin-bottom: 25px;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Edit Tools</h3>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                            <button class="tool-btn" id="undoBtn" onclick="undo()" disabled
+                                    data-tooltip="Undo last action (Ctrl+Z)">
+                                <i data-lucide="undo"></i>
+                                <span>Undo</span>
+                            </button>
+                            <button class="tool-btn" id="redoBtn" onclick="redo()" disabled
+                                    data-tooltip="Redo action (Ctrl+Y)">
+                                <i data-lucide="redo"></i>
+                                <span>Redo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
 
                         <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()"
@@ -724,6 +741,59 @@
         let roofPolygonObject = null;
         let drawingMode = null; // 'roof' or 'exclusion'
         let panels = [];
+
+        // Command history for undo/redo
+        const commandHistory = {
+            undoStack: [],
+            redoStack: [],
+            maxSize: 50
+        };
+
+        class Command {
+            constructor(execute, undo, description) {
+                this.execute = execute;
+                this.undo = undo;
+                this.description = description;
+            }
+        }
+
+        function executeCommand(command) {
+            command.execute();
+            commandHistory.undoStack.push(command);
+            commandHistory.redoStack = []; // Clear redo stack on new action
+
+            // Limit stack size
+            if (commandHistory.undoStack.length > commandHistory.maxSize) {
+                commandHistory.undoStack.shift();
+            }
+
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (commandHistory.undoStack.length === 0) return;
+
+            const command = commandHistory.undoStack.pop();
+            command.undo();
+            commandHistory.redoStack.push(command);
+            updateUndoRedoButtons();
+        }
+
+        function redo() {
+            if (commandHistory.redoStack.length === 0) return;
+
+            const command = commandHistory.redoStack.pop();
+            command.execute();
+            commandHistory.undoStack.push(command);
+            updateUndoRedoButtons();
+        }
+
+        function updateUndoRedoButtons() {
+            const undoBtn = document.getElementById('undoBtn');
+            const redoBtn = document.getElementById('redoBtn');
+            if (undoBtn) undoBtn.disabled = commandHistory.undoStack.length === 0;
+            if (redoBtn) redoBtn.disabled = commandHistory.redoStack.length === 0;
+        }
 
         // Modal system
         function showModal(message, type = 'info', title = null, onConfirm = null) {
@@ -1068,29 +1138,56 @@
                 return;
             }
 
-            // Remove all temporary circles and lines for roof
-            canvas.getObjects().forEach(obj => {
-                if (obj.roofMarker) {
-                    canvas.remove(obj);
-                }
-            });
+            const savedPoints = [...roofPolygonPoints];
+            const tempMarkers = canvas.getObjects().filter(obj => obj.roofMarker);
 
-            // Create filled polygon
-            roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
-                fill: 'rgba(0, 123, 255, 0.2)',
-                stroke: '#00358A',
-                strokeWidth: 3,
-                selectable: true,
-                lockRotation: true,
-                isRoofPolygon: true
-            });
-            canvas.add(roofPolygonObject);
-            canvas.renderAll();
+            const command = new Command(
+                () => {
+                    // Execute: Create roof polygon
+                    // Remove all temporary circles and lines for roof
+                    canvas.getObjects().forEach(obj => {
+                        if (obj.roofMarker) {
+                            canvas.remove(obj);
+                        }
+                    });
 
-            drawingMode = null;
-            document.getElementById('drawRoofBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent =
-                'Roof boundary complete! Add exclusion zones or proceed to panel layout.';
+                    // Create filled polygon
+                    roofPolygonObject = new fabric.Polygon(savedPoints, {
+                        fill: 'rgba(0, 123, 255, 0.2)',
+                        stroke: '#00358A',
+                        strokeWidth: 3,
+                        selectable: true,
+                        lockRotation: true,
+                        isRoofPolygon: true
+                    });
+                    canvas.add(roofPolygonObject);
+                    canvas.renderAll();
+
+                    drawingMode = null;
+                    document.getElementById('drawRoofBtn').classList.remove('active');
+                    document.getElementById('drawingInstruction').textContent =
+                        'Roof boundary complete! Add exclusion zones or proceed to panel layout.';
+                },
+                () => {
+                    // Undo: Remove roof polygon and restore markers
+                    if (roofPolygonObject) {
+                        canvas.remove(roofPolygonObject);
+                        roofPolygonObject = null;
+                    }
+
+                    // Restore temporary markers
+                    tempMarkers.forEach(marker => canvas.add(marker));
+                    canvas.renderAll();
+
+                    drawingMode = 'roof';
+                    document.getElementById('drawRoofBtn').classList.add('active');
+                    document.getElementById('drawingInstruction').textContent =
+                        `${roofPolygonPoints.length} points added. Click "Close Roof Polygon" when done.`;
+                },
+                'Close roof polygon'
+            );
+
+            executeCommand(command);
         }
 
         function closeExclusionPolygon() {
@@ -1099,66 +1196,157 @@
                 return;
             }
 
-            // Remove temporary markers for this exclusion zone
-            canvas.getObjects().forEach(obj => {
-                if (obj.exclusionMarker) {
-                    canvas.remove(obj);
-                }
-            });
+            const savedPoints = [...currentExclusionPoints];
+            const tempMarkers = canvas.getObjects().filter(obj => obj.exclusionMarker);
 
-            // Create filled exclusion polygon
-            const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
-                fill: 'rgba(255, 0, 0, 0.3)',
-                stroke: '#ff0000',
-                strokeWidth: 2,
-                selectable: true,
-                lockRotation: true,
-                isExclusionZone: true
-            });
-            canvas.add(exclusionPoly);
+            const command = new Command(
+                () => {
+                    // Execute: Create exclusion polygon
+                    // Remove temporary markers for this exclusion zone
+                    canvas.getObjects().forEach(obj => {
+                        if (obj.exclusionMarker) {
+                            canvas.remove(obj);
+                        }
+                    });
 
-            // Save to exclusion zones array
-            exclusionZones.push({
-                points: [...currentExclusionPoints],
-                polygon: exclusionPoly
-            });
+                    // Create filled exclusion polygon
+                    const exclusionPoly = new fabric.Polygon(savedPoints, {
+                        fill: 'rgba(255, 0, 0, 0.3)',
+                        stroke: '#ff0000',
+                        strokeWidth: 2,
+                        selectable: true,
+                        lockRotation: true,
+                        isExclusionZone: true
+                    });
+                    canvas.add(exclusionPoly);
 
-            console.log('[EXCLUSION] Added polygon zone:', currentExclusionPoints.length, 'points');
+                    // Save to exclusion zones array
+                    exclusionZones.push({
+                        points: [...savedPoints],
+                        polygon: exclusionPoly
+                    });
 
-            canvas.renderAll();
+                    console.log('[EXCLUSION] Added polygon zone:', savedPoints.length, 'points');
 
-            // Reset for next exclusion zone
-            currentExclusionPoints = [];
-            drawingMode = null;
-            document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent =
-                `Exclusion zone added (${exclusionZones.length} total). Add more zones or proceed to layout.`;
+                    canvas.renderAll();
+
+                    // Reset for next exclusion zone
+                    currentExclusionPoints = [];
+                    drawingMode = null;
+                    document.getElementById('drawExclusionBtn').classList.remove('active');
+                    document.getElementById('drawingInstruction').textContent =
+                        `Exclusion zone added (${exclusionZones.length} total). Add more zones or proceed to layout.`;
+                },
+                () => {
+                    // Undo: Remove exclusion polygon and restore markers
+                    if (exclusionZones.length > 0) {
+                        const lastZone = exclusionZones.pop();
+                        canvas.remove(lastZone.polygon);
+                    }
+
+                    // Restore temporary markers
+                    tempMarkers.forEach(marker => canvas.add(marker));
+                    currentExclusionPoints = [...savedPoints];
+                    canvas.renderAll();
+
+                    drawingMode = 'exclusion';
+                    document.getElementById('drawExclusionBtn').classList.add('active');
+                    document.getElementById('drawingInstruction').textContent =
+                        `Exclusion zone: ${savedPoints.length} points. Click "Close Exclusion" or continue adding points.`;
+                },
+                'Add exclusion zone'
+            );
+
+            executeCommand(command);
         }
 
         function deleteSelected() {
             const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                // Remove from exclusionZones array if it's an exclusion zone polygon
-                if (activeObject.isExclusionZone) {
-                    const index = exclusionZones.findIndex(zone => zone.polygon === activeObject);
-                    if (index !== -1) {
-                        exclusionZones.splice(index, 1);
-                        console.log('[EXCLUSION] Removed zone. Remaining:', exclusionZones.length);
+            if (!activeObject) {
+                showModal('No object selected. Click on a polygon first, then click Delete.', 'info');
+                return;
+            }
+
+            const type = activeObject.isRoofPolygon ? 'roof boundary' :
+                        activeObject.isExclusionZone ? 'exclusion zone' : 'object';
+
+            showModal(
+                `Are you sure you want to delete this ${type}? This action can be undone with Ctrl+Z.`,
+                'confirm',
+                'Confirm Deletion',
+                (confirmed) => {
+                    if (confirmed) {
+                        const savedObject = activeObject;
+                        let savedZoneIndex = -1;
+
+                        // Find zone index if it's an exclusion zone
+                        if (savedObject.isExclusionZone) {
+                            savedZoneIndex = exclusionZones.findIndex(zone => zone.polygon === savedObject);
+                        }
+
+                        const command = new Command(
+                            () => {
+                                // Execute: Delete object
+                                if (savedObject.isExclusionZone && savedZoneIndex !== -1) {
+                                    exclusionZones.splice(savedZoneIndex, 1);
+                                    console.log('[EXCLUSION] Removed zone. Remaining:', exclusionZones.length);
+                                } else if (savedObject.isRoofPolygon) {
+                                    roofPolygonObject = null;
+                                }
+
+                                canvas.remove(savedObject);
+                                canvas.renderAll();
+                            },
+                            () => {
+                                // Undo: Restore object
+                                canvas.add(savedObject);
+
+                                if (savedObject.isExclusionZone && savedZoneIndex !== -1) {
+                                    const savedPoints = savedObject.points || [];
+                                    exclusionZones.splice(savedZoneIndex, 0, {
+                                        points: savedPoints,
+                                        polygon: savedObject
+                                    });
+                                } else if (savedObject.isRoofPolygon) {
+                                    roofPolygonObject = savedObject;
+                                }
+
+                                canvas.renderAll();
+                            },
+                            `Delete ${type}`
+                        );
+
+                        executeCommand(command);
                     }
                 }
-
-                canvas.remove(activeObject);
-                canvas.renderAll();
-            }
+            );
         }
 
         function clearAll() {
+            showModal(
+                'This will delete all polygons and reset the canvas. This action cannot be undone. Are you sure?',
+                'confirm',
+                'Clear All',
+                (confirmed) => {
+                    if (confirmed) {
+                        clearAllPolygons();
+                    }
+                }
+            );
+        }
+
+        function clearAllPolygons() {
             canvas.clear();
             roofPolygonPoints = [];
             exclusionZones = [];
             currentExclusionPoints = [];
             roofPolygonObject = null;
             drawingMode = null;
+
+            // Clear command history since we're starting fresh
+            commandHistory.undoStack = [];
+            commandHistory.redoStack = [];
+            updateUndoRedoButtons();
 
             // Reload background image
             const reader = new FileReader();
@@ -1441,6 +1629,37 @@
 
         // Initialize Lucide icons
         lucide.createIcons();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Z / Cmd+Z - Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+
+            // Ctrl+Y / Cmd+Y / Ctrl+Shift+Z - Redo
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                redo();
+            }
+
+            // Delete key - Delete selected
+            if (e.key === 'Delete') {
+                const activeObject = canvas?.getActiveObject();
+                if (activeObject) {
+                    deleteSelected();
+                }
+            }
+
+            // Escape - Clear selection / cancel drawing
+            if (e.key === 'Escape') {
+                if (canvas) {
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                }
+            }
+        });
     </script>
 </body>
 </html>
