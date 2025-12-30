@@ -67,32 +67,66 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         original_height, original_width = img.shape[:2]
         print(f"[MOBILE-SAM] Image loaded: {original_width}x{original_height}")
 
+        # Resize image for faster inference (critical for CPU)
+        # MobileSAM works well at lower resolutions, and CPU inference is VERY slow
+        max_dimension = 512  # Reduce from typical 1024 for speed
+        scale = 1.0
+
+        if max(original_width, original_height) > max_dimension:
+            scale = max_dimension / max(original_width, original_height)
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
+            img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            print(f"[MOBILE-SAM] Resized for inference: {new_width}x{new_height} (scale={scale:.3f})")
+        else:
+            img_resized = img
+            new_width = original_width
+            new_height = original_height
+            print(f"[MOBILE-SAM] No resize needed (already <= {max_dimension}px)")
+
+        # Save resized image temporarily for SAM
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            temp_path = tmp.name
+            cv2.imwrite(temp_path, img_resized)
+            print(f"[MOBILE-SAM] Saved temp resized image: {temp_path}")
+
         # Get MobileSAM model
         print("[MOBILE-SAM] Getting model...")
         model = get_mobilesam_model()
         print("[MOBILE-SAM] Model retrieved")
 
-        # Strategy: Use center point prompt
+        # Strategy: Use center point prompt on resized image
         # Assume the target building is in the center of the aerial image
-        center_x = original_width // 2
-        center_y = original_height // 2
+        center_x = new_width // 2
+        center_y = new_height // 2
 
         print(f"[MOBILE-SAM] Running segmentation with center point prompt ({center_x}, {center_y})")
-        print(f"[MOBILE-SAM] Image path: {image_path}")
+        print(f"[MOBILE-SAM] Using temp resized image for inference")
         print(f"[MOBILE-SAM] Calling model.predict()...")
 
         # Run MobileSAM with point prompt (single point syntax: points=[x, y])
         try:
             results = model.predict(
-                image_path,
+                temp_path,  # Use resized temp image
                 points=[center_x, center_y],  # Single point: flat list [x, y]
                 labels=[1],  # 1 = foreground point
                 verbose=False  # Reduce output
             )
             print(f"[MOBILE-SAM] Model call completed. Results type: {type(results)}")
             print(f"[MOBILE-SAM] Results length: {len(results) if results else 'None'}")
+
+            # Clean up temp file
+            import os as os_module
+            os_module.unlink(temp_path)
+            print(f"[MOBILE-SAM] Cleaned up temp file")
+
         except Exception as e:
             print(f"[MOBILE-SAM] ERROR during model inference: {str(e)}")
+            # Clean up temp file on error
+            import os as os_module
+            if os_module.path.exists(temp_path):
+                os_module.unlink(temp_path)
             import traceback
             traceback.print_exc()
             raise
@@ -150,6 +184,7 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         # Process masks into polygon candidates
         candidates = []
         img_area = original_width * original_height
+        resized_img_area = new_width * new_height
 
         for idx, mask in enumerate(masks):
             print(f"[MOBILE-SAM] Processing mask {idx}, shape: {mask.shape}, dtype: {mask.dtype}")
@@ -173,12 +208,18 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             # Get largest contour
             largest_contour = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(largest_contour)
-            area_ratio = area / img_area
-            print(f"[MOBILE-SAM] Mask {idx}: largest contour area={area:.0f}, ratio={area_ratio:.2%}")
+            # Calculate area ratio based on RESIZED image for filtering
+            area_ratio_resized = area / resized_img_area
+            # Calculate actual area in original image coordinates
+            area_original = area / (scale * scale) if scale != 1.0 else area
+            area_ratio_original = area_original / img_area
+            print(f"[MOBILE-SAM] Mask {idx}: contour area={area:.0f} (resized), "
+                  f"ratio={area_ratio_resized:.2%} (resized), "
+                  f"original_ratio={area_ratio_original:.2%}")
 
-            # Filter by area (5% to 85% of image)
-            if area < img_area * 0.05 or area > img_area * 0.85:
-                print(f"[MOBILE-SAM] Mask {idx} rejected: area_ratio={area_ratio:.2%} outside 5-85% range")
+            # Filter by area (5% to 85% of RESIZED image for consistency)
+            if area_ratio_resized < 0.05 or area_ratio_resized > 0.85:
+                print(f"[MOBILE-SAM] Mask {idx} rejected: area_ratio={area_ratio_resized:.2%} outside 5-85% range")
                 continue
 
             # Approximate polygon with multiple epsilon values
@@ -195,29 +236,39 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
 
                 # Accept polygons with 4-12 vertices
                 if 4 <= num_vertices <= 12:
-                    # Extract points
+                    # Extract points and scale back to original image coordinates
                     points = []
                     for point in approx:
                         x, y = point[0]
-                        points.append({"x": float(x), "y": float(y)})
+                        # Scale coordinates back to original image size
+                        if scale != 1.0:
+                            x_original = x / scale
+                            y_original = y / scale
+                        else:
+                            x_original = x
+                            y_original = y
+                        points.append({"x": float(x_original), "y": float(y_original)})
 
-                    # Calculate confidence based on SAM quality
+                    # Calculate confidence based on SAM quality (use original area ratio)
                     confidence = calculate_sam_confidence(
-                        area_ratio, num_vertices, perimeter, area, mask
+                        area_ratio_original, num_vertices, perimeter, area, mask
                     )
 
+                    # Store values in original image coordinates
+                    perimeter_original = perimeter / scale if scale != 1.0 else perimeter
+
                     candidates.append({
-                        "points": points,
+                        "points": points,  # Already scaled to original coordinates
                         "vertices": num_vertices,
-                        "area_px": float(area),
-                        "area_ratio": float(area_ratio),
+                        "area_px": float(area_original),  # Original image area
+                        "area_ratio": float(area_ratio_original),  # Original ratio
                         "confidence": float(confidence),
-                        "perimeter": float(perimeter),
+                        "perimeter": float(perimeter_original),  # Original perimeter
                         "mask_index": idx
                     })
 
                     print(f"[MOBILE-SAM] ✓ Candidate {len(candidates)} created: {num_vertices} vertices, "
-                          f"area={area_ratio*100:.1f}%, confidence={confidence:.1f}%")
+                          f"area={area_ratio_original*100:.1f}%, confidence={confidence:.1f}%")
                     polygon_found = True
                     break
 
