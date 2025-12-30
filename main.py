@@ -1983,14 +1983,14 @@ async def auto_detect_roof_endpoint(
             if created_by != user['user_id']:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        # Import CV detection function
-        from roof_detector_cv import auto_detect_roof_boundary
+        # Import semantic segmentation detection function
+        from roof_detector_segmentation import auto_detect_roof_boundary
 
-        print(f"[AUTO-DETECT] Starting detection for design #{design_id}")
+        print(f"[AUTO-DETECT] Starting AI segmentation for design #{design_id}")
         print(f"[AUTO-DETECT] Image path: {image_path}")
 
-        # Run auto-detection
-        detection_result = auto_detect_roof_boundary(image_path, max_candidates=3)
+        # Run auto-detection using deep learning segmentation
+        detection_result = auto_detect_roof_boundary(image_path, max_candidates=1)
 
         if not detection_result.get('success'):
             raise HTTPException(
