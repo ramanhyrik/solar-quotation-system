@@ -19,12 +19,22 @@ from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
+import asyncio
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 # Detect if running in production (on Render or other HTTPS environment)
 IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") is not None
 
 # Session store (in-memory for simplicity)
 sessions = {}
+
+# Detection job store for async SAM processing
+# Format: {job_id: {"status": "pending|running|completed|failed", "result": {...}, "error": str}}
+detection_jobs = {}
+
+# Thread pool for CPU-intensive SAM detection
+detection_executor = ThreadPoolExecutor(max_workers=2)
 
 def sanitize_filename(filename: str) -> str:
     """
@@ -1959,16 +1969,57 @@ async def upload_roof_image_endpoint(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+def run_sam_detection_sync(job_id: str, image_path: str):
+    """
+    Run MobileSAM detection synchronously in background thread.
+    Updates detection_jobs dict with results.
+    """
+    try:
+        print(f"[JOB-{job_id}] Starting MobileSAM detection")
+        print(f"[JOB-{job_id}] Image path: {image_path}")
+
+        # Update status to running
+        detection_jobs[job_id]["status"] = "running"
+
+        # Import and run MobileSAM detection
+        from roof_detector_sam import auto_detect_roof_boundary
+
+        detection_result = auto_detect_roof_boundary(image_path, max_candidates=1)
+
+        if detection_result.get('success'):
+            candidates = detection_result.get('candidates', [])
+            print(f"[JOB-{job_id}] ✓ Completed - Found {len(candidates)} candidates")
+
+            detection_jobs[job_id]["status"] = "completed"
+            detection_jobs[job_id]["result"] = {
+                "success": True,
+                "candidates": candidates,
+                "total_found": detection_result.get('total_found', len(candidates)),
+                "message": detection_result.get('message', f"Found {len(candidates)} roof candidates")
+            }
+        else:
+            error_msg = detection_result.get('error', 'Detection failed')
+            print(f"[JOB-{job_id}] ✗ Failed - {error_msg}")
+            detection_jobs[job_id]["status"] = "failed"
+            detection_jobs[job_id]["error"] = error_msg
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[JOB-{job_id}] ✗ Exception - {error_msg}")
+        import traceback
+        traceback.print_exc()
+        detection_jobs[job_id]["status"] = "failed"
+        detection_jobs[job_id]["error"] = error_msg
+
+
 @app.post("/api/roof-designer/auto-detect")
 async def auto_detect_roof_endpoint(
     design_id: int = Form(...),
     user=Depends(get_current_user)
 ):
     """
-    AI-powered automatic roof boundary detection using Computer Vision.
-    Uses traditional edge detection (no ML models) - lightweight and fast.
-
-    Returns top 3 polygon candidates for user to select/refine.
+    Start async MobileSAM roof boundary detection.
+    Returns immediately with job_id - client polls /auto-detect-status for results.
     """
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -1993,42 +2044,72 @@ async def auto_detect_roof_endpoint(
             if created_by != user['user_id']:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        # Import MobileSAM detection function
-        from roof_detector_sam import auto_detect_roof_boundary
+        # Create unique job ID
+        job_id = str(uuid.uuid4())
 
-        print(f"[AUTO-DETECT] Starting MobileSAM detection for design #{design_id}")
-        print(f"[AUTO-DETECT] Image path: {image_path}")
+        # Initialize job
+        detection_jobs[job_id] = {
+            "status": "pending",
+            "result": None,
+            "error": None,
+            "design_id": design_id
+        }
 
-        # Run auto-detection using MobileSAM (lightweight SAM - only 40MB!)
-        detection_result = auto_detect_roof_boundary(image_path, max_candidates=1)
+        print(f"[AUTO-DETECT] Created job {job_id} for design #{design_id}")
 
-        if not detection_result.get('success'):
-            raise HTTPException(
-                status_code=500,
-                detail=detection_result.get('error', 'Detection failed')
-            )
+        # Run detection in background thread (doesn't block request)
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(
+            detection_executor,
+            run_sam_detection_sync,
+            job_id,
+            image_path
+        )
 
-        candidates = detection_result.get('candidates', [])
-
-        print(f"[AUTO-DETECT] Found {len(candidates)} candidates")
-        for i, c in enumerate(candidates):
-            print(f"  Candidate {i+1}: {c['vertices']} vertices, "
-                  f"confidence={c['confidence']:.1f}%")
-
+        # Return job ID immediately - client will poll for results
         return JSONResponse(content={
             "success": True,
-            "candidates": candidates,
-            "total_found": detection_result.get('total_found', len(candidates)),
-            "message": detection_result.get('message', f"Found {len(candidates)} roof candidates")
+            "job_id": job_id,
+            "status": "pending",
+            "message": "Detection started - poll /api/roof-designer/auto-detect-status"
         })
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] Auto-detection failed: {str(e)}")
+        print(f"[ERROR] Auto-detection job creation failed: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/roof-designer/auto-detect-status/{job_id}")
+async def get_detection_status(
+    job_id: str,
+    user=Depends(get_current_user)
+):
+    """
+    Poll detection job status.
+    Returns: {status: "pending|running|completed|failed", result: {...}, error: str}
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if job_id not in detection_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = detection_jobs[job_id]
+
+    response = {
+        "status": job["status"]
+    }
+
+    if job["status"] == "completed":
+        response["result"] = job["result"]
+    elif job["status"] == "failed":
+        response["error"] = job["error"]
+
+    return JSONResponse(content=response)
 
 @app.post("/api/roof-designer/calculate-layout")
 async def calculate_layout_endpoint(

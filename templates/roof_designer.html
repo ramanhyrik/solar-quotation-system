@@ -1085,53 +1085,113 @@
                 return;
             }
 
-            showLoading('AI is detecting roof boundaries...');
+            showLoading('Starting MobileSAM detection...');
 
             try {
+                // Step 1: Start detection job
                 const formData = new FormData();
                 formData.append('design_id', designId);
 
-                const response = await fetch('/api/roof-designer/auto-detect', {
+                const startResponse = await fetch('/api/roof-designer/auto-detect', {
                     method: 'POST',
                     body: formData
                 });
 
-                const result = await response.json();
+                const startResult = await startResponse.json();
 
-                if (result.success) {
-                    const candidates = result.candidates || [];
+                if (!startResult.success || !startResult.job_id) {
+                    hideLoading();
+                    showModal(startResult.error || 'Failed to start detection', 'error');
+                    return;
+                }
 
-                    if (candidates.length === 0) {
+                const jobId = startResult.job_id;
+                console.log(`[AI-DETECT] Job ${jobId} started - polling for results...`);
+
+                // Step 2: Poll for results
+                let attempts = 0;
+                const maxAttempts = 90; // 90 seconds max (no more 30s timeout!)
+                const pollInterval = 1000; // Poll every 1 second
+
+                const pollJob = async () => {
+                    attempts++;
+
+                    if (attempts > maxAttempts) {
                         hideLoading();
                         showModal(
-                            'No roof boundaries detected. Please try manual drawing or upload a clearer image.',
-                            'info',
-                            'AI Detection'
+                            'Detection is taking longer than expected. Please try with a smaller image or use manual drawing.',
+                            'warning',
+                            'Timeout'
                         );
                         return;
                     }
 
-                    console.log(`[AI-DETECT] Found ${candidates.length} candidate(s)`);
-                    detectedCandidates = candidates;
-
-                    // Automatically apply the best candidate (we return only 1 now)
-                    if (candidates.length === 1) {
-                        hideLoading();
-                        applyBestCandidate(candidates[0]);
-                    } else {
-                        // Fallback: show selection if multiple returned
-                        displayCandidates(candidates);
-                        hideLoading();
+                    // Update loading message with progress
+                    if (attempts % 3 === 0) {
+                        const dots = '.'.repeat((attempts / 3) % 4);
+                        showLoading(`MobileSAM analyzing${dots} (${attempts}s)`);
                     }
 
-                } else {
-                    hideLoading();
-                    showModal(result.error || 'Auto-detection failed', 'error');
-                }
+                    try {
+                        const statusResponse = await fetch(`/api/roof-designer/auto-detect-status/${jobId}`);
+                        const statusResult = await statusResponse.json();
+
+                        console.log(`[AI-DETECT] Poll ${attempts}: ${statusResult.status}`);
+
+                        if (statusResult.status === 'completed') {
+                            // Detection completed successfully
+                            hideLoading();
+
+                            const result = statusResult.result;
+                            const candidates = result.candidates || [];
+
+                            if (candidates.length === 0) {
+                                showModal(
+                                    'No roof boundaries detected. Please try manual drawing or upload a clearer image.',
+                                    'info',
+                                    'AI Detection'
+                                );
+                                return;
+                            }
+
+                            console.log(`[AI-DETECT] ✓ Found ${candidates.length} candidate(s)`);
+                            detectedCandidates = candidates;
+
+                            // Automatically apply the best candidate
+                            if (candidates.length === 1) {
+                                applyBestCandidate(candidates[0]);
+                            } else {
+                                displayCandidates(candidates);
+                            }
+
+                        } else if (statusResult.status === 'failed') {
+                            // Detection failed
+                            hideLoading();
+                            showModal(
+                                statusResult.error || 'Detection failed',
+                                'error',
+                                'MobileSAM Error'
+                            );
+
+                        } else {
+                            // Still pending or running - poll again
+                            setTimeout(pollJob, pollInterval);
+                        }
+
+                    } catch (pollError) {
+                        console.error('[AI-DETECT] Polling error:', pollError);
+                        // Continue polling despite error
+                        setTimeout(pollJob, pollInterval);
+                    }
+                };
+
+                // Start polling
+                setTimeout(pollJob, pollInterval);
+
             } catch (error) {
                 console.error('[AI-DETECT] Error:', error);
                 hideLoading();
-                showModal('Auto-detection failed. Please try again or use manual drawing.', 'error');
+                showModal('Failed to start detection. Please try again or use manual drawing.', 'error');
             }
         }
 
