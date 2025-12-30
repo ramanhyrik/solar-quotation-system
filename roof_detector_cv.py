@@ -34,6 +34,7 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
             return {"success": False, "error": "Failed to load image"}
 
         original_height, original_width = img.shape[:2]
+        print(f"[AI-DETECT] Image loaded: {original_width}x{original_height}")
 
         # Resize for faster processing (max 1024px)
         scale = 1.0
@@ -42,6 +43,7 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
             img = cv2.resize(img, (new_width, new_height))
+            print(f"[AI-DETECT] Resized to: {new_width}x{new_height}, scale={scale:.3f}")
 
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -49,77 +51,113 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
         # Apply Gaussian blur to reduce noise
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-        # Edge detection using Canny
-        edges = cv2.Canny(blurred, 30, 100)
+        # Try multiple edge detection strategies
+        # Strategy 1: Lower threshold Canny (more lenient)
+        edges1 = cv2.Canny(blurred, 20, 60)
+
+        # Strategy 2: Adaptive thresholding
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY_INV, 11, 2)
+
+        # Combine both strategies
+        edges = cv2.bitwise_or(edges1, thresh)
 
         # Morphological operations to close gaps
         kernel = np.ones((5, 5), np.uint8)
-        closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=2)
+        closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=3)
 
         # Dilate to connect nearby edges
-        dilated = cv2.dilate(closed, kernel, iterations=1)
+        dilated = cv2.dilate(closed, kernel, iterations=2)
 
         # Find contours
         contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        print(f"[AI-DETECT] Found {len(contours)} total contours")
 
         if not contours:
             return {
                 "success": True,
                 "candidates": [],
-                "message": "No contours detected. Try adjusting image quality or contrast."
+                "message": "No contours detected. Try adjusting image quality or contrast.",
+                "debug_info": "No contours found after edge detection"
             }
 
         # Process and score candidates
         candidates = []
         img_area = img.shape[0] * img.shape[1]
+        print(f"[AI-DETECT] Image area: {img_area}px")
 
-        for cnt in contours:
+        filtered_count = 0
+        for idx, cnt in enumerate(contours):
             area = cv2.contourArea(cnt)
+            area_ratio = area / img_area
 
-            # Filter out very small contours (< 5% of image)
-            if area < img_area * 0.05:
+            # More lenient area filtering (2% to 98%)
+            if area < img_area * 0.02:
+                filtered_count += 1
                 continue
 
-            # Filter out very large contours (> 95% of image - likely image border)
-            if area > img_area * 0.95:
+            if area > img_area * 0.98:
+                filtered_count += 1
                 continue
 
             # Approximate polygon using Douglas-Peucker algorithm
             perimeter = cv2.arcLength(cnt, True)
-            epsilon = 0.005 * perimeter  # Approximation accuracy
-            approx = cv2.approxPolyDP(cnt, epsilon, True)
 
-            # We want polygons with 4-12 vertices (typical roof shapes)
-            num_vertices = len(approx)
-            if num_vertices < 4 or num_vertices > 12:
-                continue
+            # Try multiple epsilon values for polygon approximation
+            for epsilon_factor in [0.002, 0.005, 0.01, 0.02]:
+                epsilon = epsilon_factor * perimeter
+                approx = cv2.approxPolyDP(cnt, epsilon, True)
+                num_vertices = len(approx)
 
-            # Calculate confidence score
-            confidence = calculate_confidence_score(
-                approx, area, img_area, num_vertices, perimeter
-            )
+                # More lenient vertex count (3-20 vertices)
+                if 3 <= num_vertices <= 20:
+                    # Calculate confidence score
+                    confidence = calculate_confidence_score(
+                        approx, area, img_area, num_vertices, perimeter
+                    )
 
-            # Scale points back to original image size
-            scaled_points = []
-            for point in approx:
-                x, y = point[0]
-                scaled_x = x / scale
-                scaled_y = y / scale
-                scaled_points.append({"x": float(scaled_x), "y": float(scaled_y)})
+                    # Scale points back to original image size
+                    scaled_points = []
+                    for point in approx:
+                        x, y = point[0]
+                        scaled_x = x / scale
+                        scaled_y = y / scale
+                        scaled_points.append({"x": float(scaled_x), "y": float(scaled_y)})
 
-            candidates.append({
-                "points": scaled_points,
-                "vertices": num_vertices,
-                "area_px": float(area / (scale * scale)),  # Scale area back
-                "confidence": float(confidence),
-                "perimeter": float(perimeter / scale)
-            })
+                    candidates.append({
+                        "points": scaled_points,
+                        "vertices": num_vertices,
+                        "area_px": float(area / (scale * scale)),  # Scale area back
+                        "area_ratio": float(area_ratio),
+                        "confidence": float(confidence),
+                        "perimeter": float(perimeter / scale),
+                        "epsilon_factor": epsilon_factor
+                    })
+
+                    # Use the first successful approximation
+                    break
+
+        print(f"[AI-DETECT] Filtered {filtered_count} contours (too small/large)")
+        print(f"[AI-DETECT] Generated {len(candidates)} candidates")
+
+        if len(candidates) == 0:
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "No suitable roof boundaries found. Try a clearer image or manual drawing.",
+                "debug_info": f"Found {len(contours)} contours but none matched criteria"
+            }
 
         # Sort by confidence (highest first)
         candidates.sort(key=lambda x: x['confidence'], reverse=True)
 
         # Return top N candidates
         top_candidates = candidates[:max_candidates]
+
+        for i, c in enumerate(top_candidates):
+            print(f"[AI-DETECT] Candidate {i+1}: {c['vertices']} vertices, "
+                  f"area={c['area_ratio']*100:.1f}%, confidence={c['confidence']:.1f}%")
 
         return {
             "success": True,
@@ -159,43 +197,46 @@ def calculate_confidence_score(
     """
     score = 0.0
 
-    # 1. Area score (0-40 points)
+    # 1. Area score (0-40 points) - More lenient
     area_ratio = area / img_area
-    if 0.15 <= area_ratio <= 0.60:
-        # Ideal range
+    if 0.10 <= area_ratio <= 0.70:
+        # Wider ideal range
         score += 40
-    elif 0.10 <= area_ratio < 0.15 or 0.60 < area_ratio <= 0.75:
+    elif 0.05 <= area_ratio < 0.10 or 0.70 < area_ratio <= 0.85:
         # Acceptable range
-        score += 25
-    elif 0.05 <= area_ratio < 0.10 or 0.75 < area_ratio <= 0.85:
-        # Less likely but possible
+        score += 30
+    elif 0.02 <= area_ratio < 0.05 or 0.85 < area_ratio <= 0.95:
+        # Still possible
+        score += 20
+    else:
+        # Give some points anyway
         score += 10
 
-    # 2. Vertex count score (0-30 points)
+    # 2. Vertex count score (0-30 points) - More lenient
     if num_vertices == 4:
         # Rectangular roof - most common
         score += 30
-    elif num_vertices in [5, 6]:
-        # Pentagon/hexagon - also common
+    elif num_vertices in [5, 6, 7, 8]:
+        # Common polygon shapes
         score += 25
-    elif num_vertices in [7, 8]:
-        # More complex but possible
-        score += 15
-    else:
-        # Less likely
-        score += 5
-
-    # 3. Compactness score (0-20 points)
-    # Roofs tend to be relatively compact (not long and thin)
-    compactness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
-    if compactness > 0.7:
-        # Very compact (close to circle)
+    elif num_vertices in [3, 9, 10]:
+        # Also possible
         score += 20
-    elif compactness > 0.5:
-        # Reasonably compact
+    else:
+        # Accept other shapes too
         score += 15
+
+    # 3. Compactness score (0-20 points) - More lenient
+    # Roofs can be various shapes
+    compactness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
+    if compactness > 0.5:
+        # Reasonably compact
+        score += 20
     elif compactness > 0.3:
-        # Less compact
+        # Less compact but ok
+        score += 15
+    elif compactness > 0.1:
+        # Elongated but possible
         score += 10
     else:
         # Very elongated
@@ -204,18 +245,21 @@ def calculate_confidence_score(
     # 4. Rectangularity score (0-10 points)
     if num_vertices == 4:
         # Check how close to a rectangle
-        rect = cv2.minAreaRect(approx)
-        rect_area = rect[1][0] * rect[1][1] if rect[1][0] > 0 and rect[1][1] > 0 else 1
-        rectangularity = area / rect_area if rect_area > 0 else 0
-        if rectangularity > 0.85:
-            score += 10
-        elif rectangularity > 0.70:
-            score += 7
-        else:
-            score += 3
+        try:
+            rect = cv2.minAreaRect(approx)
+            rect_area = rect[1][0] * rect[1][1] if rect[1][0] > 0 and rect[1][1] > 0 else 1
+            rectangularity = area / rect_area if rect_area > 0 else 0
+            if rectangularity > 0.70:
+                score += 10
+            elif rectangularity > 0.50:
+                score += 7
+            else:
+                score += 5
+        except:
+            score += 5
     else:
         # Not a rectangle, but that's ok
-        score += 5
+        score += 10
 
     # Normalize to 0-100
     return min(score, 100.0)
