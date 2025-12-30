@@ -13,7 +13,8 @@ sendgrid==6.11.0
 numpy==1.26.4
 shapely==2.0.2
 matplotlib==3.8.2
-opencv-python-headless==4.9.0.80
 torch==2.1.2
 torchvision==0.16.2
 ultralytics==8.3.0
+# Force headless OpenCV (install after ultralytics to override)
+opencv-python-headless==4.9.0.80

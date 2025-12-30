@@ -4,7 +4,7 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for matplotlib, PDF generation, and Hebrew fonts
+# Install system dependencies for matplotlib, PDF generation, OpenCV, and Hebrew fonts
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -13,6 +13,12 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     fontconfig \
     fonts-dejavu-core \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
