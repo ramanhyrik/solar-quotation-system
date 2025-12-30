@@ -119,7 +119,9 @@
         // טעינת משתמשים
         async function loadUsers() {
             try {
-                const response = await fetch('/api/users');
+                const response = await fetch('/api/users', {
+                    credentials: 'same-origin'
+                });
                 if (response.ok) {
                     users = await response.json();
                     displayUsers();
@@ -167,7 +169,8 @@
             try {
                 const response = await fetch('/api/users', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'same-origin'
                 });
 
                 if (response.ok) {
@@ -220,7 +223,8 @@
             try {
                 const response = await fetch(`/api/users/${userId}`, {
                     method: 'PUT',
-                    body: formData
+                    body: formData,
+                    credentials: 'same-origin'
                 });
 
                 if (response.ok) {
@@ -245,7 +249,8 @@
 
             try {
                 const response = await fetch(`/api/users/${userId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    credentials: 'same-origin'
                 });
 
                 if (response.ok) {

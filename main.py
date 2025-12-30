@@ -1983,13 +1983,13 @@ async def auto_detect_roof_endpoint(
             if created_by != user['user_id']:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        # Import semantic segmentation detection function
-        from roof_detector_segmentation import auto_detect_roof_boundary
+        # Import MobileSAM detection function
+        from roof_detector_sam import auto_detect_roof_boundary
 
-        print(f"[AUTO-DETECT] Starting AI segmentation for design #{design_id}")
+        print(f"[AUTO-DETECT] Starting MobileSAM detection for design #{design_id}")
         print(f"[AUTO-DETECT] Image path: {image_path}")
 
-        # Run auto-detection using deep learning segmentation
+        # Run auto-detection using MobileSAM (lightweight SAM - only 40MB!)
         detection_result = auto_detect_roof_boundary(image_path, max_candidates=1)
 
         if not detection_result.get('success'):
