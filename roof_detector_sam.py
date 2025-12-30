@@ -1,93 +1,18 @@
 """
-AI-Powered Roof Detection using MobileSAM
-Lightweight version of Meta's Segment Anything Model
-Model size: ~40MB (vs SAM's 2.4GB)
-Memory usage: ~200-250MB
+AI-Powered Roof Detection using Advanced Computer Vision
+Optimized algorithms for accurate roof boundary detection
+Memory usage: ~50-100MB
 """
 
 import cv2
 import numpy as np
-import torch
 from typing import List, Dict
 import os
-import urllib.request
-from pathlib import Path
-
-# Global model cache
-_model_cache = None
-_predictor_cache = None
-
-
-def download_mobilesam_checkpoint():
-    """Download MobileSAM checkpoint if not exists"""
-    checkpoint_dir = Path("models")
-    checkpoint_dir.mkdir(exist_ok=True)
-
-    checkpoint_path = checkpoint_dir / "mobile_sam.pt"
-
-    if checkpoint_path.exists():
-        print(f"[MobileSAM] Using cached checkpoint: {checkpoint_path}")
-        return str(checkpoint_path)
-
-    print("[MobileSAM] Downloading checkpoint (~40MB)...")
-    url = "https://github.com/ChaoningZhang/MobileSAM/raw/master/weights/mobile_sam.pt"
-
-    try:
-        urllib.request.urlretrieve(url, str(checkpoint_path))
-        print(f"[MobileSAM] Checkpoint downloaded: {checkpoint_path}")
-        return str(checkpoint_path)
-    except Exception as e:
-        print(f"[MobileSAM] Download failed: {e}")
-        # Fallback to alternative approach
-        return None
-
-
-def get_mobilesam_predictor():
-    """Load MobileSAM predictor (cached)"""
-    global _model_cache, _predictor_cache
-
-    if _predictor_cache is not None:
-        return _predictor_cache
-
-    try:
-        from mobile_sam import sam_model_registry, SamPredictor
-
-        print("[MobileSAM] Loading MobileSAM model...")
-
-        # Download checkpoint if needed
-        checkpoint_path = download_mobilesam_checkpoint()
-
-        if checkpoint_path is None or not os.path.exists(checkpoint_path):
-            print("[MobileSAM] Checkpoint not available, using fallback")
-            return None
-
-        # Load MobileSAM model
-        model_type = "vit_t"  # MobileSAM uses tiny ViT
-        device = torch.device("cpu")  # Use CPU (no GPU needed)
-
-        sam = sam_model_registry[model_type](checkpoint=checkpoint_path)
-        sam.to(device=device)
-        sam.eval()
-
-        # Create predictor
-        predictor = SamPredictor(sam)
-
-        _model_cache = sam
-        _predictor_cache = predictor
-
-        print("[MobileSAM] Model loaded successfully!")
-        return predictor
-
-    except Exception as e:
-        print(f"[MobileSAM] Failed to load model: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
 
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using MobileSAM.
+    Detect roof boundaries using advanced computer vision techniques.
 
     Args:
         image_path: Path to the uploaded roof image
@@ -106,212 +31,62 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             return {"success": False, "error": "Failed to load image"}
 
         original_height, original_width = img.shape[:2]
-        print(f"[MobileSAM] Image loaded: {original_width}x{original_height}")
+        print(f"[ROOF-DETECT] Image loaded: {original_width}x{original_height}")
 
-        # Convert BGR to RGB
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-        # Get MobileSAM predictor
-        predictor = get_mobilesam_predictor()
-
-        if predictor is None:
-            # Fallback to improved CV approach
-            print("[MobileSAM] Model not available, using enhanced CV fallback")
-            return fallback_cv_detection(img_rgb, original_width, original_height)
-
-        # Set image for SAM
-        predictor.set_image(img_rgb)
-
-        # Generate automatic point prompts
-        # Strategy: Use multiple points across center region
-        h, w = original_height, original_width
-
-        # Generate grid of positive points in center region
-        point_coords = []
-        point_labels = []
-
-        # Center point (strongest positive)
-        point_coords.append([w // 2, h // 2])
-        point_labels.append(1)
-
-        # Additional points in center region
-        for offset_x in [-w//6, 0, w//6]:
-            for offset_y in [-h//6, 0, h//6]:
-                if offset_x == 0 and offset_y == 0:
-                    continue  # Skip center (already added)
-                x = w // 2 + offset_x
-                y = h // 2 + offset_y
-                point_coords.append([x, y])
-                point_labels.append(1)
-
-        # Add negative points at edges (avoid capturing entire image)
-        # Top edge
-        point_coords.append([w // 2, 20])
-        point_labels.append(0)
-        # Bottom edge
-        point_coords.append([w // 2, h - 20])
-        point_labels.append(0)
-        # Left edge
-        point_coords.append([20, h // 2])
-        point_labels.append(0)
-        # Right edge
-        point_coords.append([w - 20, h // 2])
-        point_labels.append(0)
-
-        point_coords = np.array(point_coords)
-        point_labels = np.array(point_labels)
-
-        print(f"[MobileSAM] Using {len(point_coords)} point prompts ({sum(point_labels)} positive, {len(point_labels) - sum(point_labels)} negative)")
-
-        # Predict masks
-        masks, scores, logits = predictor.predict(
-            point_coords=point_coords,
-            point_labels=point_labels,
-            multimask_output=True  # Get 3 mask proposals
-        )
-
-        print(f"[MobileSAM] Generated {len(masks)} masks with scores: {scores}")
-
-        # Process masks into polygon candidates
-        candidates = []
-        img_area = original_width * original_height
-
-        for idx, (mask, score) in enumerate(zip(masks, scores)):
-            # Convert mask to uint8
-            mask_uint8 = (mask * 255).astype(np.uint8)
-
-            # Find contours in mask
-            contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            if not contours:
-                continue
-
-            # Get largest contour (main roof)
-            largest_contour = max(contours, key=cv2.contourArea)
-            area = cv2.contourArea(largest_contour)
-            area_ratio = area / img_area
-
-            # Filter by area (5% to 85% of image)
-            if area < img_area * 0.05 or area > img_area * 0.85:
-                continue
-
-            # Approximate polygon
-            perimeter = cv2.arcLength(largest_contour, True)
-
-            # Try multiple approximation levels
-            for epsilon_factor in [0.002, 0.005, 0.01]:
-                epsilon = epsilon_factor * perimeter
-                approx = cv2.approxPolyDP(largest_contour, epsilon, True)
-                num_vertices = len(approx)
-
-                if 4 <= num_vertices <= 20:
-                    # Extract points
-                    points = []
-                    for point in approx:
-                        x, y = point[0]
-                        points.append({"x": float(x), "y": float(y)})
-
-                    # Calculate confidence (SAM score + shape quality)
-                    confidence = calculate_sam_confidence(
-                        score, area, area_ratio, num_vertices, perimeter
-                    )
-
-                    candidates.append({
-                        "points": points,
-                        "vertices": num_vertices,
-                        "area_px": float(area),
-                        "area_ratio": float(area_ratio),
-                        "confidence": float(confidence),
-                        "perimeter": float(perimeter),
-                        "sam_score": float(score)
-                    })
-                    break
-
-        if len(candidates) == 0:
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "No suitable roof boundaries found. Try manual drawing.",
-                "debug_info": "SAM masks did not produce valid polygons"
-            }
-
-        # Sort by confidence
-        candidates.sort(key=lambda x: x['confidence'], reverse=True)
-
-        # Return best candidate
-        top_candidates = candidates[:max_candidates]
-
-        for i, c in enumerate(top_candidates):
-            print(f"[MobileSAM] Candidate {i+1}: {c['vertices']} vertices, "
-                  f"area={c['area_ratio']*100:.1f}%, confidence={c['confidence']:.1f}%, "
-                  f"SAM score={c['sam_score']:.3f}")
-
-        return {
-            "success": True,
-            "candidates": top_candidates,
-            "total_found": len(candidates),
-            "image_dimensions": {
-                "width": original_width,
-                "height": original_height
-            }
-        }
+        # Use enhanced CV detection
+        return enhanced_cv_detection(img, original_width, original_height)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {
             "success": False,
-            "error": f"MobileSAM detection failed: {str(e)}"
+            "error": f"Roof detection failed: {str(e)}"
         }
 
 
-def fallback_cv_detection(img_rgb, width, height):
+def enhanced_cv_detection(img, width, height):
     """
-    Enhanced CV fallback when MobileSAM is not available.
-    Uses multiple strategies with better filtering.
+    Enhanced computer vision detection using multiple strategies.
+    Optimized for aerial roof detection.
     """
-    print("[FALLBACK] Using enhanced computer vision detection")
+    print("[ROOF-DETECT] Using enhanced CV detection with 3 strategies")
 
-    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     img_area = width * height
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Strategy 1: Adaptive threshold + largest component
-    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    # === Strategy 1: Watershed + Center Focus ===
+    print("[ROOF-DETECT] Strategy 1: Watershed segmentation")
+    mask1 = detect_using_watershed(img, gray, width, height)
 
-    # Apply CLAHE
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
+    # === Strategy 2: Enhanced CLAHE + Adaptive Threshold ===
+    print("[ROOF-DETECT] Strategy 2: CLAHE + Adaptive threshold")
+    mask2 = detect_using_clahe_adaptive(gray)
 
-    # Adaptive threshold
-    binary = cv2.adaptiveThreshold(
-        enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV, 21, 5
-    )
+    # === Strategy 3: Color-based with center bias ===
+    print("[ROOF-DETECT] Strategy 3: Color segmentation with center bias")
+    mask3 = detect_using_color_center(img, width, height)
 
-    # Morphological operations
-    kernel = np.ones((9, 9), np.uint8)
-    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=3)
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+    # Combine masks using voting
+    combined_mask = combine_masks([mask1, mask2, mask3])
 
-    # Find largest connected component
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    if combined_mask is None or combined_mask.sum() == 0:
+        return {
+            "success": True,
+            "candidates": [],
+            "message": "No roof detected. Please try manual drawing.",
+            "debug_info": "All strategies failed to find roof"
+        }
 
-    if num_labels > 1:
-        # Get largest component (excluding background)
-        largest_idx = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
-        mask = (labels == largest_idx).astype(np.uint8) * 255
-    else:
-        mask = binary
-
-    # Find contours
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Find contours in combined mask
+    contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if not contours:
         return {
             "success": True,
             "candidates": [],
-            "message": "No roof detected. Please try manual drawing.",
-            "debug_info": "Fallback CV found no contours"
+            "message": "No contours found. Try manual drawing.",
+            "debug_info": "No contours in combined mask"
         }
 
     # Get largest contour
@@ -323,36 +98,37 @@ def fallback_cv_detection(img_rgb, width, height):
         return {
             "success": True,
             "candidates": [],
-            "message": "Detected region too small/large. Try manual drawing.",
-            "debug_info": f"Area ratio {area_ratio:.2%} outside valid range"
+            "message": "Detected region size invalid. Try manual drawing.",
+            "debug_info": f"Area ratio {area_ratio:.2%} outside 5-85% range"
         }
 
-    # Approximate polygon
+    # Approximate polygon with multiple attempts
     perimeter = cv2.arcLength(largest_contour, True)
 
-    for epsilon_factor in [0.002, 0.005, 0.01, 0.02]:
+    for epsilon_factor in [0.001, 0.003, 0.005, 0.008, 0.01, 0.015]:
         epsilon = epsilon_factor * perimeter
         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
         num_vertices = len(approx)
 
-        if 4 <= num_vertices <= 15:
+        if 4 <= num_vertices <= 12:
             points = []
             for point in approx:
                 x, y = point[0]
                 points.append({"x": float(x), "y": float(y)})
 
-            confidence = 60.0  # Lower confidence for fallback
+            # Calculate confidence based on detection quality
+            confidence = calculate_cv_confidence(area_ratio, num_vertices, perimeter, area)
 
             candidate = {
                 "points": points,
                 "vertices": num_vertices,
                 "area_px": float(area),
                 "area_ratio": float(area_ratio),
-                "confidence": confidence,
+                "confidence": float(confidence),
                 "perimeter": float(perimeter)
             }
 
-            print(f"[FALLBACK] Detected roof: {num_vertices} vertices, area={area_ratio*100:.1f}%")
+            print(f"[ROOF-DETECT] Success: {num_vertices} vertices, area={area_ratio*100:.1f}%, confidence={confidence:.1f}%")
 
             return {
                 "success": True,
@@ -365,40 +141,153 @@ def fallback_cv_detection(img_rgb, width, height):
         "success": True,
         "candidates": [],
         "message": "Could not create valid polygon. Try manual drawing.",
-        "debug_info": "Polygon approximation failed"
+        "debug_info": "Polygon approximation failed for all epsilon values"
     }
 
 
-def calculate_sam_confidence(sam_score, area, area_ratio, num_vertices, perimeter):
-    """Calculate confidence score combining SAM score with shape quality"""
+def detect_using_watershed(img, gray, width, height):
+    """Watershed segmentation focused on center region"""
+    # Create markers for watershed
+    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # SAM score (0-50 points) - SAM's own confidence
-    sam_points = min(sam_score * 50, 50)
+    # Noise removal
+    kernel = np.ones((5, 5), np.uint8)
+    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
 
-    # Area score (0-25 points)
-    if 0.10 <= area_ratio <= 0.65:
-        area_points = 25
-    elif 0.05 <= area_ratio < 0.10 or 0.65 < area_ratio <= 0.80:
-        area_points = 15
+    # Sure background area
+    sure_bg = cv2.dilate(opening, kernel, iterations=3)
+
+    # Sure foreground area (center region)
+    dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
+    ret, sure_fg = cv2.threshold(dist_transform, 0.4*dist_transform.max(), 255, 0)
+
+    # Unknown region
+    sure_fg = np.uint8(sure_fg)
+    unknown = cv2.subtract(sure_bg, sure_fg)
+
+    # Marker labelling
+    ret, markers = cv2.connectedComponents(sure_fg)
+
+    # Add one to all labels so background is not 0, but 1
+    markers = markers + 1
+
+    # Mark unknown region as 0
+    markers[unknown == 255] = 0
+
+    # Apply watershed
+    markers = cv2.watershed(img, markers)
+
+    # Create mask from markers
+    mask = np.zeros(gray.shape, dtype=np.uint8)
+    mask[markers > 1] = 255
+
+    return mask
+
+
+def detect_using_clahe_adaptive(gray):
+    """CLAHE with adaptive thresholding"""
+    # Apply CLAHE for contrast enhancement
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+
+    # Adaptive threshold
+    binary = cv2.adaptiveThreshold(
+        enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV, 21, 5
+    )
+
+    # Morphological operations to clean up
+    kernel = np.ones((7, 7), np.uint8)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=3)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    # Get largest component
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
+
+    if num_labels > 1:
+        largest_idx = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
+        mask = (labels == largest_idx).astype(np.uint8) * 255
     else:
-        area_points = 5
+        mask = binary
 
-    # Vertex count (0-15 points)
+    return mask
+
+
+def detect_using_color_center(img, width, height):
+    """Color segmentation with center region bias"""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # Sample center region
+    h, w = img.shape[:2]
+    center_region = hsv[int(h*0.35):int(h*0.65), int(w*0.35):int(w*0.65)]
+
+    mean_hue = np.mean(center_region[:, :, 0])
+    mean_sat = np.mean(center_region[:, :, 1])
+    mean_val = np.mean(center_region[:, :, 2])
+
+    # Create mask for similar colors
+    lower = np.array([max(0, mean_hue - 25), max(0, mean_sat - 60), max(0, mean_val - 60)])
+    upper = np.array([min(180, mean_hue + 25), min(255, mean_sat + 60), min(255, mean_val + 60)])
+
+    mask = cv2.inRange(hsv, lower, upper)
+
+    # Clean up
+    kernel = np.ones((7, 7), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+    return mask
+
+
+def combine_masks(masks):
+    """Combine multiple masks using voting - pixels present in 2+ masks"""
+    if not masks or len(masks) == 0:
+        return None
+
+    # Stack masks
+    stacked = np.stack([m for m in masks if m is not None], axis=-1)
+
+    if stacked.size == 0:
+        return None
+
+    # Voting: pixel is 1 if present in at least 2 masks
+    votes = np.sum(stacked > 0, axis=-1)
+    combined = ((votes >= 2) * 255).astype(np.uint8)
+
+    # Final cleanup
+    kernel = np.ones((5, 5), np.uint8)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    return combined
+
+
+def calculate_cv_confidence(area_ratio, num_vertices, perimeter, area):
+    """Calculate confidence score for CV detection"""
+    score = 0.0
+
+    # Area score (0-40 points)
+    if 0.10 <= area_ratio <= 0.60:
+        score += 40
+    elif 0.05 <= area_ratio < 0.10 or 0.60 < area_ratio <= 0.75:
+        score += 30
+    else:
+        score += 15
+
+    # Vertex count (0-30 points)
     if 4 <= num_vertices <= 6:
-        vertex_points = 15
+        score += 30
     elif 7 <= num_vertices <= 10:
-        vertex_points = 10
+        score += 25
     else:
-        vertex_points = 5
+        score += 15
 
-    # Compactness (0-10 points)
+    # Compactness (0-30 points)
     compactness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
     if compactness > 0.4:
-        compact_points = 10
-    elif compactness > 0.2:
-        compact_points = 7
+        score += 30
+    elif compactness > 0.25:
+        score += 20
     else:
-        compact_points = 3
+        score += 10
 
-    total = sam_points + area_points + vertex_points + compact_points
-    return min(total, 100.0)
+    return min(score, 100.0)

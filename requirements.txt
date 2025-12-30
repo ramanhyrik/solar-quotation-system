@@ -16,5 +16,4 @@ matplotlib==3.8.2
 opencv-python-headless==4.9.0.80
 torch==2.1.2
 torchvision==0.16.2
-mobile-sam==1.0.0
 segment-anything==1.0
