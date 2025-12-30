@@ -241,9 +241,9 @@
 
         .tool-btn i,
         .btn i {
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
             flex-shrink: 0;
         }
 
@@ -334,6 +334,20 @@
             display: flex;
             gap: 10px;
             justify-content: flex-end;
+            background: white;
+        }
+
+        .modal-footer .btn {
+            display: inline-block !important;
+            min-width: 80px;
+        }
+
+        .modal-footer #modalCancelBtn {
+            display: none !important;
+        }
+
+        .modal-footer #modalCancelBtn.show {
+            display: inline-block !important;
         }
 
         @keyframes fadeIn {
@@ -807,9 +821,9 @@
                 <p id="modalMessage"></p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">OK</button>
                 <button class="btn" style="background: #6B7280; color: white; display: none;"
                         onclick="closeModal(false)" id="modalCancelBtn">Cancel</button>
+                <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">OK</button>
             </div>
         </div>
     </div>
@@ -1333,9 +1347,11 @@
             iconEl.setAttribute('data-lucide', 'keyboard');
             iconEl.style.color = '#3B82F6';
 
-            cancelBtn.style.display = 'none';
+            cancelBtn.classList.remove('show');
             okBtn.textContent = 'Got it!';
             okBtn.onclick = closeModal;
+            okBtn.style.display = 'inline-block';
+            okBtn.style.visibility = 'visible';
 
             modal.classList.add('active');
             lucide.createIcons();
@@ -1370,7 +1386,7 @@
 
             // Show/hide cancel button for confirmations
             if (type === 'confirm') {
-                cancelBtn.style.display = 'inline-block';
+                cancelBtn.classList.add('show');
                 okBtn.textContent = 'Confirm';
                 okBtn.onclick = () => {
                     closeModal();
@@ -1381,10 +1397,14 @@
                     if (onConfirm) onConfirm(false);
                 };
             } else {
-                cancelBtn.style.display = 'none';
+                cancelBtn.classList.remove('show');
                 okBtn.textContent = 'OK';
                 okBtn.onclick = closeModal;
             }
+
+            // Ensure OK button is always visible
+            okBtn.style.display = 'inline-block';
+            okBtn.style.visibility = 'visible';
 
             modal.classList.add('active');
             lucide.createIcons(); // Re-render icon

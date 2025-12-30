@@ -96,17 +96,7 @@ async def lifespan(app: FastAPI):
     # Startup
     init_database()
 
-    # Check SAM model availability (don't download automatically to save memory)
-    print("[*] Checking SAM model availability...")
-    sam_model_path = os.path.join("models", "sam_vit_h_4b8939.pth")
-    if os.path.exists(sam_model_path):
-        file_size_gb = os.path.getsize(sam_model_path) / (1024 ** 3)
-        print(f"[*] SAM model found ({file_size_gb:.2f} GB) - Roof detection available")
-    else:
-        print("[WARNING] SAM model not found - Roof detection unavailable")
-        print("[WARNING] Run 'python download_sam_model.py --auto' to download")
-
-    print("[*] Solar Quotation System started!")
+    print("[*] Solar Quotation System started with AI-powered roof detection!")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)
