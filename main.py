@@ -1959,6 +1959,77 @@ async def upload_roof_image_endpoint(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/roof-designer/auto-detect")
+async def auto_detect_roof_endpoint(
+    design_id: int = Form(...),
+    user=Depends(get_current_user)
+):
+    """
+    AI-powered automatic roof boundary detection using Computer Vision.
+    Uses traditional edge detection (no ML models) - lightweight and fast.
+
+    Returns top 3 polygon candidates for user to select/refine.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Get design from database
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT original_image_path, created_by
+                FROM roof_designs
+                WHERE id = ?
+            ''', (design_id,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            image_path, created_by = result
+
+            # Security: Check ownership
+            if created_by != user['user_id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+        # Import CV detection function
+        from roof_detector_cv import auto_detect_roof_boundary
+
+        print(f"[AUTO-DETECT] Starting detection for design #{design_id}")
+        print(f"[AUTO-DETECT] Image path: {image_path}")
+
+        # Run auto-detection
+        detection_result = auto_detect_roof_boundary(image_path, max_candidates=3)
+
+        if not detection_result.get('success'):
+            raise HTTPException(
+                status_code=500,
+                detail=detection_result.get('error', 'Detection failed')
+            )
+
+        candidates = detection_result.get('candidates', [])
+
+        print(f"[AUTO-DETECT] Found {len(candidates)} candidates")
+        for i, c in enumerate(candidates):
+            print(f"  Candidate {i+1}: {c['vertices']} vertices, "
+                  f"confidence={c['confidence']:.1f}%")
+
+        return JSONResponse(content={
+            "success": True,
+            "candidates": candidates,
+            "total_found": detection_result.get('total_found', len(candidates)),
+            "message": detection_result.get('message', f"Found {len(candidates)} roof candidates")
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Auto-detection failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/roof-designer/calculate-layout")
 async def calculate_layout_endpoint(
     design_id: int = Form(...),

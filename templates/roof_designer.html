@@ -607,6 +607,11 @@
                     <div style="margin-bottom: 25px;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
 
+                        <button class="tool-btn" id="autoDetectBtn" onclick="autoDetectRoof()" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; border-color: #10B981;"
+                                data-tooltip="AI-powered automatic roof detection">
+                            <i data-lucide="sparkles"></i>
+                            <span>AI Auto-Detect</span>
+                        </button>
                         <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()"
                                 data-tooltip="Click points on the image to define the roof boundary">
                             <i data-lucide="home"></i>
@@ -851,6 +856,11 @@
         let editingPolygon = null;
         let vertexCircles = [];
 
+        // AI detection state
+        let detectedCandidates = [];
+        let candidatePolygons = [];
+        let showingCandidates = false;
+
         class Command {
             constructor(execute, undo, description) {
                 this.execute = execute;
@@ -1041,6 +1051,219 @@
             }
 
             canvas.renderAll();
+        }
+
+        // AI Auto-Detection functions
+        async function autoDetectRoof() {
+            if (!designId) {
+                showModal('Please upload an image first.', 'warning');
+                return;
+            }
+
+            if (!canvas) {
+                showModal('Canvas not initialized. Please try again.', 'error');
+                return;
+            }
+
+            showLoading('AI is detecting roof boundaries...');
+
+            try {
+                const formData = new FormData();
+                formData.append('design_id', designId);
+
+                const response = await fetch('/api/roof-designer/auto-detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const candidates = result.candidates || [];
+
+                    if (candidates.length === 0) {
+                        hideLoading();
+                        showModal(
+                            'No roof boundaries detected. Please try manual drawing or upload a clearer image.',
+                            'info',
+                            'No Detections'
+                        );
+                        return;
+                    }
+
+                    console.log(`[AI-DETECT] Found ${candidates.length} candidates`);
+                    detectedCandidates = candidates;
+
+                    // Display candidates for user selection
+                    displayCandidates(candidates);
+                    hideLoading();
+
+                } else {
+                    hideLoading();
+                    showModal(result.error || 'Auto-detection failed', 'error');
+                }
+            } catch (error) {
+                console.error('[AI-DETECT] Error:', error);
+                hideLoading();
+                showModal('Auto-detection failed. Please try again or use manual drawing.', 'error');
+            }
+        }
+
+        function displayCandidates(candidates) {
+            // Clear any existing candidate polygons
+            clearCandidates();
+
+            showingCandidates = true;
+            candidatePolygons = [];
+
+            candidates.forEach((candidate, index) => {
+                const color = index === 0 ? '#10B981' : index === 1 ? '#3B82F6' : '#F59E0B';
+                const confidence = candidate.confidence || 0;
+
+                // Create polygon
+                const poly = new fabric.Polygon(candidate.points, {
+                    fill: `rgba(${index === 0 ? '16, 185, 129' : index === 1 ? '59, 130, 246' : '245, 158, 11'}, 0.2)`,
+                    stroke: color,
+                    strokeWidth: 3,
+                    selectable: true,
+                    lockRotation: true,
+                    isDetectedCandidate: true,
+                    candidateIndex: index,
+                    candidateConfidence: confidence
+                });
+
+                // Add click handler to select this candidate
+                poly.on('mousedown', function(e) {
+                    if (showingCandidates) {
+                        selectCandidate(index);
+                    }
+                });
+
+                canvas.add(poly);
+                candidatePolygons.push(poly);
+            });
+
+            canvas.renderAll();
+
+            // Show selection modal
+            showCandidateSelectionModal(candidates);
+        }
+
+        function showCandidateSelectionModal(candidates) {
+            const candidatesHTML = candidates.map((c, i) => `
+                <div style="border: 2px solid ${i === 0 ? '#10B981' : i === 1 ? '#3B82F6' : '#F59E0B'};
+                            border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer;
+                            background: ${i === 0 ? 'rgba(16, 185, 129, 0.1)' : i === 1 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)'};"
+                     onclick="selectCandidate(${i})">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: ${i === 0 ? '#10B981' : i === 1 ? '#3B82F6' : '#F59E0B'};">
+                            ${i === 0 ? '🥇 Best Match' : i === 1 ? '🥈 Alternative 1' : '🥉 Alternative 2'}
+                        </strong>
+                        <span style="background: ${i === 0 ? '#10B981' : i === 1 ? '#3B82F6' : '#F59E0B'};
+                                     color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                            ${c.confidence.toFixed(0)}% confidence
+                        </span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 13px; color: #666;">
+                        ${c.vertices} vertices • ${(c.area_px / 10000).toFixed(1)} m² approx
+                    </div>
+                </div>
+            `).join('');
+
+            const modalHTML = `
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <div style="background: #e8f4fd; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong>✨ AI detected ${candidates.length} potential roof boundaries!</strong>
+                        <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                            Click on a colored polygon on the canvas or select below. You can refine any selection afterwards.
+                        </p>
+                    </div>
+
+                    ${candidatesHTML}
+
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                        <button class="btn" style="width: 100%; background: #6B7280; color: white;"
+                                onclick="rejectAllCandidates()">
+                            <i data-lucide="x" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                            Reject All - Draw Manually
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const modal = document.getElementById('modalOverlay');
+            const messageEl = document.getElementById('modalMessage');
+            const titleEl = document.getElementById('modalTitle');
+            const iconEl = document.getElementById('modalIcon');
+            const okBtn = document.getElementById('modalOkBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            messageEl.innerHTML = modalHTML;
+            titleEl.textContent = 'AI Detection Results';
+            iconEl.setAttribute('data-lucide', 'sparkles');
+            iconEl.style.color = '#10B981';
+
+            // Hide footer buttons (we're using inline buttons)
+            okBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+
+            modal.classList.add('active');
+            lucide.createIcons();
+        }
+
+        function selectCandidate(index) {
+            const candidate = detectedCandidates[index];
+            if (!candidate) return;
+
+            // Set roof polygon points
+            roofPolygonPoints = candidate.points.map(p => ({x: p.x, y: p.y}));
+
+            // Clear candidates
+            clearCandidates();
+
+            // Close modal
+            closeModal();
+
+            // Draw the selected polygon as the roof
+            roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
+                fill: 'rgba(0, 123, 255, 0.2)',
+                stroke: '#00358A',
+                strokeWidth: 3,
+                selectable: true,
+                lockRotation: true,
+                isRoofPolygon: true
+            });
+            canvas.add(roofPolygonObject);
+            canvas.renderAll();
+
+            document.getElementById('drawingInstruction').textContent =
+                `✨ AI-detected roof boundary applied! You can Edit Points to refine it, or add exclusion zones.`;
+
+            showModal(
+                `AI-detected roof boundary selected! You can now:\n• Click "Edit Points" to refine the polygon\n• Add exclusion zones for obstacles\n• Proceed to panel layout calculation`,
+                'success',
+                'Roof Boundary Set'
+            );
+        }
+
+        function clearCandidates() {
+            // Remove all candidate polygons from canvas
+            candidatePolygons.forEach(poly => canvas.remove(poly));
+            candidatePolygons = [];
+            showingCandidates = false;
+            canvas.renderAll();
+        }
+
+        function rejectAllCandidates() {
+            clearCandidates();
+            closeModal();
+            detectedCandidates = [];
+
+            showModal(
+                'AI detections rejected. You can now draw the roof boundary manually using the "Draw Roof Boundary" button.',
+                'info',
+                'Manual Drawing'
+            );
         }
 
         // Keyboard shortcuts guide
