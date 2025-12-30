@@ -532,6 +532,28 @@
                     </div>
 
                     <div style="margin-bottom: 25px;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">View Controls</h3>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                            <button class="tool-btn" onclick="zoomIn()" data-tooltip="Zoom in (Ctrl + Scroll up)">
+                                <i data-lucide="zoom-in"></i>
+                            </button>
+                            <button class="tool-btn" onclick="zoomOut()" data-tooltip="Zoom out (Ctrl + Scroll down)">
+                                <i data-lucide="zoom-out"></i>
+                            </button>
+                            <button class="tool-btn" onclick="resetZoom()" data-tooltip="Reset view (Ctrl+0)">
+                                <i data-lucide="maximize"></i>
+                            </button>
+                        </div>
+                        <div style="text-align: center; font-size: 13px; color: var(--text-medium); margin-bottom: 10px;">
+                            Zoom: <span id="zoomLevel" style="font-weight: 600; color: var(--text-dark);">100%</span>
+                        </div>
+                        <div style="background: #e8f4fd; padding: 10px; border-radius: 6px; font-size: 12px; color: #1F2937;">
+                            <strong>Tip:</strong> Hold <kbd style="background: white; padding: 2px 6px; border-radius: 3px; border: 1px solid #ddd;">Space</kbd> + drag to pan
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark); padding-bottom: 10px; border-bottom: 2px solid var(--primary-blue);">Drawing Tools</h3>
 
                         <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()"
@@ -749,6 +771,14 @@
             maxSize: 50
         };
 
+        // Canvas zoom and pan state
+        let canvasZoom = 1;
+        let isPanning = false;
+        let panStartPoint = null;
+        let viewportTransform = [1, 0, 0, 1, 0, 0];
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 5;
+
         class Command {
             constructor(execute, undo, description) {
                 this.execute = execute;
@@ -793,6 +823,48 @@
             const redoBtn = document.getElementById('redoBtn');
             if (undoBtn) undoBtn.disabled = commandHistory.undoStack.length === 0;
             if (redoBtn) redoBtn.disabled = commandHistory.redoStack.length === 0;
+        }
+
+        // Zoom and pan functions
+        function zoomIn() {
+            if (!canvas) return;
+            const newZoom = Math.min(canvasZoom * 1.2, MAX_ZOOM);
+            setZoom(newZoom);
+        }
+
+        function zoomOut() {
+            if (!canvas) return;
+            const newZoom = Math.max(canvasZoom / 1.2, MIN_ZOOM);
+            setZoom(newZoom);
+        }
+
+        function resetZoom() {
+            if (!canvas) return;
+            canvasZoom = 1;
+            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+            canvas.renderAll();
+            updateZoomDisplay();
+        }
+
+        function setZoom(zoom, centerPoint = null) {
+            if (!canvas) return;
+
+            canvasZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+
+            // If no center point provided, zoom to canvas center
+            if (!centerPoint) {
+                centerPoint = new fabric.Point(canvas.width / 2, canvas.height / 2);
+            }
+
+            // Apply zoom
+            canvas.zoomToPoint(centerPoint, canvasZoom);
+            canvas.renderAll();
+            updateZoomDisplay();
+        }
+
+        function updateZoomDisplay() {
+            const zoomPercentage = Math.round(canvasZoom * 100);
+            document.getElementById('zoomLevel').textContent = `${zoomPercentage}%`;
         }
 
         // Modal system
@@ -983,6 +1055,28 @@
             canvas.on('mouse:move', handleCanvasMove);
             canvas.on('mouse:up', handleCanvasUp);
 
+            // Mouse wheel zoom with Ctrl modifier
+            canvas.on('mouse:wheel', function(opt) {
+                const e = opt.e;
+
+                // Only zoom if Ctrl is pressed
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const delta = e.deltaY;
+                    let zoom = canvas.getZoom();
+                    zoom *= 0.999 ** delta;
+
+                    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+
+                    const point = new fabric.Point(e.offsetX, e.offsetY);
+                    canvas.zoomToPoint(point, zoom);
+                    canvasZoom = zoom;
+                    updateZoomDisplay();
+                }
+            });
+
             // Canvas selection animations
             canvas.on('selection:created', function(e) {
                 if (e.selected && e.selected[0]) {
@@ -1022,6 +1116,12 @@
         }
 
         function handleCanvasClick(options) {
+            // Handle panning with Space key
+            if (options.e.which === 1 && isPanning) {
+                panStartPoint = { x: options.e.clientX, y: options.e.clientY };
+                return;
+            }
+
             if (drawingMode === 'roof') {
                 const pointer = canvas.getPointer(options.e);
                 roofPolygonPoints.push({ x: pointer.x, y: pointer.y });
@@ -1093,11 +1193,23 @@
         }
 
         function handleCanvasMove(options) {
-            // No drag operations needed - using click-based polygon drawing
+            // Handle panning
+            if (isPanning && panStartPoint) {
+                const e = options.e;
+                const vpt = canvas.viewportTransform.slice();
+                vpt[4] += e.clientX - panStartPoint.x;
+                vpt[5] += e.clientY - panStartPoint.y;
+                canvas.setViewportTransform(vpt);
+                panStartPoint = { x: e.clientX, y: e.clientY };
+                canvas.renderAll();
+            }
         }
 
         function handleCanvasUp(options) {
-            // No drag operations needed - using click-based polygon drawing
+            // Reset panning
+            if (isPanning) {
+                panStartPoint = null;
+            }
         }
 
         function startDrawingRoof() {
@@ -1644,6 +1756,21 @@
                 redo();
             }
 
+            // Ctrl+0 - Reset zoom
+            if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            }
+
+            // Space key - Enable panning mode
+            if (e.key === ' ' && !isPanning && canvas) {
+                e.preventDefault();
+                isPanning = true;
+                canvas.defaultCursor = 'grab';
+                canvas.hoverCursor = 'grab';
+                canvas.renderAll();
+            }
+
             // Delete key - Delete selected
             if (e.key === 'Delete') {
                 const activeObject = canvas?.getActiveObject();
@@ -1658,6 +1785,17 @@
                     canvas.discardActiveObject();
                     canvas.renderAll();
                 }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            // Space key released - Disable panning mode
+            if (e.key === ' ' && isPanning && canvas) {
+                isPanning = false;
+                panStartPoint = null;
+                canvas.defaultCursor = 'default';
+                canvas.hoverCursor = 'move';
+                canvas.renderAll();
             }
         });
     </script>
