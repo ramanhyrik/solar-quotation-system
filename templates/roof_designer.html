@@ -123,6 +123,9 @@
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .tool-btn:hover {
@@ -241,10 +244,7 @@
             width: 18px;
             height: 18px;
             margin-right: 8px;
-            vertical-align: middle;
-            display: inline-block;
-            position: relative;
-            top: 3px;
+            flex-shrink: 0;
         }
 
         /* Modal System */
@@ -681,13 +681,19 @@
                         <h3 style="font-size: 16px; margin-bottom: 15px;">Panel Specifications</h3>
 
                         <div class="form-group">
-                            <label data-tooltip="Standard solar panel is 1.7m x 1.0m">Panel Width (m):</label>
-                            <input type="number" id="panelWidth" value="1.7" min="0.5" max="3" step="0.1">
+                            <label data-tooltip="Realistic range: 0.8m - 2.5m. Standard is 1.6m - 2.0m">Panel Width (m):</label>
+                            <input type="number" id="panelWidth" value="1.7" min="0.8" max="2.5" step="0.1">
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Range: 0.8m - 2.5m
+                            </small>
                         </div>
 
                         <div class="form-group">
-                            <label data-tooltip="Standard solar panel is 1.7m x 1.0m">Panel Height (m):</label>
-                            <input type="number" id="panelHeight" value="1.0" min="0.5" max="3" step="0.1">
+                            <label data-tooltip="Realistic range: 0.8m - 2.0m. Standard is 0.9m - 1.2m">Panel Height (m):</label>
+                            <input type="number" id="panelHeight" value="1.0" min="0.8" max="2.0" step="0.1">
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Range: 0.8m - 2.0m
+                            </small>
                         </div>
 
                         <div class="form-group">
@@ -1799,8 +1805,6 @@
                 return;
             }
 
-            showLoading('Calculating optimal panel layout...');
-
             const panelWidth = parseFloat(document.getElementById('panelWidth').value);
             const panelHeight = parseFloat(document.getElementById('panelHeight').value);
             const panelPower = parseInt(document.getElementById('panelPower').value);
@@ -1808,67 +1812,108 @@
             const spacing = parseFloat(document.getElementById('spacing').value) / 100; // Convert cm to m
             const pixelsPerMeter = parseFloat(document.getElementById('pixelsPerMeter').value);
 
-            // Prepare obstacle data - send only points, not fabric objects
-            const obstacleData = exclusionZones.map(zone => ({
-                points: zone.points
-            }));
+            // Validate panel dimensions - realistic solar panel sizes
+            if (panelWidth < 0.8 || panelWidth > 2.5) {
+                showModal(
+                    'Panel width should be between 0.8m and 2.5m. Standard solar panels are typically 1.6m - 2.0m wide. Very small panels will cause calculation timeouts.',
+                    'warning',
+                    'Invalid Panel Width'
+                );
+                return;
+            }
 
-            const formData = new FormData();
-            formData.append('design_id', designId);
-            formData.append('roof_polygon', JSON.stringify(roofPolygonPoints));
-            formData.append('obstacles', JSON.stringify(obstacleData));
-            formData.append('panel_width_m', panelWidth);
-            formData.append('panel_height_m', panelHeight);
-            formData.append('panel_power_w', panelPower);
-            formData.append('spacing_m', spacing);
-            formData.append('pixels_per_meter', pixelsPerMeter);
-            formData.append('orientation', orientation);
+            if (panelHeight < 0.8 || panelHeight > 2.0) {
+                showModal(
+                    'Panel height should be between 0.8m and 2.0m. Standard solar panels are typically 0.9m - 1.2m tall. Very small panels will cause calculation timeouts.',
+                    'warning',
+                    'Invalid Panel Height'
+                );
+                return;
+            }
 
-            try {
-                // Add timeout to prevent hanging
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-
-                const response = await fetch('/api/roof-designer/calculate-layout', {
-                    method: 'POST',
-                    body: formData,
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    console.log('[CALC] Calculation successful. Panels:', result.total_panels);
-                    panels = result.panels;
-                    displayPanels();
-                    displayResults(result);
-                    document.getElementById('saveBtn').disabled = result.total_panels === 0;
-
-                    // Show success message
-                    if (result.total_panels > 0) {
-                        showModal(`Successfully placed ${result.total_panels} panels!`, 'success');
-                    } else {
-                        showModal('No panels could be placed. Try adjusting panel size or roof area.', 'warning');
+            // Warn about very small panels
+            const panelArea = panelWidth * panelHeight;
+            if (panelArea < 1.0) {
+                showModal(
+                    `Panel area is ${panelArea.toFixed(2)}m² which is very small. Standard panels are 1.5-2.0m². This may cause slow calculations or timeouts. Continue?`,
+                    'confirm',
+                    'Small Panel Size Warning',
+                    (confirmed) => {
+                        if (confirmed) {
+                            proceedWithCalculation();
+                        }
                     }
-                } else {
-                    console.error('[CALC] Calculation failed:', result.error);
-                    showModal(result.error || 'Failed to calculate layout', 'error');
+                );
+                return;
+            }
+
+            proceedWithCalculation();
+
+            async function proceedWithCalculation() {
+                showLoading('Calculating optimal panel layout...');
+
+                // Prepare obstacle data - send only points, not fabric objects
+                const obstacleData = exclusionZones.map(zone => ({
+                    points: zone.points
+                }));
+
+                const formData = new FormData();
+                formData.append('design_id', designId);
+                formData.append('roof_polygon', JSON.stringify(roofPolygonPoints));
+                formData.append('obstacles', JSON.stringify(obstacleData));
+                formData.append('panel_width_m', panelWidth);
+                formData.append('panel_height_m', panelHeight);
+                formData.append('panel_power_w', panelPower);
+                formData.append('spacing_m', spacing);
+                formData.append('pixels_per_meter', pixelsPerMeter);
+                formData.append('orientation', orientation);
+
+                try {
+                    // Add timeout to prevent hanging
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+                    const response = await fetch('/api/roof-designer/calculate-layout', {
+                        method: 'POST',
+                        body: formData,
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        console.log('[CALC] Calculation successful. Panels:', result.total_panels);
+                        panels = result.panels;
+                        displayPanels();
+                        displayResults(result);
+                        document.getElementById('saveBtn').disabled = result.total_panels === 0;
+
+                        // Show success message
+                        if (result.total_panels > 0) {
+                            showModal(`Successfully placed ${result.total_panels} panels!`, 'success');
+                        } else {
+                            showModal('No panels could be placed. Try adjusting panel size or roof area.', 'warning');
+                        }
+                    } else {
+                        console.error('[CALC] Calculation failed:', result.error);
+                        showModal(result.error || 'Failed to calculate layout', 'error');
+                    }
+                } catch (error) {
+                    console.error('[CALC] Error:', error);
+                    if (error.name === 'AbortError') {
+                        showModal('Calculation timed out. The roof area might be too complex. Please try with a simpler design.', 'error');
+                    } else {
+                        showModal('Failed to calculate layout. Please check your internet connection and try again.', 'error');
+                    }
+                } finally {
+                    hideLoading();
                 }
-            } catch (error) {
-                console.error('[CALC] Error:', error);
-                if (error.name === 'AbortError') {
-                    showModal('Calculation timed out. The roof area might be too complex. Please try with a simpler design.', 'error');
-                } else {
-                    showModal('Failed to calculate layout. Please check your internet connection and try again.', 'error');
-                }
-            } finally {
-                hideLoading();
             }
         }
 
