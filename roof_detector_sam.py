@@ -19,22 +19,28 @@ def get_mobilesam_model():
     global _model_cache
 
     if _model_cache is not None:
+        print("[MOBILE-SAM] Using cached model")
         return _model_cache
 
     print("[MOBILE-SAM] Loading MobileSAM model...")
 
     try:
         from ultralytics import SAM
+        print("[MOBILE-SAM] Ultralytics imported successfully")
 
         # Load MobileSAM (will auto-download on first use)
+        print("[MOBILE-SAM] Initializing SAM('mobile_sam.pt')...")
         model = SAM("mobile_sam.pt")
+        print(f"[MOBILE-SAM] Model object created: {type(model)}")
 
         _model_cache = model
-        print("[MOBILE-SAM] Model loaded successfully!")
+        print("[MOBILE-SAM] Model loaded and cached successfully!")
 
         return model
     except Exception as e:
-        print(f"[MOBILE-SAM] Error loading model: {str(e)}")
+        print(f"[MOBILE-SAM] CRITICAL ERROR loading model: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
@@ -62,7 +68,9 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         print(f"[MOBILE-SAM] Image loaded: {original_width}x{original_height}")
 
         # Get MobileSAM model
+        print("[MOBILE-SAM] Getting model...")
         model = get_mobilesam_model()
+        print("[MOBILE-SAM] Model retrieved")
 
         # Strategy: Use center point prompt
         # Assume the target building is in the center of the aerial image
@@ -70,16 +78,27 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         center_y = original_height // 2
 
         print(f"[MOBILE-SAM] Running segmentation with center point prompt ({center_x}, {center_y})")
+        print(f"[MOBILE-SAM] Image path: {image_path}")
+        print(f"[MOBILE-SAM] Calling model.predict()...")
 
         # Run MobileSAM with point prompt
-        results = model(
-            image_path,
-            points=[[center_x, center_y]],
-            labels=[1]  # 1 = foreground point
-        )
+        try:
+            results = model(
+                image_path,
+                points=[[center_x, center_y]],
+                labels=[1]  # 1 = foreground point
+            )
+            print(f"[MOBILE-SAM] Model call completed. Results type: {type(results)}")
+            print(f"[MOBILE-SAM] Results length: {len(results) if results else 'None'}")
+        except Exception as e:
+            print(f"[MOBILE-SAM] ERROR during model inference: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
 
         # Extract masks from results
         if not results or len(results) == 0:
+            print("[MOBILE-SAM] No results returned from model")
             return {
                 "success": True,
                 "candidates": [],
@@ -89,19 +108,42 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
 
         # Get the first result (single image)
         result = results[0]
+        print(f"[MOBILE-SAM] First result type: {type(result)}")
+        print(f"[MOBILE-SAM] First result attributes: {dir(result)}")
 
         # Check if masks exist
-        if not hasattr(result, 'masks') or result.masks is None or len(result.masks) == 0:
+        if not hasattr(result, 'masks'):
+            print("[MOBILE-SAM] Result has no 'masks' attribute")
+            print(f"[MOBILE-SAM] Available attributes: {[a for a in dir(result) if not a.startswith('_')]}")
             return {
                 "success": True,
                 "candidates": [],
                 "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM returned no masks"
+                "debug_info": "MobileSAM result has no masks attribute"
+            }
+
+        if result.masks is None:
+            print("[MOBILE-SAM] result.masks is None")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "No roof detected. Please try manual drawing.",
+                "debug_info": "MobileSAM returned None masks"
+            }
+
+        if len(result.masks) == 0:
+            print("[MOBILE-SAM] result.masks is empty")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "No roof detected. Please try manual drawing.",
+                "debug_info": "MobileSAM returned zero masks"
             }
 
         # Extract mask data
+        print(f"[MOBILE-SAM] Extracting mask data...")
         masks = result.masks.data.cpu().numpy()  # Shape: (N, H, W)
-
+        print(f"[MOBILE-SAM] Masks shape: {masks.shape}")
         print(f"[MOBILE-SAM] Generated {len(masks)} mask(s)")
 
         # Process masks into polygon candidates
@@ -109,8 +151,11 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         img_area = original_width * original_height
 
         for idx, mask in enumerate(masks):
+            print(f"[MOBILE-SAM] Processing mask {idx}, shape: {mask.shape}, dtype: {mask.dtype}")
+
             # Convert mask to uint8 (0-255)
             mask_uint8 = (mask * 255).astype(np.uint8)
+            print(f"[MOBILE-SAM] Converted to uint8, unique values: {np.unique(mask_uint8)[:10]}")
 
             # Find contours in the mask
             contours, _ = cv2.findContours(
@@ -118,27 +163,34 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 cv2.RETR_EXTERNAL,
                 cv2.CHAIN_APPROX_SIMPLE
             )
+            print(f"[MOBILE-SAM] Found {len(contours)} contours in mask {idx}")
 
             if not contours:
+                print(f"[MOBILE-SAM] No contours in mask {idx}, skipping")
                 continue
 
             # Get largest contour
             largest_contour = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(largest_contour)
             area_ratio = area / img_area
+            print(f"[MOBILE-SAM] Mask {idx}: largest contour area={area:.0f}, ratio={area_ratio:.2%}")
 
             # Filter by area (5% to 85% of image)
             if area < img_area * 0.05 or area > img_area * 0.85:
-                print(f"[MOBILE-SAM] Mask {idx} rejected: area_ratio={area_ratio:.2%}")
+                print(f"[MOBILE-SAM] Mask {idx} rejected: area_ratio={area_ratio:.2%} outside 5-85% range")
                 continue
 
             # Approximate polygon with multiple epsilon values
             perimeter = cv2.arcLength(largest_contour, True)
+            print(f"[MOBILE-SAM] Contour perimeter: {perimeter:.1f}")
 
+            polygon_found = False
             for epsilon_factor in [0.001, 0.003, 0.005, 0.008, 0.01, 0.015]:
                 epsilon = epsilon_factor * perimeter
                 approx = cv2.approxPolyDP(largest_contour, epsilon, True)
                 num_vertices = len(approx)
+
+                print(f"[MOBILE-SAM] epsilon_factor={epsilon_factor:.3f}, vertices={num_vertices}")
 
                 # Accept polygons with 4-12 vertices
                 if 4 <= num_vertices <= 12:
@@ -163,11 +215,16 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                         "mask_index": idx
                     })
 
-                    print(f"[MOBILE-SAM] Candidate {len(candidates)}: {num_vertices} vertices, "
+                    print(f"[MOBILE-SAM] ✓ Candidate {len(candidates)} created: {num_vertices} vertices, "
                           f"area={area_ratio*100:.1f}%, confidence={confidence:.1f}%")
+                    polygon_found = True
                     break
 
+            if not polygon_found:
+                print(f"[MOBILE-SAM] Mask {idx}: No suitable polygon found with 4-12 vertices")
+
         if len(candidates) == 0:
+            print("[MOBILE-SAM] No candidates created - returning empty result")
             return {
                 "success": True,
                 "candidates": [],
@@ -176,12 +233,15 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             }
 
         # Sort by confidence
+        print(f"[MOBILE-SAM] Sorting {len(candidates)} candidates by confidence...")
         candidates.sort(key=lambda x: x['confidence'], reverse=True)
 
         # Return top candidate(s)
         top_candidates = candidates[:max_candidates]
 
-        print(f"[MOBILE-SAM] Returning {len(top_candidates)} candidate(s)")
+        print(f"[MOBILE-SAM] ✓ SUCCESS - Returning {len(top_candidates)} candidate(s)")
+        for i, c in enumerate(top_candidates):
+            print(f"[MOBILE-SAM]   #{i+1}: {c['vertices']} vertices, conf={c['confidence']:.1f}%")
 
         return {
             "success": True,
