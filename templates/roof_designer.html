@@ -243,7 +243,7 @@
         .btn i {
             width: 14px;
             height: 14px;
-            margin-right: 6px;
+            margin-right: 10px;
             flex-shrink: 0;
         }
 
@@ -1100,17 +1100,23 @@
                         showModal(
                             'No roof boundaries detected. Please try manual drawing or upload a clearer image.',
                             'info',
-                            'No Detections'
+                            'AI Detection'
                         );
                         return;
                     }
 
-                    console.log(`[AI-DETECT] Found ${candidates.length} candidates`);
+                    console.log(`[AI-DETECT] Found ${candidates.length} candidate(s)`);
                     detectedCandidates = candidates;
 
-                    // Display candidates for user selection
-                    displayCandidates(candidates);
-                    hideLoading();
+                    // Automatically apply the best candidate (we return only 1 now)
+                    if (candidates.length === 1) {
+                        hideLoading();
+                        applyBestCandidate(candidates[0]);
+                    } else {
+                        // Fallback: show selection if multiple returned
+                        displayCandidates(candidates);
+                        hideLoading();
+                    }
 
                 } else {
                     hideLoading();
@@ -1225,18 +1231,16 @@
             lucide.createIcons();
         }
 
-        function selectCandidate(index) {
-            const candidate = detectedCandidates[index];
+        function applyBestCandidate(candidate) {
             if (!candidate) return;
 
             // Set roof polygon points
             roofPolygonPoints = candidate.points.map(p => ({x: p.x, y: p.y}));
 
-            // Clear candidates
-            clearCandidates();
-
-            // Close modal
-            closeModal();
+            // IMPORTANT: Disable drawing mode to prevent interference
+            drawingMode = null;
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawExclusionBtn').classList.remove('active');
 
             // Draw the selected polygon as the roof
             roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
@@ -1251,13 +1255,33 @@
             canvas.renderAll();
 
             document.getElementById('drawingInstruction').textContent =
-                `✨ AI-detected roof boundary applied! You can Edit Points to refine it, or add exclusion zones.`;
+                `✨ AI detected roof boundary (${candidate.vertices} sides, ${candidate.confidence.toFixed(0)}% confidence). Use "Edit Points" to refine if needed.`;
 
             showModal(
-                `AI-detected roof boundary selected! You can now:\n• Click "Edit Points" to refine the polygon\n• Add exclusion zones for obstacles\n• Proceed to panel layout calculation`,
+                `AI successfully detected your roof boundary!\n\n` +
+                `• Shape: ${candidate.vertices} vertices\n` +
+                `• Confidence: ${candidate.confidence.toFixed(0)}%\n• Area: ~${(candidate.area_px / 10000).toFixed(1)} m²\n\n` +
+                `You can now:\n` +
+                `• Click "Edit Points" to adjust vertices\n` +
+                `• Add exclusion zones for obstacles\n` +
+                `• Proceed to panel calculation`,
                 'success',
-                'Roof Boundary Set'
+                'AI Detection Complete'
             );
+        }
+
+        function selectCandidate(index) {
+            const candidate = detectedCandidates[index];
+            if (!candidate) return;
+
+            // Clear candidate overlays
+            clearCandidates();
+
+            // Close modal
+            closeModal();
+
+            // Apply the selected candidate
+            applyBestCandidate(candidate);
         }
 
         function clearCandidates() {

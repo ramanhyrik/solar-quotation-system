@@ -99,13 +99,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
             # Approximate polygon
             perimeter = cv2.arcLength(cnt, True)
 
-            # Try multiple approximation levels
-            for epsilon_factor in [0.01, 0.02, 0.03]:
+            # Try multiple approximation levels - prefer finer detail first
+            for epsilon_factor in [0.005, 0.01, 0.015, 0.02, 0.03]:
                 epsilon = epsilon_factor * perimeter
                 approx = cv2.approxPolyDP(cnt, epsilon, True)
                 num_vertices = len(approx)
 
-                if 3 <= num_vertices <= 15:
+                # Prefer 4-10 vertices (most common roof shapes)
+                if 4 <= num_vertices <= 10:
                     confidence = calculate_confidence_score(
                         approx, area, img_area, num_vertices, perimeter
                     )
@@ -124,7 +125,8 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
                         "area_px": float(area / (scale * scale)),
                         "area_ratio": float(area_ratio),
                         "confidence": float(confidence),
-                        "perimeter": float(perimeter / scale)
+                        "perimeter": float(perimeter / scale),
+                        "epsilon_used": epsilon_factor
                     })
                     break  # Use first successful approximation
 
@@ -136,17 +138,20 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 3) -> Dict:
                 "debug_info": f"Found {len(all_contours)} contours but none met quality criteria"
             }
 
-        # Remove near-duplicate candidates (IoU > 0.7)
-        candidates = remove_duplicate_candidates(candidates)
-
-        # Sort by confidence
+        # Sort by confidence first
         candidates.sort(key=lambda x: x['confidence'], reverse=True)
 
-        # Return top N candidates
-        top_candidates = candidates[:max_candidates]
+        # Aggressive deduplication - keep only very different candidates (IoU < 0.5)
+        candidates = remove_duplicate_candidates(candidates, iou_threshold=0.5)
+
+        # Prefer non-rectangular shapes (more realistic roofs)
+        candidates = rerank_by_polygon_complexity(candidates)
+
+        # Return only top candidate (user can use Edit Points if not perfect)
+        top_candidates = candidates[:1]  # Return only 1 best result
 
         for i, c in enumerate(top_candidates):
-            print(f"[AI-DETECT] Candidate {i+1}: {c['vertices']} vertices, "
+            print(f"[AI-DETECT] Best Candidate: {c['vertices']} vertices, "
                   f"area={c['area_ratio']*100:.1f}%, confidence={c['confidence']:.1f}%")
 
         return {
@@ -301,7 +306,7 @@ def detect_using_multiscale_edges(img):
         return []
 
 
-def remove_duplicate_candidates(candidates):
+def remove_duplicate_candidates(candidates, iou_threshold=0.5):
     """Remove near-duplicate polygons using IoU"""
     if len(candidates) <= 1:
         return candidates
@@ -331,14 +336,67 @@ def remove_duplicate_candidates(candidates):
                 box2_area = (x2_max - x2_min) * (y2_max - y2_min)
                 iou = inter_area / (box1_area + box2_area - inter_area)
 
-                if iou > 0.7:  # High overlap threshold
+                if iou > iou_threshold:  # Configurable overlap threshold
                     is_duplicate = True
                     break
 
         if not is_duplicate:
             unique.append(cand1)
 
+    print(f"[AI-DETECT] Deduplication: {len(candidates)} -> {len(unique)} candidates (IoU threshold={iou_threshold})")
     return unique
+
+
+def rerank_by_polygon_complexity(candidates):
+    """Prefer more complex polygons over simple rectangles"""
+    if len(candidates) <= 1:
+        return candidates
+
+    # Boost score for non-rectangular polygons
+    for cand in candidates:
+        vertices = cand['vertices']
+
+        # Penalize simple rectangles
+        if vertices == 4:
+            # Check if it's actually a perfect rectangle
+            pts = np.array([[p['x'], p['y']] for p in cand['points']])
+
+            # Calculate angles between consecutive edges
+            angles = []
+            for i in range(4):
+                p1 = pts[i]
+                p2 = pts[(i + 1) % 4]
+                p3 = pts[(i + 2) % 4]
+
+                v1 = p2 - p1
+                v2 = p3 - p2
+
+                angle = np.arctan2(v2[1], v2[0]) - np.arctan2(v1[1], v1[0])
+                angle = np.abs(angle * 180 / np.pi)
+                angles.append(angle)
+
+            # If all angles are close to 90°, it's a rectangle - reduce confidence
+            avg_angle_deviation = np.mean([abs(a - 90) for a in angles])
+            if avg_angle_deviation < 15:  # Very rectangular
+                cand['confidence'] *= 0.8  # Reduce confidence by 20%
+                cand['is_simple_rectangle'] = True
+            else:
+                cand['is_simple_rectangle'] = False
+
+        # Boost polygons with 5-8 vertices (more realistic roof shapes)
+        elif 5 <= vertices <= 8:
+            cand['confidence'] *= 1.2  # Boost by 20%
+            cand['is_simple_rectangle'] = False
+        else:
+            cand['is_simple_rectangle'] = False
+
+    # Re-sort by adjusted confidence
+    candidates.sort(key=lambda x: x['confidence'], reverse=True)
+
+    print(f"[AI-DETECT] Re-ranked by complexity. Top shape: {candidates[0]['vertices']} vertices, "
+          f"rectangle={candidates[0].get('is_simple_rectangle', False)}")
+
+    return candidates
 
 
 def calculate_confidence_score(
