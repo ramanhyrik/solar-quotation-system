@@ -242,6 +242,9 @@
             height: 18px;
             margin-right: 8px;
             vertical-align: middle;
+            display: inline-block;
+            position: relative;
+            top: 3px;
         }
 
         /* Modal System */
@@ -543,9 +546,8 @@
             </div>
 
             <div id="uploadedImagePreview" style="display: none; margin-top: 20px;">
-                <h3>Preview:</h3>
-                <img id="previewImage" style="max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 10px;">
-                <button class="btn btn-primary" style="margin-top: 15px;" onclick="proceedToDrawing()">Next: Draw Roof Boundary</button>
+                <h3>Uploading...</h3>
+                <p style="color: #666; margin-top: 10px;">Please wait while we prepare your workspace.</p>
             </div>
         </div>
 
@@ -1225,14 +1227,6 @@
         async function handleImageUpload(file) {
             uploadedImage = file;
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('previewImage').src = e.target.result;
-                document.getElementById('uploadedImagePreview').style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-
             // Upload to server
             showLoading('Uploading image...');
 
@@ -1256,14 +1250,18 @@
                     designId = result.design_id;
                     console.log('[UPLOAD] Design ID:', designId);
                     console.log('[UPLOAD] Image dimensions:', result.image_dimensions);
+
+                    // Automatically proceed to drawing step
+                    hideLoading();
+                    proceedToDrawing();
                 } else {
+                    hideLoading();
                     showModal(result.error || 'Failed to upload image', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showModal('Failed to upload image. Please try again.', 'error');
-            } finally {
                 hideLoading();
+                showModal('Failed to upload image. Please try again.', 'error');
             }
         }
 
@@ -1796,6 +1794,11 @@
         }
 
         async function calculatePanelLayout() {
+            if (!layoutCanvas) {
+                showModal('Layout canvas not initialized. Please try again.', 'error');
+                return;
+            }
+
             showLoading('Calculating optimal panel layout...');
 
             const panelWidth = parseFloat(document.getElementById('panelWidth').value);
@@ -1822,24 +1825,48 @@
             formData.append('orientation', orientation);
 
             try {
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
                 const response = await fetch('/api/roof-designer/calculate-layout', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
 
                 const result = await response.json();
 
                 if (result.success) {
+                    console.log('[CALC] Calculation successful. Panels:', result.total_panels);
                     panels = result.panels;
                     displayPanels();
                     displayResults(result);
                     document.getElementById('saveBtn').disabled = result.total_panels === 0;
+
+                    // Show success message
+                    if (result.total_panels > 0) {
+                        showModal(`Successfully placed ${result.total_panels} panels!`, 'success');
+                    } else {
+                        showModal('No panels could be placed. Try adjusting panel size or roof area.', 'warning');
+                    }
                 } else {
+                    console.error('[CALC] Calculation failed:', result.error);
                     showModal(result.error || 'Failed to calculate layout', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                showModal('Failed to calculate layout. Please try again.', 'error');
+                console.error('[CALC] Error:', error);
+                if (error.name === 'AbortError') {
+                    showModal('Calculation timed out. The roof area might be too complex. Please try with a simpler design.', 'error');
+                } else {
+                    showModal('Failed to calculate layout. Please check your internet connection and try again.', 'error');
+                }
             } finally {
                 hideLoading();
             }
