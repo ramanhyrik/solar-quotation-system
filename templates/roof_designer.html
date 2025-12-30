@@ -571,6 +571,11 @@
                             <i data-lucide="check-circle"></i>
                             <span>Close Polygon</span>
                         </button>
+                        <button class="tool-btn" id="editModeBtn" onclick="toggleEditMode()"
+                                data-tooltip="Edit polygon points by dragging vertices">
+                            <i data-lucide="edit-3"></i>
+                            <span>Edit Points</span>
+                        </button>
                         <button class="tool-btn" onclick="deleteSelected()"
                                 data-tooltip="Delete the selected polygon (click polygon first, then delete)">
                             <i data-lucide="trash-2"></i>
@@ -779,6 +784,11 @@
         const MIN_ZOOM = 0.5;
         const MAX_ZOOM = 5;
 
+        // Edit mode state
+        let editMode = false;
+        let editingPolygon = null;
+        let vertexCircles = [];
+
         class Command {
             constructor(execute, undo, description) {
                 this.execute = execute;
@@ -865,6 +875,110 @@
         function updateZoomDisplay() {
             const zoomPercentage = Math.round(canvasZoom * 100);
             document.getElementById('zoomLevel').textContent = `${zoomPercentage}%`;
+        }
+
+        // Edit mode functions
+        function toggleEditMode() {
+            if (!canvas) return;
+
+            editMode = !editMode;
+            const editBtn = document.getElementById('editModeBtn');
+
+            if (editMode) {
+                editBtn.classList.add('active');
+                document.getElementById('drawingInstruction').textContent =
+                    'Edit Mode: Click a polygon to edit its vertices. Drag the yellow circles to move points.';
+
+                // Disable drawing modes
+                drawingMode = null;
+                document.getElementById('drawRoofBtn').classList.remove('active');
+                document.getElementById('drawExclusionBtn').classList.remove('active');
+            } else {
+                editBtn.classList.remove('active');
+                exitEditMode();
+                document.getElementById('drawingInstruction').textContent =
+                    'Click on the image to draw roof boundary points.';
+            }
+        }
+
+        function enterPolygonEditMode(polygon) {
+            if (!polygon || !canvas) return;
+
+            editingPolygon = polygon;
+            polygon.set({
+                selectable: false,
+                evented: false
+            });
+
+            // Create vertex circles for editing
+            const points = polygon.points || [];
+            vertexCircles = [];
+
+            points.forEach((point, index) => {
+                const circle = new fabric.Circle({
+                    left: point.x + polygon.left,
+                    top: point.y + polygon.top,
+                    radius: 6,
+                    fill: '#FFC107',
+                    stroke: '#F59E0B',
+                    strokeWidth: 2,
+                    originX: 'center',
+                    originY: 'center',
+                    hasBorders: false,
+                    hasControls: false,
+                    selectable: true,
+                    vertexIndex: index,
+                    isVertexCircle: true
+                });
+
+                // Handle vertex dragging
+                circle.on('moving', function() {
+                    updatePolygonPoint(index, this.left, this.top);
+                });
+
+                canvas.add(circle);
+                vertexCircles.push(circle);
+            });
+
+            canvas.renderAll();
+        }
+
+        function updatePolygonPoint(index, newX, newY) {
+            if (!editingPolygon || !canvas) return;
+
+            const points = editingPolygon.points;
+            if (!points || !points[index]) return;
+
+            // Update point relative to polygon position
+            points[index].x = newX - editingPolygon.left;
+            points[index].y = newY - editingPolygon.top;
+
+            // Update polygon
+            editingPolygon.set({
+                points: points,
+                dirty: true
+            });
+
+            canvas.renderAll();
+        }
+
+        function exitEditMode() {
+            if (!canvas) return;
+
+            // Remove all vertex circles
+            vertexCircles.forEach(circle => canvas.remove(circle));
+            vertexCircles = [];
+
+            // Re-enable polygon selection
+            if (editingPolygon) {
+                editingPolygon.set({
+                    selectable: true,
+                    evented: true
+                });
+                editingPolygon = null;
+            }
+
+            canvas.renderAll();
         }
 
         // Modal system
@@ -1080,8 +1194,17 @@
             // Canvas selection animations
             canvas.on('selection:created', function(e) {
                 if (e.selected && e.selected[0]) {
-                    e.selected[0].set({
-                        strokeWidth: e.selected[0].isRoofPolygon ? 4 : 3,
+                    const selectedObj = e.selected[0];
+
+                    // If in edit mode and a polygon is selected, enter polygon edit mode
+                    if (editMode && (selectedObj.isRoofPolygon || selectedObj.isExclusionZone)) {
+                        canvas.discardActiveObject();
+                        enterPolygonEditMode(selectedObj);
+                        return;
+                    }
+
+                    selectedObj.set({
+                        strokeWidth: selectedObj.isRoofPolygon ? 4 : 3,
                         shadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
                     });
                     canvas.renderAll();
@@ -1090,8 +1213,18 @@
 
             canvas.on('selection:updated', function(e) {
                 if (e.selected && e.selected[0]) {
-                    e.selected[0].set({
-                        strokeWidth: e.selected[0].isRoofPolygon ? 4 : 3,
+                    const selectedObj = e.selected[0];
+
+                    // If in edit mode and switching to a different polygon
+                    if (editMode && (selectedObj.isRoofPolygon || selectedObj.isExclusionZone)) {
+                        exitEditMode();
+                        canvas.discardActiveObject();
+                        enterPolygonEditMode(selectedObj);
+                        return;
+                    }
+
+                    selectedObj.set({
+                        strokeWidth: selectedObj.isRoofPolygon ? 4 : 3,
                         shadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
                     });
                 }
@@ -1119,6 +1252,11 @@
             // Handle panning with Space key
             if (options.e.which === 1 && isPanning) {
                 panStartPoint = { x: options.e.clientX, y: options.e.clientY };
+                return;
+            }
+
+            // In edit mode, don't allow new points to be drawn
+            if (editMode) {
                 return;
             }
 
@@ -1779,11 +1917,14 @@
                 }
             }
 
-            // Escape - Clear selection / cancel drawing
+            // Escape - Clear selection / cancel drawing / exit edit mode
             if (e.key === 'Escape') {
                 if (canvas) {
                     canvas.discardActiveObject();
                     canvas.renderAll();
+                }
+                if (editMode) {
+                    toggleEditMode();
                 }
             }
         });
