@@ -106,16 +106,12 @@ async def lifespan(app: FastAPI):
     # Startup
     init_database()
 
-    # Check Roboflow API key
-    roboflow_key = os.getenv("ROBOFLOW_API_KEY")
-    if roboflow_key:
-        print("[*] Roboflow API key configured - AI detection enabled (SAM free tier)")
-    else:
-        print("[WARNING] ROBOFLOW_API_KEY not set - AI detection will be disabled")
-        print("[WARNING] Add ROBOFLOW_API_KEY to environment variables to enable AI detection")
-        print("[WARNING] Get your free API key at: https://roboflow.com (No credit card required)")
+    # AI detection via HuggingFace Space (100% FREE)
+    print("[*] AI roof detection: MobileSAM on HuggingFace Spaces")
+    print("[*] HF Space: https://huggingface.co/spaces/ramankamran/mobilesam-roof-api")
+    print("[*] No API keys required - completely FREE!")
 
-    print("[*] Solar Quotation System started with Roboflow SAM AI roof detection!")
+    print("[*] Solar Quotation System started with MobileSAM AI roof detection!")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)
