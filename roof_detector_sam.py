@@ -1,6 +1,7 @@
 """
-AI-Powered Roof Detection using MobileSAM on HuggingFace Spaces
+AI-Powered Roof Detection using SAM 2.1 on HuggingFace Spaces
 Zero memory on server - all processing done on HF Spaces (100% FREE)
+Using SAM 2.1 Hiera Base+ - Best accuracy for CPU inference
 """
 
 import cv2
@@ -19,9 +20,9 @@ HF_SPACE_API_URL = "https://ramankamran-mobilesam-roof-api.hf.space/detect-roof"
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using MobileSAM on HuggingFace Spaces.
+    Detect roof boundaries using SAM 2.1 on HuggingFace Spaces.
 
-    Uses your custom HF Space with MobileSAM - zero memory on server.
+    Uses your custom HF Space with SAM 2.1 Hiera Base+ - zero memory on server.
     100% FREE - No API keys required!
 
     Args:
@@ -136,7 +137,7 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                     "success": True,
                     "candidates": top_candidates,
                     "total_found": len(candidates),
-                    "strategy_used": "MobileSAM on HF Spaces (FREE)",
+                    "strategy_used": "SAM 2.1 Hiera Base+ on HF Spaces (FREE)",
                     "image_dimensions": {
                         "width": original_width,
                         "height": original_height

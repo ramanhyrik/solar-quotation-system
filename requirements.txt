@@ -16,5 +16,6 @@ matplotlib==3.8.2
 # Lightweight dependencies for AI detection
 opencv-python-headless==4.9.0.80
 # NOTE: NO PyTorch, NO Ultralytics, NO ONNX Runtime!
-# Using custom HuggingFace Space with MobileSAM API (zero memory on server)
+# Using custom HuggingFace Space with SAM 2.1 API (zero memory on server)
+# SAM 2.1 Hiera Base+ - Best accuracy for CPU inference
 # 100% FREE - No API keys, no payment required!
