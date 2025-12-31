@@ -17,5 +17,5 @@ matplotlib==3.8.2
 opencv-python-headless==4.9.0.80
 # NOTE: NO PyTorch, NO Ultralytics, NO ONNX Runtime!
 # Using custom HuggingFace Space with SAM 3 API (zero memory on server)
-# SAM 3 Hiera-Small - Latest & Best Segment Anything Model
+# SAM 3 - Text prompts for roof detection!
 # 100% FREE - No API keys, no payment required!
