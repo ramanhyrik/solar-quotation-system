@@ -47,12 +47,10 @@ def get_mobilesam_model():
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using MobileSAM with multi-strategy approach.
+    Detect roof boundaries using MobileSAM with bounding box prompt.
 
-    Tries multiple detection strategies in order:
-    1. Bounding box prompt (most reliable)
-    2. Multi-point grid (fallback)
-    3. Automatic segmentation (last resort)
+    Uses single bounding box strategy (most reliable and memory efficient).
+    Optimized for Render's 512MB memory constraint.
 
     Args:
         image_path: Path to the uploaded roof image
@@ -108,26 +106,24 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         model = get_mobilesam_model()
         print("[MOBILE-SAM] Model retrieved successfully")
 
-        # Multi-strategy detection
-        results = None
-        strategy_used = None
+        # SINGLE STRATEGY: Bounding Box Prompt (MOST RELIABLE & MEMORY EFFICIENT)
+        # Removed multi-strategy fallbacks to reduce memory usage
+        print("\n[MOBILE-SAM] ===== Using Bounding Box Detection =====")
 
-        # STRATEGY 1: Bounding Box Prompt (MOST RELIABLE)
-        print("\n[MOBILE-SAM] ===== STRATEGY 1: Bounding Box Prompt =====")
+        # Create bbox covering 70% of image center (assumes building is centered)
+        padding = 0.15  # 15% padding from edges
+        bbox = [
+            int(new_width * padding),
+            int(new_height * padding),
+            int(new_width * (1 - padding)),
+            int(new_height * (1 - padding))
+        ]
+        print(f"[MOBILE-SAM] Bbox prompt: {bbox} (70% of image center)")
+
+        # CRITICAL: Use torch.no_grad() to prevent building computation graphs
+        # This saves ~100-150MB of memory during inference
+        import torch
         try:
-            # Create bbox covering 70% of image center (assumes building is centered)
-            padding = 0.15  # 15% padding from edges
-            bbox = [
-                int(new_width * padding),
-                int(new_height * padding),
-                int(new_width * (1 - padding)),
-                int(new_height * (1 - padding))
-            ]
-            print(f"[MOBILE-SAM] Bbox prompt: {bbox} (70% of image center)")
-
-            # CRITICAL: Use torch.no_grad() to prevent building computation graphs
-            # This saves ~100-150MB of memory during inference
-            import torch
             with torch.no_grad():
                 results = model.predict(
                     temp_path,
@@ -135,82 +131,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                     verbose=False
                 )
 
-            if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
-                print(f"[MOBILE-SAM] ✓ Bbox strategy SUCCESS - got {len(results[0].masks)} mask(s)")
-                strategy_used = "Bounding Box"
-            else:
-                print(f"[MOBILE-SAM] ✗ Bbox strategy returned no masks")
-                results = None
-                gc.collect()  # Free memory before trying next strategy
+            print(f"[MOBILE-SAM] Model inference complete")
+            strategy_used = "Bounding Box"
+
         except Exception as e:
-            print(f"[MOBILE-SAM] ✗ Bbox strategy failed: {str(e)}")
+            print(f"[MOBILE-SAM] ✗ Detection failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
             results = None
-            gc.collect()  # Free memory before trying next strategy
-
-        # STRATEGY 2: Multi-Point Grid (FALLBACK)
-        if results is None:
-            print("\n[MOBILE-SAM] ===== STRATEGY 2: Multi-Point Grid =====")
-            try:
-                # Create 3x3 grid of points (9 foreground points)
-                grid_points = []
-                for row in range(3):
-                    for col in range(3):
-                        x = int(new_width * (0.25 + col * 0.25))
-                        y = int(new_height * (0.25 + row * 0.25))
-                        grid_points.append([x, y])
-
-                labels = [1] * len(grid_points)  # All foreground
-                print(f"[MOBILE-SAM] Grid: {len(grid_points)} points at 25%, 50%, 75% positions")
-
-                import torch
-                with torch.no_grad():
-                    results = model.predict(
-                        temp_path,
-                        points=[grid_points],  # List of points for single object
-                        labels=[labels],
-                        verbose=False
-                    )
-
-                if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
-                    print(f"[MOBILE-SAM] ✓ Multi-point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
-                    strategy_used = "Multi-Point Grid"
-                else:
-                    print(f"[MOBILE-SAM] ✗ Multi-point strategy returned no masks")
-                    results = None
-                    gc.collect()  # Free memory before trying next strategy
-            except Exception as e:
-                print(f"[MOBILE-SAM] ✗ Multi-point strategy failed: {str(e)}")
-                results = None
-                gc.collect()  # Free memory before trying next strategy
-
-        # STRATEGY 3: Single Center Point (LAST RESORT)
-        if results is None:
-            print("\n[MOBILE-SAM] ===== STRATEGY 3: Single Center Point =====")
-            try:
-                center_x = new_width // 2
-                center_y = new_height // 2
-                print(f"[MOBILE-SAM] Center point: ({center_x}, {center_y})")
-
-                import torch
-                with torch.no_grad():
-                    results = model.predict(
-                        temp_path,
-                        points=[center_x, center_y],  # Single point
-                        labels=[1],
-                        verbose=False
-                    )
-
-                if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
-                    print(f"[MOBILE-SAM] ✓ Center point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
-                    strategy_used = "Center Point"
-                else:
-                    print(f"[MOBILE-SAM] ✗ Center point strategy returned no masks")
-                    results = None
-                    gc.collect()  # Free memory
-            except Exception as e:
-                print(f"[MOBILE-SAM] ✗ Center point strategy failed: {str(e)}")
-                results = None
-                gc.collect()  # Free memory
 
         # Clean up temp file and free memory
         import os as os_module
@@ -226,14 +154,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         gc.collect()  # Force garbage collection to free memory
         print(f"[MOBILE-SAM] Memory cleanup complete")
 
-        # Check if ALL strategies failed
+        # Check if detection failed
         if results is None:
-            print("\n[MOBILE-SAM] ✗✗✗ ALL STRATEGIES FAILED ✗✗✗")
+            print("\n[MOBILE-SAM] ✗✗✗ DETECTION FAILED ✗✗✗")
             return {
                 "success": True,
                 "candidates": [],
-                "message": "All detection strategies failed. Please use manual drawing or try a different image.",
-                "debug_info": "All 3 strategies (bbox, multi-point, single-point) returned no masks"
+                "message": "AI detection failed. Please use manual drawing or try a different image with the building centered.",
+                "debug_info": "Bounding box detection returned no results"
             }
 
         # Extract masks from results
