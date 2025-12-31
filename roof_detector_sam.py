@@ -1,7 +1,7 @@
 """
-AI-Powered Roof Detection using Hugging Face Inference API
-Zero memory on server - all processing done on HF servers
-Free tier: 30,000 requests/month
+AI-Powered Roof Detection using Roboflow Segment Anything Model (SAM)
+Zero memory on server - all processing done on Roboflow cloud
+Free tier: $60/month in FREE credits
 """
 
 import cv2
@@ -15,16 +15,16 @@ from io import BytesIO
 from PIL import Image
 
 
-# Hugging Face API configuration
-HF_API_URL = "https://api-inference.huggingface.co/models/facebook/sam-vit-base"
-HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
+# Roboflow API configuration
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")
+ROBOFLOW_SAM_URL = "https://outline.roboflow.com"
 
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using Hugging Face SAM Inference API.
+    Detect roof boundaries using Roboflow SAM API.
 
-    Uses HF's hosted SAM model - zero memory on server.
+    Uses Roboflow's hosted SAM model - zero memory on server.
     Optimized for Render's 512MB memory constraint.
 
     Args:
@@ -35,12 +35,12 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         Dict containing success, candidates, and metadata
     """
     try:
-        # Check for HF token
-        if not HF_TOKEN:
-            print("[HF-SAM] ERROR: HUGGINGFACE_TOKEN environment variable not set")
+        # Check for Roboflow API key
+        if not ROBOFLOW_API_KEY:
+            print("[ROBOFLOW-SAM] ERROR: ROBOFLOW_API_KEY environment variable not set")
             return {
                 "success": False,
-                "error": "Hugging Face API token not configured. Please add HUGGINGFACE_TOKEN to environment variables."
+                "error": "Roboflow API key not configured. Please add ROBOFLOW_API_KEY to environment variables."
             }
 
         # Load image
@@ -52,10 +52,9 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             return {"success": False, "error": "Failed to load image"}
 
         original_height, original_width = img.shape[:2]
-        print(f"[HF-SAM] Image loaded: {original_width}x{original_height}")
+        print(f"[ROBOFLOW-SAM] Image loaded: {original_width}x{original_height}")
 
         # Resize image to reduce upload size and processing time
-        # HF API has image size limits, 1024px is safe
         max_dimension = 1024
         scale = 1.0
 
@@ -64,76 +63,86 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
             img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
-            print(f"[HF-SAM] Resized for API: {new_width}x{new_height} (scale={scale:.3f})")
+            print(f"[ROBOFLOW-SAM] Resized for API: {new_width}x{new_height} (scale={scale:.3f})")
         else:
             img_resized = img
             new_width = original_width
             new_height = original_height
-            print(f"[HF-SAM] No resize needed (already <= {max_dimension}px)")
+            print(f"[ROBOFLOW-SAM] No resize needed (already <= {max_dimension}px)")
 
         # Free original image
         del img
         gc.collect()
 
-        # Convert to RGB (OpenCV loads as BGR)
+        # Convert to RGB and then to base64
         img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(img_rgb)
 
-        # Convert to bytes for API
+        # Convert to base64 for API
         buffer = BytesIO()
-        pil_image.save(buffer, format="PNG")
-        image_bytes = buffer.getvalue()
-        print(f"[HF-SAM] Image size: {len(image_bytes) / 1024:.1f} KB")
+        pil_image.save(buffer, format="JPEG", quality=90)
+        img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        print(f"[ROBOFLOW-SAM] Image encoded: {len(img_base64)} chars")
 
         # Free resized image
-        del img_resized, img_rgb, pil_image
+        del img_resized, img_rgb, pil_image, buffer
         gc.collect()
 
-        # Prepare bounding box prompt (70% of image center)
+        # Prepare bounding box prompt (central 70% of image for roof)
         padding = 0.15
-        bbox = {
-            "xmin": int(new_width * padding),
-            "ymin": int(new_height * padding),
-            "xmax": int(new_width * (1 - padding)),
-            "ymax": int(new_height * (1 - padding))
+        bbox_prompt = {
+            "x": int(new_width / 2),
+            "y": int(new_height / 2),
+            "width": int(new_width * (1 - 2 * padding)),
+            "height": int(new_height * (1 - 2 * padding))
         }
-        print(f"[HF-SAM] Bbox prompt: {bbox}")
+        print(f"[ROBOFLOW-SAM] Bbox prompt: center=({bbox_prompt['x']}, {bbox_prompt['y']}), size=({bbox_prompt['width']}x{bbox_prompt['height']})")
 
-        # Call Hugging Face Inference API
-        print("[HF-SAM] Calling Hugging Face API...")
-        headers = {
-            "Authorization": f"Bearer {HF_TOKEN}"
-        }
+        # Call Roboflow SAM API
+        print("[ROBOFLOW-SAM] Calling Roboflow Inference API...")
 
         try:
+            # Prepare request payload
+            payload = {
+                "api_key": ROBOFLOW_API_KEY,
+                "image": {
+                    "type": "base64",
+                    "value": img_base64
+                },
+                "box_prompt": [{
+                    "x": bbox_prompt["x"],
+                    "y": bbox_prompt["y"],
+                    "width": bbox_prompt["width"],
+                    "height": bbox_prompt["height"],
+                    "label": "roof"
+                }]
+            }
+
             response = requests.post(
-                HF_API_URL,
-                headers=headers,
-                files={"image": image_bytes},
-                data={"bbox": str(bbox)},
-                timeout=60  # 60 second timeout
+                ROBOFLOW_SAM_URL,
+                json=payload,
+                timeout=60
             )
 
-            print(f"[HF-SAM] API response status: {response.status_code}")
-
-            if response.status_code == 503:
-                # Model is loading
-                return {
-                    "success": True,
-                    "candidates": [],
-                    "message": "AI model is loading on Hugging Face. Please try again in 20 seconds.",
-                    "debug_info": "HF model loading (503)"
-                }
+            print(f"[ROBOFLOW-SAM] API response status: {response.status_code}")
 
             if response.status_code == 401:
                 return {
                     "success": False,
-                    "error": "Invalid Hugging Face API token. Please check your HUGGINGFACE_TOKEN environment variable."
+                    "error": "Invalid Roboflow API key. Please check your ROBOFLOW_API_KEY environment variable."
+                }
+
+            if response.status_code == 429:
+                return {
+                    "success": True,
+                    "candidates": [],
+                    "message": "API rate limit exceeded. Please try again in a moment.",
+                    "debug_info": "Roboflow rate limit (429)"
                 }
 
             if response.status_code != 200:
                 error_msg = response.text[:200] if response.text else "Unknown error"
-                print(f"[HF-SAM] API error: {error_msg}")
+                print(f"[ROBOFLOW-SAM] API error: {error_msg}")
                 return {
                     "success": True,
                     "candidates": [],
@@ -143,54 +152,44 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
 
             # Parse response
             result = response.json()
-            print(f"[HF-SAM] API response received: {type(result)}")
+            print(f"[ROBOFLOW-SAM] API response received")
 
-            # HF SAM API returns masks
-            if isinstance(result, list) and len(result) > 0:
-                # Process masks
-                masks_data = result[0].get("mask") if isinstance(result[0], dict) else None
+            # Process masks from response
+            candidates = process_roboflow_masks(result, new_width, new_height, scale, original_width, original_height, max_candidates)
 
-                if masks_data:
-                    # Convert mask to numpy array
-                    mask = np.array(masks_data, dtype=np.uint8)
-                    print(f"[HF-SAM] Mask shape: {mask.shape}")
+            if candidates:
+                top_candidates = candidates[:max_candidates]
+                print(f"[ROBOFLOW-SAM] ✓✓✓ SUCCESS - {len(top_candidates)} candidate(s)")
+                return {
+                    "success": True,
+                    "candidates": top_candidates,
+                    "total_found": len(candidates),
+                    "strategy_used": "Roboflow SAM API",
+                    "image_dimensions": {
+                        "width": original_width,
+                        "height": original_height
+                    }
+                }
 
-                    # Process mask into polygon
-                    candidates = process_mask_to_polygon(mask, new_width, new_height, scale, original_width, original_height)
-
-                    if candidates:
-                        top_candidates = candidates[:max_candidates]
-                        print(f"[HF-SAM] ✓✓✓ SUCCESS - {len(top_candidates)} candidate(s)")
-                        return {
-                            "success": True,
-                            "candidates": top_candidates,
-                            "total_found": len(candidates),
-                            "strategy_used": "Hugging Face API",
-                            "image_dimensions": {
-                                "width": original_width,
-                                "height": original_height
-                            }
-                        }
-
-            print("[HF-SAM] No valid masks in response")
+            print("[ROBOFLOW-SAM] No valid roof masks detected")
             return {
                 "success": True,
                 "candidates": [],
                 "message": "No roof detected. Please use manual drawing.",
-                "debug_info": "HF API returned no valid masks"
+                "debug_info": "Roboflow SAM returned no valid masks"
             }
 
         except requests.exceptions.Timeout:
-            print("[HF-SAM] API timeout")
+            print("[ROBOFLOW-SAM] API timeout")
             return {
                 "success": True,
                 "candidates": [],
                 "message": "AI detection timed out. Please use manual drawing or try again.",
-                "debug_info": "HF API timeout (60s)"
+                "debug_info": "Roboflow API timeout (60s)"
             }
 
         except requests.exceptions.RequestException as e:
-            print(f"[HF-SAM] API request failed: {str(e)}")
+            print(f"[ROBOFLOW-SAM] API request failed: {str(e)}")
             return {
                 "success": True,
                 "candidates": [],
@@ -207,123 +206,148 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         }
 
 
-def process_mask_to_polygon(mask, new_width, new_height, scale, original_width, original_height):
+def process_roboflow_masks(result: Dict, new_width: int, new_height: int, scale: float,
+                           original_width: int, original_height: int, max_candidates: int) -> List[Dict]:
     """
-    Convert binary mask to polygon candidates
+    Process Roboflow SAM API response to extract polygon candidates
     """
     try:
-        print("[HF-SAM] Processing mask to polygon...")
+        print("[ROBOFLOW-SAM] Processing masks...")
 
-        # Find contours
-        contours, _ = cv2.findContours(
-            mask,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-        print(f"[HF-SAM] Found {len(contours)} contours")
-
-        if not contours:
+        # Roboflow SAM returns masks in the 'masks' field
+        if 'masks' not in result or not result['masks']:
+            print("[ROBOFLOW-SAM] No masks in response")
             return []
 
-        # Get largest contour
-        largest_contour = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(largest_contour)
-        area_ratio = area / (new_width * new_height)
-        print(f"[HF-SAM] Largest contour: area={area:.0f}, ratio={area_ratio:.2%}")
+        masks = result['masks']
+        print(f"[ROBOFLOW-SAM] Found {len(masks)} mask(s)")
 
-        # Filter by area (5% to 85%)
-        if area_ratio < 0.05 or area_ratio > 0.85:
-            print(f"[HF-SAM] Contour rejected: area_ratio={area_ratio:.2%}")
-            return []
-
-        # Approximate polygon
-        perimeter = cv2.arcLength(largest_contour, True)
         candidates = []
 
-        for epsilon_factor in [0.001, 0.003, 0.005, 0.008, 0.01, 0.015]:
-            epsilon = epsilon_factor * perimeter
-            approx = cv2.approxPolyDP(largest_contour, epsilon, True)
-            num_vertices = len(approx)
+        for idx, mask_data in enumerate(masks):
+            try:
+                # Decode mask (Roboflow returns RLE or polygon format)
+                if 'svg_path' in mask_data:
+                    # SVG path format - convert to polygon
+                    polygon = svg_path_to_polygon(mask_data['svg_path'], new_width, new_height)
+                elif 'points' in mask_data:
+                    # Direct polygon points
+                    polygon = mask_data['points']
+                else:
+                    print(f"[ROBOFLOW-SAM] Mask {idx}: Unknown format")
+                    continue
 
-            # Accept polygons with 4-12 vertices
-            if 4 <= num_vertices <= 12:
+                if not polygon or len(polygon) < 4:
+                    print(f"[ROBOFLOW-SAM] Mask {idx}: Invalid polygon")
+                    continue
+
                 # Scale points back to original image coordinates
-                points = []
-                for point in approx:
-                    x, y = point[0]
+                scaled_points = []
+                for point in polygon:
+                    x = point.get('x', point.get(0))
+                    y = point.get('y', point.get(1))
+
                     if scale != 1.0:
                         x_original = x / scale
                         y_original = y / scale
                     else:
                         x_original = x
                         y_original = y
-                    points.append({"x": float(x_original), "y": float(y_original)})
 
-                # Calculate confidence
-                area_original = area / (scale * scale) if scale != 1.0 else area
-                area_ratio_original = area_original / (original_width * original_height)
-                confidence = calculate_confidence(area_ratio_original, num_vertices, perimeter, area, mask)
+                    scaled_points.append({"x": float(x_original), "y": float(y_original)})
+
+                # Calculate area and confidence
+                area_px = calculate_polygon_area(scaled_points)
+                area_ratio = area_px / (original_width * original_height)
+
+                # Filter by area (5% to 85%)
+                if area_ratio < 0.05 or area_ratio > 0.85:
+                    print(f"[ROBOFLOW-SAM] Mask {idx}: Rejected by area ratio {area_ratio:.2%}")
+                    continue
+
+                num_vertices = len(scaled_points)
+                confidence = calculate_confidence(area_ratio, num_vertices)
 
                 candidates.append({
-                    "points": points,
+                    "points": scaled_points,
                     "vertices": num_vertices,
-                    "area_px": float(area_original),
-                    "area_ratio": float(area_ratio_original),
+                    "area_px": float(area_px),
+                    "area_ratio": float(area_ratio),
                     "confidence": float(confidence),
-                    "perimeter": float(perimeter / scale if scale != 1.0 else perimeter),
-                    "mask_index": 0
+                    "mask_index": idx
                 })
 
-                print(f"[HF-SAM] ✓ Candidate created: {num_vertices} vertices, conf={confidence:.1f}%")
-                break
+                print(f"[ROBOFLOW-SAM] ✓ Mask {idx}: {num_vertices} vertices, area={area_ratio:.1%}, conf={confidence:.1f}%")
+
+            except Exception as e:
+                print(f"[ROBOFLOW-SAM] Error processing mask {idx}: {str(e)}")
+                continue
 
         # Sort by confidence
         candidates.sort(key=lambda x: x['confidence'], reverse=True)
         return candidates
 
     except Exception as e:
-        print(f"[HF-SAM] Error processing mask: {str(e)}")
+        print(f"[ROBOFLOW-SAM] Error processing masks: {str(e)}")
         import traceback
         traceback.print_exc()
         return []
 
 
-def calculate_confidence(area_ratio, num_vertices, perimeter, area, mask):
-    """Calculate confidence score for detection"""
+def svg_path_to_polygon(svg_path: str, width: int, height: int) -> List[Dict]:
+    """
+    Convert SVG path to polygon points (simplified implementation)
+    """
+    # This is a simplified version - just extract M and L commands
+    import re
+
+    points = []
+    commands = re.findall(r'[ML]\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)', svg_path)
+
+    for cmd, x, y in commands:
+        points.append({"x": float(x), "y": float(y)})
+
+    return points
+
+
+def calculate_polygon_area(points: List[Dict]) -> float:
+    """
+    Calculate polygon area using shoelace formula
+    """
+    if len(points) < 3:
+        return 0.0
+
+    area = 0.0
+    n = len(points)
+
+    for i in range(n):
+        j = (i + 1) % n
+        area += points[i]['x'] * points[j]['y']
+        area -= points[j]['x'] * points[i]['y']
+
+    return abs(area) / 2.0
+
+
+def calculate_confidence(area_ratio: float, num_vertices: int) -> float:
+    """
+    Calculate confidence score for detection
+    """
     score = 0.0
 
-    # Area score (0-40 points)
+    # Area score (0-50 points)
     if 0.10 <= area_ratio <= 0.60:
-        score += 40
+        score += 50
     elif 0.05 <= area_ratio < 0.10 or 0.60 < area_ratio <= 0.75:
-        score += 35
+        score += 40
     else:
-        score += 25
-
-    # Vertex count (0-30 points)
-    if 4 <= num_vertices <= 6:
         score += 30
-    elif 7 <= num_vertices <= 10:
-        score += 28
-    else:
-        score += 20
 
-    # Compactness (0-20 points)
-    compactness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
-    if compactness > 0.4:
-        score += 20
-    elif compactness > 0.25:
-        score += 15
+    # Vertex count (0-50 points)
+    if 4 <= num_vertices <= 8:
+        score += 50
+    elif 9 <= num_vertices <= 15:
+        score += 45
     else:
-        score += 10
-
-    # Mask quality (0-10 points)
-    mask_fill_ratio = np.sum(mask > 0.5) / mask.size if mask.size > 0 else 0
-    if mask_fill_ratio > 0.3:
-        score += 10
-    elif mask_fill_ratio > 0.15:
-        score += 7
-    else:
-        score += 5
+        score += 35
 
     return min(score, 100.0)

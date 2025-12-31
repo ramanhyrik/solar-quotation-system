@@ -16,4 +16,5 @@ matplotlib==3.8.2
 # Lightweight dependencies for AI detection
 opencv-python-headless==4.9.0.80
 # NOTE: NO PyTorch, NO Ultralytics, NO ONNX Runtime!
-# Using Hugging Face Inference API instead (zero memory on server)
+# Using Roboflow SAM Inference API instead (zero memory on server)
+# Free tier: $60/month in FREE credits (no credit card required)
