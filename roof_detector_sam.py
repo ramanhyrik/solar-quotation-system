@@ -87,6 +87,9 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             new_height = int(original_height * scale)
             img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
             print(f"[MOBILE-SAM] Resized for inference: {new_width}x{new_height} (scale={scale:.3f})")
+            # Free original image immediately to save memory
+            del img
+            gc.collect()
         else:
             img_resized = img
             new_width = original_width
@@ -122,11 +125,15 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             ]
             print(f"[MOBILE-SAM] Bbox prompt: {bbox} (70% of image center)")
 
-            results = model.predict(
-                temp_path,
-                bboxes=[bbox],
-                verbose=False
-            )
+            # CRITICAL: Use torch.no_grad() to prevent building computation graphs
+            # This saves ~100-150MB of memory during inference
+            import torch
+            with torch.no_grad():
+                results = model.predict(
+                    temp_path,
+                    bboxes=[bbox],
+                    verbose=False
+                )
 
             if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
                 print(f"[MOBILE-SAM] ✓ Bbox strategy SUCCESS - got {len(results[0].masks)} mask(s)")
@@ -155,12 +162,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 labels = [1] * len(grid_points)  # All foreground
                 print(f"[MOBILE-SAM] Grid: {len(grid_points)} points at 25%, 50%, 75% positions")
 
-                results = model.predict(
-                    temp_path,
-                    points=[grid_points],  # List of points for single object
-                    labels=[labels],
-                    verbose=False
-                )
+                import torch
+                with torch.no_grad():
+                    results = model.predict(
+                        temp_path,
+                        points=[grid_points],  # List of points for single object
+                        labels=[labels],
+                        verbose=False
+                    )
 
                 if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
                     print(f"[MOBILE-SAM] ✓ Multi-point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
@@ -182,12 +191,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 center_y = new_height // 2
                 print(f"[MOBILE-SAM] Center point: ({center_x}, {center_y})")
 
-                results = model.predict(
-                    temp_path,
-                    points=[center_x, center_y],  # Single point
-                    labels=[1],
-                    verbose=False
-                )
+                import torch
+                with torch.no_grad():
+                    results = model.predict(
+                        temp_path,
+                        points=[center_x, center_y],  # Single point
+                        labels=[1],
+                        verbose=False
+                    )
 
                 if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
                     print(f"[MOBILE-SAM] ✓ Center point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
