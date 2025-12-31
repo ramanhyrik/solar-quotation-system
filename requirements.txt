@@ -12,9 +12,7 @@ requests==2.31.0
 sendgrid==6.11.0
 numpy==1.26.4
 shapely==2.0.2
-matplotlib==3.8.2
-torch==2.1.2
-torchvision==0.16.2
-ultralytics==8.3.0
-# Force headless OpenCV (install after ultralytics to override)
+# Lightweight dependencies for AI detection
 opencv-python-headless==4.9.0.80
+# NOTE: NO PyTorch, NO Ultralytics, NO ONNX Runtime!
+# Using Hugging Face Inference API instead (zero memory on server)

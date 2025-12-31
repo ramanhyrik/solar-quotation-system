@@ -106,17 +106,15 @@ async def lifespan(app: FastAPI):
     # Startup
     init_database()
 
-    # Pre-load MobileSAM model at startup to avoid timeout on first request
-    print("[*] Pre-loading MobileSAM model...")
-    try:
-        from roof_detector_sam import get_mobilesam_model
-        get_mobilesam_model()  # This will download and cache the model
-        print("[*] MobileSAM model pre-loaded successfully!")
-    except Exception as e:
-        print(f"[WARNING] Failed to pre-load MobileSAM: {e}")
-        print("[WARNING] AI detection will load model on first use")
+    # Check Hugging Face API token
+    hf_token = os.getenv("HUGGINGFACE_TOKEN")
+    if hf_token:
+        print("[*] Hugging Face API token configured - AI detection enabled")
+    else:
+        print("[WARNING] HUGGINGFACE_TOKEN not set - AI detection will be disabled")
+        print("[WARNING] Add HUGGINGFACE_TOKEN to environment variables to enable AI detection")
 
-    print("[*] Solar Quotation System started with AI-powered roof detection!")
+    print("[*] Solar Quotation System started with Hugging Face AI roof detection!")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)

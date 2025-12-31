@@ -1,55 +1,30 @@
 """
-AI-Powered Roof Detection using MobileSAM
-Lightweight SAM model (40MB) for accurate roof boundary detection
-Memory usage: ~150-200MB total
+AI-Powered Roof Detection using Hugging Face Inference API
+Zero memory on server - all processing done on HF servers
+Free tier: 30,000 requests/month
 """
 
 import cv2
 import numpy as np
 from typing import List, Dict
 import os
-import gc  # For explicit garbage collection to manage memory
+import gc
+import requests
+import base64
+from io import BytesIO
+from PIL import Image
 
 
-# Global model cache to avoid reloading
-_model_cache = None
-
-
-def get_mobilesam_model():
-    """Load MobileSAM model (cached)"""
-    global _model_cache
-
-    if _model_cache is not None:
-        print("[MOBILE-SAM] Using cached model")
-        return _model_cache
-
-    print("[MOBILE-SAM] Loading MobileSAM model...")
-
-    try:
-        from ultralytics import SAM
-        print("[MOBILE-SAM] Ultralytics imported successfully")
-
-        # Load MobileSAM (will auto-download on first use)
-        print("[MOBILE-SAM] Initializing SAM('mobile_sam.pt')...")
-        model = SAM("mobile_sam.pt")
-        print(f"[MOBILE-SAM] Model object created: {type(model)}")
-
-        _model_cache = model
-        print("[MOBILE-SAM] Model loaded and cached successfully!")
-
-        return model
-    except Exception as e:
-        print(f"[MOBILE-SAM] CRITICAL ERROR loading model: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise
+# Hugging Face API configuration
+HF_API_URL = "https://api-inference.huggingface.co/models/facebook/sam-vit-base"
+HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
 
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using MobileSAM with bounding box prompt.
+    Detect roof boundaries using Hugging Face SAM Inference API.
 
-    Uses single bounding box strategy (most reliable and memory efficient).
+    Uses HF's hosted SAM model - zero memory on server.
     Optimized for Render's 512MB memory constraint.
 
     Args:
@@ -60,6 +35,14 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         Dict containing success, candidates, and metadata
     """
     try:
+        # Check for HF token
+        if not HF_TOKEN:
+            print("[HF-SAM] ERROR: HUGGINGFACE_TOKEN environment variable not set")
+            return {
+                "success": False,
+                "error": "Hugging Face API token not configured. Please add HUGGINGFACE_TOKEN to environment variables."
+            }
+
         # Load image
         if not os.path.exists(image_path):
             return {"success": False, "error": "Image file not found"}
@@ -69,14 +52,11 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             return {"success": False, "error": "Failed to load image"}
 
         original_height, original_width = img.shape[:2]
-        print(f"[MOBILE-SAM] Image loaded: {original_width}x{original_height}")
+        print(f"[HF-SAM] Image loaded: {original_width}x{original_height}")
 
-        # Resize image for faster inference (critical for CPU and memory)
-        # CRITICAL: Render has 512MB RAM limit - must keep inference memory low
-        # 256px: ~20-30s, ~200-250MB peak memory (safe for 512MB limit)
-        # 384px: ~35-45s, ~350-400MB peak memory (risky, may OOM)
-        # 512px: ~50-70s, ~500-600MB peak memory (CRASHES on Render!)
-        max_dimension = 256  # Optimized for Render's 512MB memory limit
+        # Resize image to reduce upload size and processing time
+        # HF API has image size limits, 1024px is safe
+        max_dimension = 1024
         scale = 1.0
 
         if max(original_width, original_height) > max_dimension:
@@ -84,278 +64,232 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
             img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
-            print(f"[MOBILE-SAM] Resized for inference: {new_width}x{new_height} (scale={scale:.3f})")
-            # Free original image immediately to save memory
-            del img
-            gc.collect()
+            print(f"[HF-SAM] Resized for API: {new_width}x{new_height} (scale={scale:.3f})")
         else:
             img_resized = img
             new_width = original_width
             new_height = original_height
-            print(f"[MOBILE-SAM] No resize needed (already <= {max_dimension}px)")
+            print(f"[HF-SAM] No resize needed (already <= {max_dimension}px)")
 
-        # Save resized image temporarily for SAM
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-            temp_path = tmp.name
-            cv2.imwrite(temp_path, img_resized)
-            print(f"[MOBILE-SAM] Saved temp resized image: {temp_path}")
+        # Free original image
+        del img
+        gc.collect()
 
-        # Get MobileSAM model
-        print("[MOBILE-SAM] Getting model...")
-        model = get_mobilesam_model()
-        print("[MOBILE-SAM] Model retrieved successfully")
+        # Convert to RGB (OpenCV loads as BGR)
+        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(img_rgb)
 
-        # SINGLE STRATEGY: Bounding Box Prompt (MOST RELIABLE & MEMORY EFFICIENT)
-        # Removed multi-strategy fallbacks to reduce memory usage
-        print("\n[MOBILE-SAM] ===== Using Bounding Box Detection =====")
+        # Convert to bytes for API
+        buffer = BytesIO()
+        pil_image.save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
+        print(f"[HF-SAM] Image size: {len(image_bytes) / 1024:.1f} KB")
 
-        # Create bbox covering 70% of image center (assumes building is centered)
-        padding = 0.15  # 15% padding from edges
-        bbox = [
-            int(new_width * padding),
-            int(new_height * padding),
-            int(new_width * (1 - padding)),
-            int(new_height * (1 - padding))
-        ]
-        print(f"[MOBILE-SAM] Bbox prompt: {bbox} (70% of image center)")
+        # Free resized image
+        del img_resized, img_rgb, pil_image
+        gc.collect()
 
-        # CRITICAL: Use torch.no_grad() to prevent building computation graphs
-        # This saves ~100-150MB of memory during inference
-        import torch
-        try:
-            with torch.no_grad():
-                results = model.predict(
-                    temp_path,
-                    bboxes=[bbox],
-                    verbose=False
-                )
-
-            print(f"[MOBILE-SAM] Model inference complete")
-            strategy_used = "Bounding Box"
-
-        except Exception as e:
-            print(f"[MOBILE-SAM] ✗ Detection failed: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            results = None
-
-        # Clean up temp file and free memory
-        import os as os_module
-        try:
-            if os_module.path.exists(temp_path):
-                os_module.unlink(temp_path)
-                print(f"\n[MOBILE-SAM] Cleaned up temp file")
-        except:
-            pass
-
-        # Free up image memory
-        del img_resized
-        gc.collect()  # Force garbage collection to free memory
-        print(f"[MOBILE-SAM] Memory cleanup complete")
-
-        # Check if detection failed
-        if results is None:
-            print("\n[MOBILE-SAM] ✗✗✗ DETECTION FAILED ✗✗✗")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "AI detection failed. Please use manual drawing or try a different image with the building centered.",
-                "debug_info": "Bounding box detection returned no results"
-            }
-
-        # Extract masks from results
-        if not results or len(results) == 0:
-            print("[MOBILE-SAM] ✗ No results returned from model")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM returned empty results list"
-            }
-
-        # Get the first result (single image)
-        result = results[0]
-        print(f"\n[MOBILE-SAM] Processing result from strategy: {strategy_used}")
-        print(f"[MOBILE-SAM] Result type: {type(result)}")
-
-        # Check if masks exist
-        if not hasattr(result, 'masks'):
-            print("[MOBILE-SAM] ✗ Result has no 'masks' attribute")
-            available_attrs = [a for a in dir(result) if not a.startswith('_')]
-            print(f"[MOBILE-SAM] Available attributes: {available_attrs}")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "Detection failed - no masks attribute. Please use manual drawing.",
-                "debug_info": f"MobileSAM result missing masks. Available: {available_attrs}"
-            }
-
-        if result.masks is None:
-            print("[MOBILE-SAM] ✗ result.masks is None")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "No roof detected by AI. Please use manual drawing.",
-                "debug_info": f"Strategy '{strategy_used}' returned None masks"
-            }
-
-        if len(result.masks) == 0:
-            print("[MOBILE-SAM] ✗ result.masks is empty (length=0)")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "No roof detected. Please try manual drawing.",
-                "debug_info": f"Strategy '{strategy_used}' returned zero masks"
-            }
-
-        # Extract mask data
-        print(f"[MOBILE-SAM] Extracting mask data...")
-        masks = result.masks.data.cpu().numpy()  # Shape: (N, H, W)
-        print(f"[MOBILE-SAM] Masks shape: {masks.shape}")
-        print(f"[MOBILE-SAM] Generated {len(masks)} mask(s)")
-
-        # Process masks into polygon candidates
-        candidates = []
-        img_area = original_width * original_height
-        resized_img_area = new_width * new_height
-
-        for idx, mask in enumerate(masks):
-            print(f"[MOBILE-SAM] Processing mask {idx}, shape: {mask.shape}, dtype: {mask.dtype}")
-
-            # Convert mask to uint8 (0-255)
-            mask_uint8 = (mask * 255).astype(np.uint8)
-            print(f"[MOBILE-SAM] Converted to uint8, unique values: {np.unique(mask_uint8)[:10]}")
-
-            # Find contours in the mask
-            contours, _ = cv2.findContours(
-                mask_uint8,
-                cv2.RETR_EXTERNAL,
-                cv2.CHAIN_APPROX_SIMPLE
-            )
-            print(f"[MOBILE-SAM] Found {len(contours)} contours in mask {idx}")
-
-            if not contours:
-                print(f"[MOBILE-SAM] No contours in mask {idx}, skipping")
-                continue
-
-            # Get largest contour
-            largest_contour = max(contours, key=cv2.contourArea)
-            area = cv2.contourArea(largest_contour)
-            # Calculate area ratio based on RESIZED image for filtering
-            area_ratio_resized = area / resized_img_area
-            # Calculate actual area in original image coordinates
-            area_original = area / (scale * scale) if scale != 1.0 else area
-            area_ratio_original = area_original / img_area
-            print(f"[MOBILE-SAM] Mask {idx}: contour area={area:.0f} (resized), "
-                  f"ratio={area_ratio_resized:.2%} (resized), "
-                  f"original_ratio={area_ratio_original:.2%}")
-
-            # Filter by area (5% to 85% of RESIZED image for consistency)
-            if area_ratio_resized < 0.05 or area_ratio_resized > 0.85:
-                print(f"[MOBILE-SAM] Mask {idx} rejected: area_ratio={area_ratio_resized:.2%} outside 5-85% range")
-                continue
-
-            # Approximate polygon with multiple epsilon values
-            perimeter = cv2.arcLength(largest_contour, True)
-            print(f"[MOBILE-SAM] Contour perimeter: {perimeter:.1f}")
-
-            polygon_found = False
-            for epsilon_factor in [0.001, 0.003, 0.005, 0.008, 0.01, 0.015]:
-                epsilon = epsilon_factor * perimeter
-                approx = cv2.approxPolyDP(largest_contour, epsilon, True)
-                num_vertices = len(approx)
-
-                print(f"[MOBILE-SAM] epsilon_factor={epsilon_factor:.3f}, vertices={num_vertices}")
-
-                # Accept polygons with 4-12 vertices
-                if 4 <= num_vertices <= 12:
-                    # Extract points and scale back to original image coordinates
-                    points = []
-                    for point in approx:
-                        x, y = point[0]
-                        # Scale coordinates back to original image size
-                        if scale != 1.0:
-                            x_original = x / scale
-                            y_original = y / scale
-                        else:
-                            x_original = x
-                            y_original = y
-                        points.append({"x": float(x_original), "y": float(y_original)})
-
-                    # Calculate confidence based on SAM quality (use original area ratio)
-                    confidence = calculate_sam_confidence(
-                        area_ratio_original, num_vertices, perimeter, area, mask
-                    )
-
-                    # Store values in original image coordinates
-                    perimeter_original = perimeter / scale if scale != 1.0 else perimeter
-
-                    candidates.append({
-                        "points": points,  # Already scaled to original coordinates
-                        "vertices": num_vertices,
-                        "area_px": float(area_original),  # Original image area
-                        "area_ratio": float(area_ratio_original),  # Original ratio
-                        "confidence": float(confidence),
-                        "perimeter": float(perimeter_original),  # Original perimeter
-                        "mask_index": idx
-                    })
-
-                    print(f"[MOBILE-SAM] ✓ Candidate {len(candidates)} created: {num_vertices} vertices, "
-                          f"area={area_ratio_original*100:.1f}%, confidence={confidence:.1f}%")
-                    polygon_found = True
-                    break
-
-            if not polygon_found:
-                print(f"[MOBILE-SAM] Mask {idx}: No suitable polygon found with 4-12 vertices")
-
-        if len(candidates) == 0:
-            print("[MOBILE-SAM] No candidates created - returning empty result")
-            return {
-                "success": True,
-                "candidates": [],
-                "message": "No suitable roof shapes found. Try manual drawing.",
-                "debug_info": "MobileSAM masks did not meet quality criteria"
-            }
-
-        # Sort by confidence
-        print(f"[MOBILE-SAM] Sorting {len(candidates)} candidates by confidence...")
-        candidates.sort(key=lambda x: x['confidence'], reverse=True)
-
-        # Return top candidate(s)
-        top_candidates = candidates[:max_candidates]
-
-        print(f"\n[MOBILE-SAM] ✓✓✓ SUCCESS ✓✓✓")
-        print(f"[MOBILE-SAM] Strategy used: {strategy_used}")
-        print(f"[MOBILE-SAM] Returning {len(top_candidates)} candidate(s) (from {len(candidates)} total)")
-        for i, c in enumerate(top_candidates):
-            print(f"[MOBILE-SAM]   #{i+1}: {c['vertices']} vertices, conf={c['confidence']:.1f}%, area={c['area_ratio']*100:.1f}%")
-
-        return {
-            "success": True,
-            "candidates": top_candidates,
-            "total_found": len(candidates),
-            "strategy_used": strategy_used,
-            "image_dimensions": {
-                "width": original_width,
-                "height": original_height
-            }
+        # Prepare bounding box prompt (70% of image center)
+        padding = 0.15
+        bbox = {
+            "xmin": int(new_width * padding),
+            "ymin": int(new_height * padding),
+            "xmax": int(new_width * (1 - padding)),
+            "ymax": int(new_height * (1 - padding))
         }
+        print(f"[HF-SAM] Bbox prompt: {bbox}")
+
+        # Call Hugging Face Inference API
+        print("[HF-SAM] Calling Hugging Face API...")
+        headers = {
+            "Authorization": f"Bearer {HF_TOKEN}"
+        }
+
+        try:
+            response = requests.post(
+                HF_API_URL,
+                headers=headers,
+                files={"image": image_bytes},
+                data={"bbox": str(bbox)},
+                timeout=60  # 60 second timeout
+            )
+
+            print(f"[HF-SAM] API response status: {response.status_code}")
+
+            if response.status_code == 503:
+                # Model is loading
+                return {
+                    "success": True,
+                    "candidates": [],
+                    "message": "AI model is loading on Hugging Face. Please try again in 20 seconds.",
+                    "debug_info": "HF model loading (503)"
+                }
+
+            if response.status_code == 401:
+                return {
+                    "success": False,
+                    "error": "Invalid Hugging Face API token. Please check your HUGGINGFACE_TOKEN environment variable."
+                }
+
+            if response.status_code != 200:
+                error_msg = response.text[:200] if response.text else "Unknown error"
+                print(f"[HF-SAM] API error: {error_msg}")
+                return {
+                    "success": True,
+                    "candidates": [],
+                    "message": f"AI detection failed ({response.status_code}). Please use manual drawing.",
+                    "debug_info": error_msg
+                }
+
+            # Parse response
+            result = response.json()
+            print(f"[HF-SAM] API response received: {type(result)}")
+
+            # HF SAM API returns masks
+            if isinstance(result, list) and len(result) > 0:
+                # Process masks
+                masks_data = result[0].get("mask") if isinstance(result[0], dict) else None
+
+                if masks_data:
+                    # Convert mask to numpy array
+                    mask = np.array(masks_data, dtype=np.uint8)
+                    print(f"[HF-SAM] Mask shape: {mask.shape}")
+
+                    # Process mask into polygon
+                    candidates = process_mask_to_polygon(mask, new_width, new_height, scale, original_width, original_height)
+
+                    if candidates:
+                        top_candidates = candidates[:max_candidates]
+                        print(f"[HF-SAM] ✓✓✓ SUCCESS - {len(top_candidates)} candidate(s)")
+                        return {
+                            "success": True,
+                            "candidates": top_candidates,
+                            "total_found": len(candidates),
+                            "strategy_used": "Hugging Face API",
+                            "image_dimensions": {
+                                "width": original_width,
+                                "height": original_height
+                            }
+                        }
+
+            print("[HF-SAM] No valid masks in response")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "No roof detected. Please use manual drawing.",
+                "debug_info": "HF API returned no valid masks"
+            }
+
+        except requests.exceptions.Timeout:
+            print("[HF-SAM] API timeout")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "AI detection timed out. Please use manual drawing or try again.",
+                "debug_info": "HF API timeout (60s)"
+            }
+
+        except requests.exceptions.RequestException as e:
+            print(f"[HF-SAM] API request failed: {str(e)}")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "Cannot connect to AI service. Please use manual drawing.",
+                "debug_info": f"Network error: {str(e)}"
+            }
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {
             "success": False,
-            "error": f"MobileSAM detection failed: {str(e)}"
+            "error": f"Detection failed: {str(e)}"
         }
 
 
-def calculate_sam_confidence(area_ratio, num_vertices, perimeter, area, mask):
+def process_mask_to_polygon(mask, new_width, new_height, scale, original_width, original_height):
     """
-    Calculate confidence score for MobileSAM detection.
-    MobileSAM produces high-quality masks, so scoring is more lenient.
+    Convert binary mask to polygon candidates
     """
+    try:
+        print("[HF-SAM] Processing mask to polygon...")
+
+        # Find contours
+        contours, _ = cv2.findContours(
+            mask,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
+        print(f"[HF-SAM] Found {len(contours)} contours")
+
+        if not contours:
+            return []
+
+        # Get largest contour
+        largest_contour = max(contours, key=cv2.contourArea)
+        area = cv2.contourArea(largest_contour)
+        area_ratio = area / (new_width * new_height)
+        print(f"[HF-SAM] Largest contour: area={area:.0f}, ratio={area_ratio:.2%}")
+
+        # Filter by area (5% to 85%)
+        if area_ratio < 0.05 or area_ratio > 0.85:
+            print(f"[HF-SAM] Contour rejected: area_ratio={area_ratio:.2%}")
+            return []
+
+        # Approximate polygon
+        perimeter = cv2.arcLength(largest_contour, True)
+        candidates = []
+
+        for epsilon_factor in [0.001, 0.003, 0.005, 0.008, 0.01, 0.015]:
+            epsilon = epsilon_factor * perimeter
+            approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+            num_vertices = len(approx)
+
+            # Accept polygons with 4-12 vertices
+            if 4 <= num_vertices <= 12:
+                # Scale points back to original image coordinates
+                points = []
+                for point in approx:
+                    x, y = point[0]
+                    if scale != 1.0:
+                        x_original = x / scale
+                        y_original = y / scale
+                    else:
+                        x_original = x
+                        y_original = y
+                    points.append({"x": float(x_original), "y": float(y_original)})
+
+                # Calculate confidence
+                area_original = area / (scale * scale) if scale != 1.0 else area
+                area_ratio_original = area_original / (original_width * original_height)
+                confidence = calculate_confidence(area_ratio_original, num_vertices, perimeter, area, mask)
+
+                candidates.append({
+                    "points": points,
+                    "vertices": num_vertices,
+                    "area_px": float(area_original),
+                    "area_ratio": float(area_ratio_original),
+                    "confidence": float(confidence),
+                    "perimeter": float(perimeter / scale if scale != 1.0 else perimeter),
+                    "mask_index": 0
+                })
+
+                print(f"[HF-SAM] ✓ Candidate created: {num_vertices} vertices, conf={confidence:.1f}%")
+                break
+
+        # Sort by confidence
+        candidates.sort(key=lambda x: x['confidence'], reverse=True)
+        return candidates
+
+    except Exception as e:
+        print(f"[HF-SAM] Error processing mask: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+
+def calculate_confidence(area_ratio, num_vertices, perimeter, area, mask):
+    """Calculate confidence score for detection"""
     score = 0.0
 
     # Area score (0-40 points)
@@ -383,9 +317,8 @@ def calculate_sam_confidence(area_ratio, num_vertices, perimeter, area, mask):
     else:
         score += 10
 
-    # Mask quality (0-10 points) - SAM produces clean masks
-    # Check mask fill ratio (how solid the mask is)
-    mask_fill_ratio = np.sum(mask > 0.5) / mask.size
+    # Mask quality (0-10 points)
+    mask_fill_ratio = np.sum(mask > 0.5) / mask.size if mask.size > 0 else 0
     if mask_fill_ratio > 0.3:
         score += 10
     elif mask_fill_ratio > 0.15:
