@@ -1144,6 +1144,7 @@
 
                             const result = statusResult.result;
                             const candidates = result.candidates || [];
+                            const strategyUsed = result.strategy_used || 'Unknown';
 
                             if (candidates.length === 0) {
                                 showModal(
@@ -1154,14 +1155,23 @@
                                 return;
                             }
 
-                            console.log(`[AI-DETECT] ✓ Found ${candidates.length} candidate(s)`);
+                            console.log(`[AI-DETECT] ✓ Found ${candidates.length} candidate(s) using ${strategyUsed} strategy`);
                             detectedCandidates = candidates;
+
+                            // Show success message with strategy used
+                            const strategyEmoji = strategyUsed === 'Bounding Box' ? '🎯' :
+                                                 strategyUsed === 'Multi-Point Grid' ? '🔲' : '📍';
 
                             // Automatically apply the best candidate
                             if (candidates.length === 1) {
-                                applyBestCandidate(candidates[0]);
+                                showModal(
+                                    `AI detected roof using ${strategyEmoji} ${strategyUsed} strategy! Applying result...`,
+                                    'success',
+                                    'Detection Success'
+                                );
+                                setTimeout(() => applyBestCandidate(candidates[0]), 1000);
                             } else {
-                                displayCandidates(candidates);
+                                displayCandidates(candidates, strategyUsed);
                             }
 
                         } else if (statusResult.status === 'failed') {
@@ -1195,7 +1205,7 @@
             }
         }
 
-        function displayCandidates(candidates) {
+        function displayCandidates(candidates, strategyUsed = 'AI') {
             // Clear any existing candidate polygons
             clearCandidates();
 
@@ -1232,10 +1242,10 @@
             canvas.renderAll();
 
             // Show selection modal
-            showCandidateSelectionModal(candidates);
+            showCandidateSelectionModal(candidates, strategyUsed);
         }
 
-        function showCandidateSelectionModal(candidates) {
+        function showCandidateSelectionModal(candidates, strategyUsed = 'AI') {
             const candidatesHTML = candidates.map((c, i) => `
                 <div style="border: 2px solid ${i === 0 ? '#10B981' : i === 1 ? '#3B82F6' : '#F59E0B'};
                             border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer;
@@ -1256,11 +1266,17 @@
                 </div>
             `).join('');
 
+            const strategyEmoji = strategyUsed === 'Bounding Box' ? '🎯' :
+                                 strategyUsed === 'Multi-Point Grid' ? '🔲' : '📍';
+
             const modalHTML = `
                 <div style="max-height: 400px; overflow-y: auto;">
                     <div style="background: #e8f4fd; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
                         <strong>✨ AI detected ${candidates.length} potential roof boundaries!</strong>
                         <p style="margin-top: 8px; font-size: 13px; color: #666;">
+                            Detection method: ${strategyEmoji} ${strategyUsed}
+                        </p>
+                        <p style="margin-top: 4px; font-size: 13px; color: #666;">
                             Click on a colored polygon on the canvas or select below. You can refine any selection afterwards.
                         </p>
                     </div>

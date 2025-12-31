@@ -46,7 +46,12 @@ def get_mobilesam_model():
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using MobileSAM.
+    Detect roof boundaries using MobileSAM with multi-strategy approach.
+
+    Tries multiple detection strategies in order:
+    1. Bounding box prompt (most reliable)
+    2. Multi-point grid (fallback)
+    3. Automatic segmentation (last resort)
 
     Args:
         image_path: Path to the uploaded roof image
@@ -68,9 +73,9 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         print(f"[MOBILE-SAM] Image loaded: {original_width}x{original_height}")
 
         # Resize image for faster inference (critical for CPU)
-        # MobileSAM works well at lower resolutions, and CPU inference is VERY slow
-        # Using 256px for maximum speed on CPU-only inference (4x faster than 512px)
-        max_dimension = 256  # Aggressive resize for sub-30s inference
+        # Using 512px for better balance of speed vs accuracy (was 256px)
+        # 512px: ~40-60s on CPU, much better edge detection
+        max_dimension = 512  # Increased from 256px for better accuracy
         scale = 1.0
 
         if max(original_width, original_height) > max_dimension:
@@ -95,85 +100,160 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         # Get MobileSAM model
         print("[MOBILE-SAM] Getting model...")
         model = get_mobilesam_model()
-        print("[MOBILE-SAM] Model retrieved")
+        print("[MOBILE-SAM] Model retrieved successfully")
 
-        # Strategy: Use center point prompt on resized image
-        # Assume the target building is in the center of the aerial image
-        center_x = new_width // 2
-        center_y = new_height // 2
+        # Multi-strategy detection
+        results = None
+        strategy_used = None
 
-        print(f"[MOBILE-SAM] Running segmentation with center point prompt ({center_x}, {center_y})")
-        print(f"[MOBILE-SAM] Using temp resized image for inference")
-        print(f"[MOBILE-SAM] Calling model.predict()...")
-
-        # Run MobileSAM with point prompt (single point syntax: points=[x, y])
+        # STRATEGY 1: Bounding Box Prompt (MOST RELIABLE)
+        print("\n[MOBILE-SAM] ===== STRATEGY 1: Bounding Box Prompt =====")
         try:
+            # Create bbox covering 70% of image center (assumes building is centered)
+            padding = 0.15  # 15% padding from edges
+            bbox = [
+                int(new_width * padding),
+                int(new_height * padding),
+                int(new_width * (1 - padding)),
+                int(new_height * (1 - padding))
+            ]
+            print(f"[MOBILE-SAM] Bbox prompt: {bbox} (70% of image center)")
+
             results = model.predict(
-                temp_path,  # Use resized temp image
-                points=[center_x, center_y],  # Single point: flat list [x, y]
-                labels=[1],  # 1 = foreground point
-                verbose=False  # Reduce output
+                temp_path,
+                bboxes=[bbox],
+                verbose=False
             )
-            print(f"[MOBILE-SAM] Model call completed. Results type: {type(results)}")
-            print(f"[MOBILE-SAM] Results length: {len(results) if results else 'None'}")
 
-            # Clean up temp file
-            import os as os_module
-            os_module.unlink(temp_path)
-            print(f"[MOBILE-SAM] Cleaned up temp file")
-
+            if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
+                print(f"[MOBILE-SAM] ✓ Bbox strategy SUCCESS - got {len(results[0].masks)} mask(s)")
+                strategy_used = "Bounding Box"
+            else:
+                print(f"[MOBILE-SAM] ✗ Bbox strategy returned no masks")
+                results = None
         except Exception as e:
-            print(f"[MOBILE-SAM] ERROR during model inference: {str(e)}")
-            # Clean up temp file on error
-            import os as os_module
+            print(f"[MOBILE-SAM] ✗ Bbox strategy failed: {str(e)}")
+            results = None
+
+        # STRATEGY 2: Multi-Point Grid (FALLBACK)
+        if results is None:
+            print("\n[MOBILE-SAM] ===== STRATEGY 2: Multi-Point Grid =====")
+            try:
+                # Create 3x3 grid of points (9 foreground points)
+                grid_points = []
+                for row in range(3):
+                    for col in range(3):
+                        x = int(new_width * (0.25 + col * 0.25))
+                        y = int(new_height * (0.25 + row * 0.25))
+                        grid_points.append([x, y])
+
+                labels = [1] * len(grid_points)  # All foreground
+                print(f"[MOBILE-SAM] Grid: {len(grid_points)} points at 25%, 50%, 75% positions")
+
+                results = model.predict(
+                    temp_path,
+                    points=[grid_points],  # List of points for single object
+                    labels=[labels],
+                    verbose=False
+                )
+
+                if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
+                    print(f"[MOBILE-SAM] ✓ Multi-point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
+                    strategy_used = "Multi-Point Grid"
+                else:
+                    print(f"[MOBILE-SAM] ✗ Multi-point strategy returned no masks")
+                    results = None
+            except Exception as e:
+                print(f"[MOBILE-SAM] ✗ Multi-point strategy failed: {str(e)}")
+                results = None
+
+        # STRATEGY 3: Single Center Point (LAST RESORT)
+        if results is None:
+            print("\n[MOBILE-SAM] ===== STRATEGY 3: Single Center Point =====")
+            try:
+                center_x = new_width // 2
+                center_y = new_height // 2
+                print(f"[MOBILE-SAM] Center point: ({center_x}, {center_y})")
+
+                results = model.predict(
+                    temp_path,
+                    points=[center_x, center_y],  # Single point
+                    labels=[1],
+                    verbose=False
+                )
+
+                if results and len(results) > 0 and hasattr(results[0], 'masks') and results[0].masks is not None:
+                    print(f"[MOBILE-SAM] ✓ Center point strategy SUCCESS - got {len(results[0].masks)} mask(s)")
+                    strategy_used = "Center Point"
+                else:
+                    print(f"[MOBILE-SAM] ✗ Center point strategy returned no masks")
+                    results = None
+            except Exception as e:
+                print(f"[MOBILE-SAM] ✗ Center point strategy failed: {str(e)}")
+                results = None
+
+        # Clean up temp file
+        import os as os_module
+        try:
             if os_module.path.exists(temp_path):
                 os_module.unlink(temp_path)
-            import traceback
-            traceback.print_exc()
-            raise
+                print(f"\n[MOBILE-SAM] Cleaned up temp file")
+        except:
+            pass
+
+        # Check if ALL strategies failed
+        if results is None:
+            print("\n[MOBILE-SAM] ✗✗✗ ALL STRATEGIES FAILED ✗✗✗")
+            return {
+                "success": True,
+                "candidates": [],
+                "message": "All detection strategies failed. Please use manual drawing or try a different image.",
+                "debug_info": "All 3 strategies (bbox, multi-point, single-point) returned no masks"
+            }
 
         # Extract masks from results
         if not results or len(results) == 0:
-            print("[MOBILE-SAM] No results returned from model")
+            print("[MOBILE-SAM] ✗ No results returned from model")
             return {
                 "success": True,
                 "candidates": [],
                 "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM returned no results"
+                "debug_info": "MobileSAM returned empty results list"
             }
 
         # Get the first result (single image)
         result = results[0]
-        print(f"[MOBILE-SAM] First result type: {type(result)}")
-        print(f"[MOBILE-SAM] First result attributes: {dir(result)}")
+        print(f"\n[MOBILE-SAM] Processing result from strategy: {strategy_used}")
+        print(f"[MOBILE-SAM] Result type: {type(result)}")
 
         # Check if masks exist
         if not hasattr(result, 'masks'):
-            print("[MOBILE-SAM] Result has no 'masks' attribute")
-            print(f"[MOBILE-SAM] Available attributes: {[a for a in dir(result) if not a.startswith('_')]}")
+            print("[MOBILE-SAM] ✗ Result has no 'masks' attribute")
+            available_attrs = [a for a in dir(result) if not a.startswith('_')]
+            print(f"[MOBILE-SAM] Available attributes: {available_attrs}")
             return {
                 "success": True,
                 "candidates": [],
-                "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM result has no masks attribute"
+                "message": "Detection failed - no masks attribute. Please use manual drawing.",
+                "debug_info": f"MobileSAM result missing masks. Available: {available_attrs}"
             }
 
         if result.masks is None:
-            print("[MOBILE-SAM] result.masks is None")
+            print("[MOBILE-SAM] ✗ result.masks is None")
             return {
                 "success": True,
                 "candidates": [],
-                "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM returned None masks"
+                "message": "No roof detected by AI. Please use manual drawing.",
+                "debug_info": f"Strategy '{strategy_used}' returned None masks"
             }
 
         if len(result.masks) == 0:
-            print("[MOBILE-SAM] result.masks is empty")
+            print("[MOBILE-SAM] ✗ result.masks is empty (length=0)")
             return {
                 "success": True,
                 "candidates": [],
                 "message": "No roof detected. Please try manual drawing.",
-                "debug_info": "MobileSAM returned zero masks"
+                "debug_info": f"Strategy '{strategy_used}' returned zero masks"
             }
 
         # Extract mask data
@@ -292,14 +372,17 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         # Return top candidate(s)
         top_candidates = candidates[:max_candidates]
 
-        print(f"[MOBILE-SAM] ✓ SUCCESS - Returning {len(top_candidates)} candidate(s)")
+        print(f"\n[MOBILE-SAM] ✓✓✓ SUCCESS ✓✓✓")
+        print(f"[MOBILE-SAM] Strategy used: {strategy_used}")
+        print(f"[MOBILE-SAM] Returning {len(top_candidates)} candidate(s) (from {len(candidates)} total)")
         for i, c in enumerate(top_candidates):
-            print(f"[MOBILE-SAM]   #{i+1}: {c['vertices']} vertices, conf={c['confidence']:.1f}%")
+            print(f"[MOBILE-SAM]   #{i+1}: {c['vertices']} vertices, conf={c['confidence']:.1f}%, area={c['area_ratio']*100:.1f}%")
 
         return {
             "success": True,
             "candidates": top_candidates,
             "total_found": len(candidates),
+            "strategy_used": strategy_used,
             "image_dimensions": {
                 "width": original_width,
                 "height": original_height
