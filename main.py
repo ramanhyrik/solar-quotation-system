@@ -107,12 +107,12 @@ async def lifespan(app: FastAPI):
     init_database()
 
     # AI detection via HuggingFace Space (100% FREE)
-    print("[*] AI roof detection: SAM 2.1 (Hiera Base+) on HuggingFace Spaces")
+    print("[*] AI roof detection: SAM 3 (Hiera-Small) on HuggingFace Spaces")
     print("[*] HF Space: https://huggingface.co/spaces/ramankamran/mobilesam-roof-api")
-    print("[*] Model: SAM 2.1 - Best accuracy for CPU inference")
+    print("[*] Model: SAM 3 - Latest & Best Segment Anything Model")
     print("[*] No API keys required - completely FREE!")
 
-    print("[*] Solar Quotation System started with SAM 2.1 AI roof detection!")
+    print("[*] Solar Quotation System started with SAM 3 AI roof detection!")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)
