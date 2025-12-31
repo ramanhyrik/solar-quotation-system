@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from typing import List, Dict
 import os
+import gc  # For explicit garbage collection to manage memory
 
 
 # Global model cache to avoid reloading
@@ -72,10 +73,12 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         original_height, original_width = img.shape[:2]
         print(f"[MOBILE-SAM] Image loaded: {original_width}x{original_height}")
 
-        # Resize image for faster inference (critical for CPU)
-        # Using 512px for better balance of speed vs accuracy (was 256px)
-        # 512px: ~40-60s on CPU, much better edge detection
-        max_dimension = 512  # Increased from 256px for better accuracy
+        # Resize image for faster inference (critical for CPU and memory)
+        # CRITICAL: Render has 512MB RAM limit - must keep inference memory low
+        # 256px: ~20-30s, ~200-250MB peak memory (safe for 512MB limit)
+        # 384px: ~35-45s, ~350-400MB peak memory (risky, may OOM)
+        # 512px: ~50-70s, ~500-600MB peak memory (CRASHES on Render!)
+        max_dimension = 256  # Optimized for Render's 512MB memory limit
         scale = 1.0
 
         if max(original_width, original_height) > max_dimension:
@@ -131,9 +134,11 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
             else:
                 print(f"[MOBILE-SAM] ✗ Bbox strategy returned no masks")
                 results = None
+                gc.collect()  # Free memory before trying next strategy
         except Exception as e:
             print(f"[MOBILE-SAM] ✗ Bbox strategy failed: {str(e)}")
             results = None
+            gc.collect()  # Free memory before trying next strategy
 
         # STRATEGY 2: Multi-Point Grid (FALLBACK)
         if results is None:
@@ -163,9 +168,11 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 else:
                     print(f"[MOBILE-SAM] ✗ Multi-point strategy returned no masks")
                     results = None
+                    gc.collect()  # Free memory before trying next strategy
             except Exception as e:
                 print(f"[MOBILE-SAM] ✗ Multi-point strategy failed: {str(e)}")
                 results = None
+                gc.collect()  # Free memory before trying next strategy
 
         # STRATEGY 3: Single Center Point (LAST RESORT)
         if results is None:
@@ -188,11 +195,13 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 else:
                     print(f"[MOBILE-SAM] ✗ Center point strategy returned no masks")
                     results = None
+                    gc.collect()  # Free memory
             except Exception as e:
                 print(f"[MOBILE-SAM] ✗ Center point strategy failed: {str(e)}")
                 results = None
+                gc.collect()  # Free memory
 
-        # Clean up temp file
+        # Clean up temp file and free memory
         import os as os_module
         try:
             if os_module.path.exists(temp_path):
@@ -200,6 +209,11 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
                 print(f"\n[MOBILE-SAM] Cleaned up temp file")
         except:
             pass
+
+        # Free up image memory
+        del img_resized
+        gc.collect()  # Force garbage collection to free memory
+        print(f"[MOBILE-SAM] Memory cleanup complete")
 
         # Check if ALL strategies failed
         if results is None:
