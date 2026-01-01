@@ -494,6 +494,93 @@
             border-radius: 4px;
         }
 
+        /* Icon Toolbars */
+        .icon-toolbar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-gray);
+            border-color: var(--primary-blue);
+        }
+
+        .icon-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .icon-btn.primary {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .icon-btn.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .icon-btn.danger {
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .icon-btn.danger:hover {
+            background: #FEE2E2;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .icon-btn i,
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .icon-btn[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toolbar-divider {
+            width: 100%;
+            height: 1px;
+            background: var(--border-color);
+            margin: 12px 0;
+        }
+
         /* Modal System */
         .modal-overlay {
             display: none;
@@ -785,136 +872,96 @@
 
             </div>
 
-            <!-- Drawing Tools Section -->
-            <div class="sidebar-section" id="drawingToolsSection">
+            <!-- Tools Section -->
+            <div class="sidebar-section" id="toolsSection">
                 <div class="section-title">
-                    <i data-lucide="pen-tool"></i>
-                    <span>Drawing Tools</span>
+                    <i data-lucide="wrench"></i>
+                    <span>Tools</span>
                 </div>
 
-                <div id="drawingInstruction" class="instruction-badge">
-                    Upload an image to start drawing
+                <div id="drawingInstruction" class="instruction-badge" style="font-size: 11px;">
+                    Upload an image to start
                 </div>
 
-                <div class="tool-group">
-                    <button class="tool-btn primary" id="autoDetectBtn" onclick="autoDetectRoof()" disabled>
+                <!-- Drawing Tools -->
+                <div class="icon-toolbar">
+                    <button class="icon-btn primary" id="autoDetectBtn" onclick="autoDetectRoof()" disabled
+                            data-tooltip="AI Auto-Detect">
                         <i data-lucide="sparkles"></i>
-                        <span>AI Auto-Detect</span>
                     </button>
 
-                    <button class="tool-btn active" id="drawRoofBtn" onclick="startDrawingRoof()" disabled>
+                    <button class="icon-btn active" id="drawRoofBtn" onclick="startDrawingRoof()" disabled
+                            data-tooltip="Draw Roof">
                         <i data-lucide="home"></i>
-                        <span>Draw Roof Boundary</span>
                     </button>
 
-                    <button class="tool-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()" disabled>
+                    <button class="icon-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()" disabled
+                            data-tooltip="Add Exclusion">
                         <i data-lucide="octagon-x"></i>
-                        <span>Add Exclusion Zone</span>
                     </button>
 
-                    <button class="tool-btn" onclick="closePolygon()" disabled id="closePolygonBtn">
+                    <button class="icon-btn" id="closePolygonBtn" onclick="closePolygon()" disabled
+                            data-tooltip="Close Polygon">
                         <i data-lucide="check-circle"></i>
-                        <span>Close Polygon</span>
                     </button>
 
-                    <button class="tool-btn" id="editModeBtn" onclick="toggleEditMode()" disabled>
+                    <button class="icon-btn" id="editModeBtn" onclick="toggleEditMode()" disabled
+                            data-tooltip="Edit Points">
                         <i data-lucide="edit-3"></i>
-                        <span>Edit Points</span>
                     </button>
                 </div>
 
-                <div style="margin-top: 12px;">
-                    <div class="tool-grid">
-                        <button class="tool-btn" id="undoBtn" onclick="undo()" disabled>
-                            <i data-lucide="undo"></i>
-                            <span>Undo</span>
-                        </button>
-                        <button class="tool-btn" id="redoBtn" onclick="redo()" disabled>
-                            <i data-lucide="redo"></i>
-                            <span>Redo</span>
-                        </button>
-                    </div>
+                <div class="toolbar-divider"></div>
+
+                <!-- Edit Tools -->
+                <div class="icon-toolbar">
+                    <button class="icon-btn" id="undoBtn" onclick="undo()" disabled
+                            data-tooltip="Undo">
+                        <i data-lucide="undo"></i>
+                    </button>
+
+                    <button class="icon-btn" id="redoBtn" onclick="redo()" disabled
+                            data-tooltip="Redo">
+                        <i data-lucide="redo"></i>
+                    </button>
+
+                    <button class="icon-btn danger" id="deleteBtn" onclick="deleteSelected()" disabled
+                            data-tooltip="Delete Selected">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+
+                    <button class="icon-btn danger" id="clearAllBtn" onclick="clearAll()" disabled
+                            data-tooltip="Clear All">
+                        <i data-lucide="rotate-ccw"></i>
+                    </button>
                 </div>
 
-                <div style="margin-top: 12px;">
-                    <div class="tool-group">
-                        <button class="tool-btn danger" onclick="deleteSelected()" disabled id="deleteBtn">
-                            <i data-lucide="trash-2"></i>
-                            <span>Delete Selected</span>
-                        </button>
-                        <button class="tool-btn danger" onclick="clearAll()" disabled id="clearAllBtn">
-                            <i data-lucide="rotate-ccw"></i>
-                            <span>Clear All</span>
-                        </button>
-                    </div>
+                <div class="toolbar-divider"></div>
+
+                <!-- Settings & Config -->
+                <div class="icon-toolbar">
+                    <button class="icon-btn" id="panelConfigBtn" onclick="openPanelConfigModal()" disabled
+                            data-tooltip="Panel Settings">
+                        <i data-lucide="settings"></i>
+                    </button>
+
+                    <button class="icon-btn" id="calculateBtn" onclick="calculatePanelLayout()" disabled
+                            data-tooltip="Calculate Layout">
+                        <i data-lucide="calculator"></i>
+                    </button>
+
+                    <button class="icon-btn" id="shortcutsBtn" onclick="showKeyboardShortcuts()" disabled
+                            data-tooltip="Keyboard Shortcuts">
+                        <i data-lucide="keyboard"></i>
+                    </button>
                 </div>
 
                 <div style="margin-top: 16px;">
-                    <div class="form-group">
-                        <label>Scale (Pixels per Meter)</label>
-                        <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled>
-                        <small>Adjust if panels appear wrong size</small>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 11px;">Scale (px/m)</label>
+                        <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled
+                               style="font-size: 12px; padding: 6px 8px;">
                     </div>
-                </div>
-
-                <div style="margin-top: 12px;">
-                    <button class="tool-btn" onclick="showKeyboardShortcuts()" disabled id="shortcutsBtn">
-                        <i data-lucide="keyboard"></i>
-                        <span>Keyboard Shortcuts</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Panel Configuration Section (Collapsible) -->
-            <div class="sidebar-section" id="panelConfigSection">
-                <div class="collapsible-header" onclick="togglePanelConfig()">
-                    <div class="section-title" style="margin-bottom: 0;">
-                        <i data-lucide="grid-3x3"></i>
-                        <span>Panel Configuration</span>
-                    </div>
-                    <i data-lucide="chevron-down" id="panelConfigChevron"></i>
-                </div>
-
-                <div class="collapsible-content" id="panelConfigContent">
-                    <div class="info-box" style="margin-bottom: 12px; margin-top: 12px;">
-                        <p>Configure panel specs and calculate optimal layout</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Panel Width (m)</label>
-                        <input type="number" id="panelWidth" value="1.7" min="0.8" max="2.5" step="0.1" disabled>
-                        <small>Range: 0.8m - 2.5m</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Panel Height (m)</label>
-                        <input type="number" id="panelHeight" value="1.0" min="0.8" max="2.0" step="0.1" disabled>
-                        <small>Range: 0.8m - 2.0m</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Panel Power (W)</label>
-                        <input type="number" id="panelPower" value="400" min="100" max="1000" step="50" disabled>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Orientation</label>
-                        <select id="orientation" disabled>
-                            <option value="auto" selected>Auto (Optimal Mix)</option>
-                            <option value="landscape">Landscape Only</option>
-                            <option value="portrait">Portrait Only</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Spacing (cm)</label>
-                        <input type="number" id="spacing" value="5" min="0" max="20" step="1" disabled>
-                    </div>
-
-                    <button class="tool-btn primary" onclick="calculatePanelLayout()" id="calculateBtn" disabled>
-                        <i data-lucide="calculator"></i>
-                        <span>Calculate Layout</span>
-                    </button>
                 </div>
             </div>
 
@@ -998,6 +1045,59 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal(false)" id="modalCancelBtn" style="display: none;">Cancel</button>
                 <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Configuration Modal -->
+    <div id="panelConfigModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <i data-lucide="settings"></i>
+                <h3>Panel Configuration</h3>
+                <button class="modal-close" onclick="closePanelConfigModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box" style="margin-bottom: 16px;">
+                    <p>Configure solar panel specifications and layout preferences</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Panel Width (m)</label>
+                    <input type="number" id="panelWidth" value="1.7" min="0.8" max="2.5" step="0.1">
+                    <small>Range: 0.8m - 2.5m</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Panel Height (m)</label>
+                    <input type="number" id="panelHeight" value="1.0" min="0.8" max="2.0" step="0.1">
+                    <small>Range: 0.8m - 2.0m</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Panel Power (W)</label>
+                    <input type="number" id="panelPower" value="400" min="100" max="1000" step="50">
+                </div>
+
+                <div class="form-group">
+                    <label>Orientation</label>
+                    <select id="orientation">
+                        <option value="auto" selected>Auto (Optimal Mix)</option>
+                        <option value="landscape">Landscape Only</option>
+                        <option value="portrait">Portrait Only</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Spacing (cm)</label>
+                    <input type="number" id="spacing" value="5" min="0" max="20" step="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePanelConfigModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="savePanelConfig()">Save Settings</button>
             </div>
         </div>
     </div>
@@ -1147,7 +1247,7 @@
             if (editMode) {
                 editBtn.classList.add('active');
                 document.getElementById('drawingInstruction').textContent =
-                    'Edit Mode: Click a polygon to edit. Drag yellow circles to move points.';
+                    'Edit mode: Drag yellow circles';
 
                 drawingMode = null;
                 document.getElementById('drawRoofBtn').classList.remove('active');
@@ -1232,11 +1332,11 @@
         function updateDrawingInstruction() {
             const instruction = document.getElementById('drawingInstruction');
             if (drawingMode === 'roof') {
-                instruction.textContent = 'Click points on the image to draw roof boundary. Click "Close Polygon" when done.';
+                instruction.textContent = 'Click to draw roof boundary';
             } else if (drawingMode === 'exclusion') {
-                instruction.textContent = 'Click points to draw exclusion zone (chimney, vent, etc.). Click "Close Polygon" when done.';
+                instruction.textContent = 'Click to draw exclusion zone';
             } else {
-                instruction.textContent = 'Select a drawing tool to begin';
+                instruction.textContent = 'Select a tool to begin';
             }
         }
 
@@ -1405,36 +1505,14 @@
             );
         }
 
-        // Panel configuration toggle
-        function togglePanelConfig() {
-            const content = document.getElementById('panelConfigContent');
-            const chevron = document.getElementById('panelConfigChevron');
-            const header = document.querySelector('.collapsible-header');
-
-            if (content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                header.classList.remove('collapsed');
-            } else {
-                content.classList.add('collapsed');
-                header.classList.add('collapsed');
-            }
-        }
-
+        // Panel configuration
         function enablePanelConfig() {
-            document.getElementById('panelWidth').disabled = false;
-            document.getElementById('panelHeight').disabled = false;
-            document.getElementById('panelPower').disabled = false;
-            document.getElementById('orientation').disabled = false;
-            document.getElementById('spacing').disabled = false;
+            document.getElementById('panelConfigBtn').disabled = false;
             document.getElementById('calculateBtn').disabled = false;
         }
 
         function disablePanelConfig() {
-            document.getElementById('panelWidth').disabled = true;
-            document.getElementById('panelHeight').disabled = true;
-            document.getElementById('panelPower').disabled = true;
-            document.getElementById('orientation').disabled = true;
-            document.getElementById('spacing').disabled = true;
+            document.getElementById('panelConfigBtn').disabled = true;
             document.getElementById('calculateBtn').disabled = true;
             document.getElementById('resultsSection').style.display = 'none';
         }
@@ -1632,7 +1710,7 @@
 
                 // Step 2: Poll for results
                 let attempts = 0;
-                const maxAttempts = 60; // 60 seconds max
+                const maxAttempts = 120; // 120 seconds max (2 minutes)
                 const pollInterval = 1000; // 1 second
 
                 const pollJob = async () => {
@@ -1840,6 +1918,21 @@
 
         function hideLoading() {
             document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        // Panel Configuration Modal
+        function openPanelConfigModal() {
+            document.getElementById('panelConfigModal').classList.add('active');
+            lucide.createIcons();
+        }
+
+        function closePanelConfigModal() {
+            document.getElementById('panelConfigModal').classList.remove('active');
+        }
+
+        function savePanelConfig() {
+            closePanelConfigModal();
+            showModal('Settings Saved', 'Panel configuration has been updated. Click "Calculate Layout" to apply.', 'check-circle');
         }
 
         // Upload and canvas initialization

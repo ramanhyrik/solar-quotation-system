@@ -13,9 +13,10 @@ sendgrid==6.11.0
 numpy==1.26.4
 shapely==2.0.2
 matplotlib==3.8.2
-# Lightweight dependencies for AI detection
+# SAM 3 (Segment Anything Model 3) - November 2025
+# Text-based Promptable Concept Segmentation (PCS)
+# 900M parameters - 2x better accuracy than SAM 2
+# Prerequisites: Python 3.12+, PyTorch 2.7+
+torch>=2.7.0
+transformers>=4.46.0
 opencv-python-headless==4.9.0.80
-# NOTE: NO PyTorch, NO Ultralytics, NO ONNX Runtime!
-# Using custom HuggingFace Space with SAM 3 API (zero memory on server)
-# SAM 3 - Text prompts for roof detection!
-# 100% FREE - No API keys, no payment required!

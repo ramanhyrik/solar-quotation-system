@@ -1,11 +1,10 @@
 """
-AI-Powered Roof Detection using SAM 3 on HuggingFace Spaces
-Zero memory on server - all processing done on HF Spaces (100% FREE)
+AI-Powered Roof Detection using SAM 3 (Segment Anything Model 3)
 
-SAM 3 - Segment Anything Model 3 (November 2025)
-- Text-based semantic segmentation with Promptable Concept Segmentation (PCS)
-- 848M parameters - SOTA accuracy (2x better than SAM 2)
-- Single unified model (faster than Grounded SAM)
+SAM 3 - Released November 2025 by Meta AI
+- Text-based Promptable Concept Segmentation (PCS)
+- 900M parameters - 2x better accuracy than SAM 2
+- Open-vocabulary segmentation with text prompts
 - Perfect for aerial/satellite imagery!
 """
 
@@ -14,26 +13,41 @@ import numpy as np
 from typing import List, Dict
 import os
 import gc
-import requests
-from io import BytesIO
+import torch
 from PIL import Image
+from transformers import Sam3Processor, Sam3Model
 
 
-# HuggingFace Space API URL
-HF_SPACE_API_URL = "https://ramankamran-mobilesam-roof-api.hf.space/detect-roof"
+# Global model cache
+_sam3_model = None
+_sam3_processor = None
+
+
+def get_sam3_model():
+    """Load SAM 3 model once and cache it."""
+    global _sam3_model, _sam3_processor
+
+    if _sam3_model is None:
+        print("[SAM3] Loading SAM 3 model from facebook/sam3...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        _sam3_model = Sam3Model.from_pretrained("facebook/sam3").to(device)
+        _sam3_processor = Sam3Processor.from_pretrained("facebook/sam3")
+
+        print(f"[SAM3] Model loaded on {device}")
+
+    return _sam3_model, _sam3_processor
 
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
     """
-    Detect roof boundaries using SAM 3 on HuggingFace Spaces.
+    Detect roof boundaries using SAM 3 with text prompts.
 
-    Uses SAM 3 (Segment Anything Model 3) for semantic roof detection:
-    - Text-based Promptable Concept Segmentation (PCS)
-    - 848M parameters - SOTA accuracy (2x better than SAM 2)
-    - Single unified model (faster than Grounded SAM)
+    Uses SAM 3 (Segment Anything Model 3) for roof detection:
+    - Text prompts: "roof", "building roof", "rooftop"
+    - Promptable Concept Segmentation (PCS) - 900M parameters
+    - 2x better accuracy than SAM 2
     - Works great on aerial/satellite images!
-
-    Zero memory on server - 100% FREE - No API keys required!
 
     Args:
         image_path: Path to the uploaded roof image
@@ -47,137 +61,133 @@ def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:
         if not os.path.exists(image_path):
             return {"success": False, "error": "Image file not found"}
 
-        img = cv2.imread(image_path)
-        if img is None:
+        img_cv = cv2.imread(image_path)
+        if img_cv is None:
             return {"success": False, "error": "Failed to load image"}
 
-        original_height, original_width = img.shape[:2]
+        original_height, original_width = img_cv.shape[:2]
         print(f"[SAM3] Image loaded: {original_width}x{original_height}")
 
-        # Resize image to reduce upload size (max 1024px)
-        max_dimension = 1024
-        scale = 1.0
-
-        if max(original_width, original_height) > max_dimension:
-            scale = max_dimension / max(original_width, original_height)
-            new_width = int(original_width * scale)
-            new_height = int(original_height * scale)
-            img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
-            print(f"[SAM3] Resized for API: {new_width}x{new_height} (scale={scale:.3f})")
-        else:
-            img_resized = img
-            print(f"[SAM3] No resize needed (already <= {max_dimension}px)")
-
-        # Free original image
-        del img
-        gc.collect()
-
-        # Convert to RGB and encode as JPEG
-        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        # Convert to PIL Image (RGB)
+        img_rgb = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(img_rgb)
 
-        buffer = BytesIO()
-        pil_image.save(buffer, format="JPEG", quality=90)
-        buffer.seek(0)
-
-        # Free resized image
-        del img_resized, img_rgb, pil_image
+        # Free OpenCV image
+        del img_cv, img_rgb
         gc.collect()
 
-        # Call HuggingFace Space API (SAM 3)
-        print("[SAM3] Calling HuggingFace Space API (SAM 3)...")
+        # Get SAM 3 model and processor
+        model, processor = get_sam3_model()
+        device = next(model.parameters()).device
 
-        try:
-            files = {"file": ("roof.jpg", buffer, "image/jpeg")}
-            response = requests.post(
-                HF_SPACE_API_URL,
-                files=files,
-                timeout=120  # 2 minutes (HF Spaces may wake up from sleep)
-            )
+        # Text prompts for roof detection
+        text_prompts = ["roof", "building roof", "rooftop"]
 
-            print(f"[SAM3] API response status: {response.status_code}")
+        all_candidates = []
 
-            if response.status_code == 503:
-                # Space is starting up (cold start)
-                return {
-                    "success": True,
-                    "candidates": [],
-                    "message": "AI model is starting up. Please try again in 30 seconds.",
-                    "debug_info": "HF Space cold start (503)"
-                }
+        print("[SAM3] Running SAM 3 with text prompts...")
 
-            if response.status_code != 200:
-                error_msg = response.text[:200] if response.text else "Unknown error"
-                print(f"[SAM3] API error: {error_msg}")
-                return {
-                    "success": True,
-                    "candidates": [],
-                    "message": f"AI detection failed ({response.status_code}). Please use manual drawing.",
-                    "debug_info": error_msg
-                }
+        for text_prompt in text_prompts:
+            print(f"[SAM3] Trying prompt: '{text_prompt}'")
 
-            # Parse response
-            result = response.json()
+            # Prepare inputs with text prompt
+            inputs = processor(
+                images=pil_image,
+                text=text_prompt,
+                return_tensors="pt"
+            ).to(device)
 
-            if not result.get("success"):
-                return {
-                    "success": True,
-                    "candidates": [],
-                    "message": "No roof detected. Please use manual drawing.",
-                    "debug_info": "API returned success=false"
-                }
+            # Run SAM 3 inference
+            with torch.no_grad():
+                outputs = model(**inputs)
 
-            candidates = result.get("candidates", [])
+            # Post-process results
+            results = processor.post_process_instance_segmentation(
+                outputs,
+                threshold=0.5,
+                mask_threshold=0.5,
+                target_sizes=inputs.get("original_sizes").tolist()
+            )[0]
 
-            # Scale candidates back to original image size if we resized
-            if scale != 1.0:
-                for candidate in candidates:
-                    for point in candidate.get("points", []):
-                        point["x"] = point["x"] / scale
-                        point["y"] = point["y"] / scale
+            num_masks = len(results.get('masks', []))
+            print(f"[SAM3]   Found {num_masks} object(s) with prompt '{text_prompt}'")
 
-                    # Recalculate area for original size
-                    if "area_px" in candidate:
-                        candidate["area_px"] = candidate["area_px"] / (scale * scale)
+            # Process each detected mask
+            if num_masks > 0:
+                masks = results['masks']
+                boxes = results['boxes']
+                scores = results['scores']
 
-            if candidates:
-                top_candidates = candidates[:max_candidates]
-                print(f"[SAM3] SUCCESS - {len(top_candidates)} candidate(s)")
-                return {
-                    "success": True,
-                    "candidates": top_candidates,
-                    "total_found": len(candidates),
-                    "strategy_used": "SAM 3 (Segment Anything Model 3) - Text-based PCS - 2x Better Accuracy!",
-                    "image_dimensions": {
-                        "width": original_width,
-                        "height": original_height
-                    }
-                }
-            else:
-                print("[SAM3] No valid roof candidates")
-                return {
-                    "success": True,
-                    "candidates": [],
-                    "message": "No roof detected. Please use manual drawing.",
-                    "debug_info": "API returned empty candidates"
-                }
+                for i in range(num_masks):
+                    mask = masks[i].cpu().numpy().astype(np.uint8)
+                    score = float(scores[i])
+                    box = boxes[i].cpu().numpy()
 
-        except requests.exceptions.Timeout:
-            print("[SAM3] API timeout")
+                    # Find contours from mask
+                    contours, _ = cv2.findContours(
+                        mask,
+                        cv2.RETR_EXTERNAL,
+                        cv2.CHAIN_APPROX_SIMPLE
+                    )
+
+                    if contours:
+                        # Get the largest contour
+                        largest_contour = max(contours, key=cv2.contourArea)
+                        area = cv2.contourArea(largest_contour)
+
+                        # Convert contour to points
+                        points = []
+                        for point in largest_contour:
+                            x, y = point[0]
+                            points.append({"x": float(x), "y": float(y)})
+
+                        # Simplify polygon (reduce points)
+                        epsilon = 0.005 * cv2.arcLength(largest_contour, True)
+                        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+
+                        simplified_points = []
+                        for point in approx:
+                            x, y = point[0]
+                            simplified_points.append({"x": float(x), "y": float(y)})
+
+                        candidate = {
+                            "points": simplified_points,
+                            "confidence": score,
+                            "area_px": float(area),
+                            "prompt": text_prompt,
+                            "source": "SAM3_PCS"
+                        }
+
+                        all_candidates.append(candidate)
+
+        # Sort by confidence score
+        all_candidates.sort(key=lambda x: x['confidence'], reverse=True)
+
+        # Free resources
+        del pil_image
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+        if all_candidates:
+            top_candidates = all_candidates[:max_candidates]
+            print(f"[SAM3] SUCCESS - {len(top_candidates)} candidate(s)")
             return {
                 "success": True,
-                "candidates": [],
-                "message": "AI detection timed out. The service may be starting up. Please try again.",
-                "debug_info": "HF Space timeout (120s)"
+                "candidates": top_candidates,
+                "total_found": len(all_candidates),
+                "strategy_used": "SAM 3 (Segment Anything Model 3) - Text-based PCS - 2x Better Accuracy!",
+                "image_dimensions": {
+                    "width": original_width,
+                    "height": original_height
+                }
             }
-
-        except requests.exceptions.RequestException as e:
-            print(f"[SAM3] API request failed: {str(e)}")
+        else:
+            print("[SAM3] No valid roof candidates detected")
             return {
                 "success": True,
                 "candidates": [],
-                "message": "Cannot connect to AI service. Please use manual drawing.",
-                "debug_info": f"Network error: {str(e)}"
+                "message": "No roof detected. Please use manual drawing.",
+                "debug_info": "SAM 3 returned no valid candidates"
             }
 
     except Exception as e:
