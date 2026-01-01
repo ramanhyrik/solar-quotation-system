@@ -1602,32 +1602,84 @@
 
         // AI Auto-detect
         async function autoDetectRoof() {
-            if (!uploadedImage) {
+            if (!uploadedImage || !designId) {
                 showModal('Error', 'Please upload an image first.', 'alert-circle');
                 return;
             }
 
-            showLoading('AI is detecting roof boundaries...');
+            showLoading('AI is analyzing your roof...');
 
             try {
+                // Step 1: Start detection job
                 const formData = new FormData();
                 formData.append('design_id', designId);
 
-                const response = await fetch('/api/roof-designer/auto-detect', {
+                const startResponse = await fetch('/api/roof-designer/auto-detect', {
                     method: 'POST',
                     body: formData
                 });
 
-                const result = await response.json();
-                hideLoading();
+                const startResult = await startResponse.json();
 
-                if (result.success && result.candidates && result.candidates.length > 0) {
-                    detectedCandidates = result.candidates;
-                    displayCandidates(detectedCandidates);
-                    showModal('AI Detection Complete', `Found ${result.candidates.length} potential roof area(s). Click on a highlighted area to select it.`, 'sparkles');
-                } else {
-                    showModal('Detection Failed', result.error || 'No roof detected. Please draw manually.', 'alert-circle');
+                if (!startResult.success || !startResult.job_id) {
+                    hideLoading();
+                    showModal('Error', startResult.error || 'Failed to start detection', 'alert-circle');
+                    return;
                 }
+
+                const jobId = startResult.job_id;
+                console.log('[AI-DETECT] Job started:', jobId);
+
+                // Step 2: Poll for results
+                let attempts = 0;
+                const maxAttempts = 60; // 60 seconds max
+                const pollInterval = 1000; // 1 second
+
+                const pollJob = async () => {
+                    attempts++;
+
+                    if (attempts > maxAttempts) {
+                        hideLoading();
+                        showModal('Timeout', 'Detection took too long. Please try with a smaller image or draw manually.', 'alert-circle');
+                        return;
+                    }
+
+                    // Update loading message
+                    if (attempts % 3 === 0) {
+                        showLoading(`AI analyzing... ${attempts}s`);
+                    }
+
+                    try {
+                        const statusResponse = await fetch(`/api/roof-designer/auto-detect-status/${jobId}`);
+                        const statusResult = await statusResponse.json();
+
+                        if (statusResult.status === 'completed') {
+                            hideLoading();
+
+                            const result = statusResult.result;
+                            if (result && result.candidates && result.candidates.length > 0) {
+                                detectedCandidates = result.candidates;
+                                displayCandidates(detectedCandidates);
+                                showModal('AI Detection Complete', `Found ${result.candidates.length} potential roof area(s). Click on a highlighted area to select it.`, 'sparkles');
+                            } else {
+                                showModal('No Roof Detected', 'AI could not detect a roof. Please draw manually.', 'alert-circle');
+                            }
+                        } else if (statusResult.status === 'failed') {
+                            hideLoading();
+                            showModal('Detection Failed', statusResult.error || 'Detection failed', 'alert-circle');
+                        } else {
+                            // Still pending or running - poll again
+                            setTimeout(pollJob, pollInterval);
+                        }
+                    } catch (pollError) {
+                        console.error('[AI-DETECT] Poll error:', pollError);
+                        setTimeout(pollJob, pollInterval);
+                    }
+                };
+
+                // Start polling
+                setTimeout(pollJob, pollInterval);
+
             } catch (error) {
                 hideLoading();
                 showModal('Error', 'AI detection failed: ' + error.message, 'alert-circle');
