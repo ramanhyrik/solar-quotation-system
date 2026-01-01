@@ -856,6 +856,11 @@
         let drawingMode = null; // 'roof' or 'exclusion'
         let panels = [];
 
+        // IMPORTANT: Image scaling for polygon coordinate transformation
+        let imageScaleFactor = 1; // Scale from original image to canvas
+        let originalImageWidth = 0;
+        let originalImageHeight = 0;
+
         // Command history for undo/redo
         const commandHistory = {
             undoStack: [],
@@ -1306,8 +1311,18 @@
         function applyBestCandidate(candidate) {
             if (!candidate) return;
 
-            // Set roof polygon points
-            roofPolygonPoints = candidate.points.map(p => ({x: p.x, y: p.y}));
+            // CRITICAL FIX: Scale polygon points from original image size to canvas size
+            // The API returns coordinates in original image dimensions, but canvas is scaled
+            console.log('[AI-SCALE] Original points:', candidate.points.slice(0, 2));
+            console.log('[AI-SCALE] Image scale factor:', imageScaleFactor);
+            console.log('[AI-SCALE] Original image:', originalImageWidth, 'x', originalImageHeight);
+
+            roofPolygonPoints = candidate.points.map(p => ({
+                x: p.x * imageScaleFactor,
+                y: p.y * imageScaleFactor
+            }));
+
+            console.log('[AI-SCALE] Scaled points:', roofPolygonPoints.slice(0, 2));
 
             // IMPORTANT: Disable drawing mode to prevent interference
             drawingMode = null;
@@ -1630,7 +1645,18 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 fabric.Image.fromURL(e.target.result, (img) => {
+                    // Store original image dimensions
+                    originalImageWidth = img.width;
+                    originalImageHeight = img.height;
+
+                    // Calculate scale factor to fit canvas (900x700)
                     const scale = Math.min(900 / img.width, 700 / img.height);
+                    imageScaleFactor = scale;
+
+                    console.log('[CANVAS-INIT] Original image:', img.width, 'x', img.height);
+                    console.log('[CANVAS-INIT] Scale factor:', scale);
+                    console.log('[CANVAS-INIT] Canvas size:', img.width * scale, 'x', img.height * scale);
+
                     img.scale(scale);
                     canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
                     canvas.setDimensions({ width: img.width * scale, height: img.height * scale });
@@ -2196,10 +2222,27 @@
                     points: zone.points
                 }));
 
+                // CRITICAL FIX: Scale points back to original image size for backend calculations
+                const originalRoofPoints = roofPolygonPoints.map(p => ({
+                    x: p.x / imageScaleFactor,
+                    y: p.y / imageScaleFactor
+                }));
+
+                const originalObstacleData = obstacleData.map(zone => ({
+                    points: zone.points.map(p => ({
+                        x: p.x / imageScaleFactor,
+                        y: p.y / imageScaleFactor
+                    }))
+                }));
+
+                console.log('[CALC-SCALE] Scaling points back to original image size');
+                console.log('[CALC-SCALE] Canvas points:', roofPolygonPoints.slice(0, 2));
+                console.log('[CALC-SCALE] Original points:', originalRoofPoints.slice(0, 2));
+
                 const formData = new FormData();
                 formData.append('design_id', designId);
-                formData.append('roof_polygon', JSON.stringify(roofPolygonPoints));
-                formData.append('obstacles', JSON.stringify(obstacleData));
+                formData.append('roof_polygon', JSON.stringify(originalRoofPoints));
+                formData.append('obstacles', JSON.stringify(originalObstacleData));
                 formData.append('panel_width_m', panelWidth);
                 formData.append('panel_height_m', panelHeight);
                 formData.append('panel_power_w', panelPower);
@@ -2265,9 +2308,24 @@
             });
 
             console.log(`[DISPLAY] Rendering ${panels.length} panels...`);
+            console.log(`[DISPLAY-SCALE] Image scale factor: ${imageScaleFactor}`);
 
             // Draw panels with photo-realistic solar panel appearance
             panels.forEach((panel, idx) => {
+                // CRITICAL FIX: Scale panel positions from original image to canvas coordinates
+                const scaledPanel = {
+                    x: panel.x * imageScaleFactor,
+                    y: panel.y * imageScaleFactor,
+                    width: panel.width * imageScaleFactor,
+                    height: panel.height * imageScaleFactor
+                };
+
+                if (idx === 0) {
+                    console.log(`[DISPLAY-SCALE] Panel 0 - Original:`, panel);
+                    console.log(`[DISPLAY-SCALE] Panel 0 - Scaled:`, scaledPanel);
+                }
+
+                panel = scaledPanel; // Use scaled coordinates for display
                 const elements = [];
 
                 // 1. Drop shadow for 3D effect
