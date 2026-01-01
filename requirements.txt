@@ -13,10 +13,5 @@ sendgrid==6.11.0
 numpy==1.26.4
 shapely==2.0.2
 matplotlib==3.8.2
-# SAM 3 (Segment Anything Model 3) - November 2025
-# Text-based Promptable Concept Segmentation (PCS)
-# 900M parameters - 2x better accuracy than SAM 2
-# Prerequisites: Python 3.12+, PyTorch 2.7+
-torch>=2.7.0
-transformers>=5.0.0rc1
-opencv-python-headless==4.9.0.80
+# SAM 3 API - Uses HuggingFace Space instead of local model
+# No need for torch/transformers locally - we call the API via requests
