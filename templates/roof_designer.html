@@ -783,15 +783,6 @@
                     </div>
                 </div>
 
-                <div class="customer-info">
-                    <div class="customer-info-title">Customer Info (Optional)</div>
-                    <div class="form-group" style="margin-bottom: 8px;">
-                        <input type="text" id="customerName" placeholder="Customer name">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="customerAddress" placeholder="Address">
-                    </div>
-                </div>
             </div>
 
             <!-- Drawing Tools Section -->
@@ -1501,20 +1492,20 @@
                     }))
                 );
 
-                const response = await fetch('/api/calculate-panel-layout', {
+                const formData = new FormData();
+                formData.append('design_id', designId);
+                formData.append('roof_polygon', JSON.stringify(roofPointsOriginal));
+                formData.append('obstacles', JSON.stringify(exclusionsOriginal.map(zone => ({ points: zone }))));
+                formData.append('panel_width_m', panelWidth);
+                formData.append('panel_height_m', panelHeight);
+                formData.append('panel_power_w', panelPower);
+                formData.append('spacing_m', spacing);
+                formData.append('pixels_per_meter', pixelsPerMeter);
+                formData.append('orientation', orientation);
+
+                const response = await fetch('/api/roof-designer/calculate-layout', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        design_id: designId,
-                        roof_polygon: roofPointsOriginal,
-                        exclusion_zones: exclusionsOriginal,
-                        panel_width: panelWidth,
-                        panel_height: panelHeight,
-                        panel_power: panelPower,
-                        orientation: orientation,
-                        spacing: spacing,
-                        pixels_per_meter: pixelsPerMeter
-                    })
+                    body: formData
                 });
 
                 const result = await response.json();
@@ -1526,7 +1517,7 @@
                     displayResults(result);
                     document.getElementById('resultsSection').style.display = 'block';
                     document.getElementById('saveBtn').disabled = false;
-                    showModal('Success', `Successfully placed ${result.num_panels} panels!`, 'check-circle');
+                    showModal('Success', `Successfully placed ${result.total_panels || result.num_panels} panels!`, 'check-circle');
                 } else {
                     showModal('Error', result.error || 'Failed to calculate layout.', 'alert-circle');
                 }
@@ -1566,10 +1557,10 @@
         }
 
         function displayResults(result) {
-            document.getElementById('resultPanels').textContent = result.num_panels;
-            document.getElementById('resultPower').textContent = (result.total_power / 1000).toFixed(2) + ' kW';
-            document.getElementById('resultCoverage').textContent = result.coverage_percentage.toFixed(1) + '%';
-            document.getElementById('resultArea').textContent = result.roof_area.toFixed(1) + ' m²';
+            document.getElementById('resultPanels').textContent = result.total_panels || result.num_panels || 0;
+            document.getElementById('resultPower').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
+            document.getElementById('resultCoverage').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
+            document.getElementById('resultArea').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
         }
 
         // Save design
@@ -1582,42 +1573,15 @@
             showLoading('Saving your design...');
 
             try {
-                const customerName = document.getElementById('customerName').value || 'Unnamed Customer';
-                const customerAddress = document.getElementById('customerAddress').value || '';
-
-                const roofPointsOriginal = roofPolygonPoints.map(p => ({
-                    x: p.x / imageScaleFactor,
-                    y: p.y / imageScaleFactor
-                }));
-
-                const exclusionsOriginal = exclusionZones.map(zone =>
-                    zone.points.map(p => ({
-                        x: p.x / imageScaleFactor,
-                        y: p.y / imageScaleFactor
-                    }))
-                );
-
                 const canvasData = canvas.toDataURL('image/png');
 
-                const response = await fetch('/api/save-roof-design', {
+                const formData = new FormData();
+                formData.append('design_id', designId);
+                formData.append('visualization', canvasData);
+
+                const response = await fetch('/api/roof-designer/save-visualization', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        design_id: designId,
-                        customer_name: customerName,
-                        customer_address: customerAddress,
-                        roof_polygon: roofPointsOriginal,
-                        exclusion_zones: exclusionsOriginal,
-                        panels: panels,
-                        canvas_image: canvasData,
-                        panel_specs: {
-                            width: parseFloat(document.getElementById('panelWidth').value),
-                            height: parseFloat(document.getElementById('panelHeight').value),
-                            power: parseFloat(document.getElementById('panelPower').value),
-                            orientation: document.getElementById('orientation').value,
-                            spacing: parseFloat(document.getElementById('spacing').value)
-                        }
-                    })
+                    body: formData
                 });
 
                 const result = await response.json();
@@ -1648,9 +1612,8 @@
             try {
                 const formData = new FormData();
                 formData.append('design_id', designId);
-                formData.append('text_prompt', 'roof');
 
-                const response = await fetch('/api/detect-roof', {
+                const response = await fetch('/api/roof-designer/auto-detect', {
                     method: 'POST',
                     body: formData
                 });
@@ -1863,10 +1826,9 @@
 
             try {
                 const formData = new FormData();
-                formData.append('image', file);
-                formData.append('customer_name', document.getElementById('customerName').value || 'Unnamed');
+                formData.append('file', file);
 
-                const response = await fetch('/api/upload-roof-image', {
+                const response = await fetch('/api/roof-designer/upload', {
                     method: 'POST',
                     body: formData
                 });
