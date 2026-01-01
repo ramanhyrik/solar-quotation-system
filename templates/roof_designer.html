@@ -880,7 +880,7 @@
                 </div>
 
                 <div id="drawingInstruction" class="instruction-badge" style="font-size: 11px;">
-                    Upload an image to start
+                    Choose AI Auto-Detect or Manual Draw
                 </div>
 
                 <!-- Drawing Tools -->
@@ -890,7 +890,7 @@
                         <i data-lucide="sparkles"></i>
                     </button>
 
-                    <button class="icon-btn active" id="drawRoofBtn" onclick="startDrawingRoof()" disabled
+                    <button class="icon-btn" id="drawRoofBtn" onclick="startDrawingRoof()" disabled
                             data-tooltip="Draw Roof">
                         <i data-lucide="home"></i>
                     </button>
@@ -1685,6 +1685,21 @@
                 return;
             }
 
+            // Clear any ongoing drawing and reset state before AI detection
+            drawingMode = null;
+            exitEditMode();
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawExclusionBtn').classList.remove('active');
+            document.getElementById('editModeBtn').classList.remove('active');
+
+            // Clear any preview drawings
+            canvas.getObjects().forEach(obj => {
+                if (obj.objectType === 'preview') {
+                    canvas.remove(obj);
+                }
+            });
+            canvas.renderAll();
+
             showLoading('AI is analyzing your roof...');
 
             try {
@@ -1768,6 +1783,14 @@
             candidatePolygons.forEach(poly => canvas.remove(poly));
             candidatePolygons = [];
 
+            // Clear drawing mode and deactivate manual buttons
+            drawingMode = null;
+            exitEditMode();
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawExclusionBtn').classList.remove('active');
+            document.getElementById('editModeBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent = 'Click on a highlighted area to select it';
+
             candidates.forEach((candidate, index) => {
                 const scaledPoints = (candidate.points || candidate.polygon).map(p => ({
                     x: p.x * imageScaleFactor,
@@ -1821,6 +1844,13 @@
             candidatePolygons.forEach(poly => canvas.remove(poly));
             candidatePolygons = [];
             showingCandidates = false;
+
+            // Clear drawing mode and ensure buttons are not active
+            drawingMode = null;
+            document.getElementById('drawRoofBtn').classList.remove('active');
+            document.getElementById('drawExclusionBtn').classList.remove('active');
+            document.getElementById('editModeBtn').classList.remove('active');
+            document.getElementById('drawingInstruction').textContent = 'Roof selected! Edit points or configure panels.';
 
             canvas.add(roofPolygonObject);
             canvas.renderAll();
@@ -2050,7 +2080,8 @@
                     document.getElementById('zoomControls').classList.remove('hidden');
 
                     enableDrawingTools();
-                    startDrawingRoof();
+                    // Don't auto-activate manual mode - let user choose AI or manual
+                    // startDrawingRoof();
 
                     resolve();
                 }, { crossOrigin: 'anonymous' });
@@ -2076,11 +2107,14 @@
                     return;
                 }
 
+                // When showing AI candidates, only allow candidate selection
+                // Prevent any drawing or other interactions
                 if (showingCandidates) {
                     const target = canvas.findTarget(opt.e);
                     if (target && target.polygonType === 'candidate') {
                         selectCandidate(target.candidateIndex);
                     }
+                    // Always return when showing candidates to prevent drawing mode
                     return;
                 }
 
