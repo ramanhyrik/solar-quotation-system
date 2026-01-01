@@ -1,7 +1,7 @@
 services:
   - type: web
     name: solar-quotation-system
-    runtime: python
+    runtime: python3.12
     buildCommand: chmod +x build.sh && ./build.sh
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:

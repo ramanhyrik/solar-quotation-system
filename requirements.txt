@@ -18,5 +18,5 @@ matplotlib==3.8.2
 # 900M parameters - 2x better accuracy than SAM 2
 # Prerequisites: Python 3.12+, PyTorch 2.7+
 torch>=2.7.0
-transformers>=4.46.0
+transformers>=5.0.0rc1
 opencv-python-headless==4.9.0.80
