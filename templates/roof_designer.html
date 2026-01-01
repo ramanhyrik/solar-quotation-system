@@ -1639,7 +1639,7 @@
             candidatePolygons = [];
 
             candidates.forEach((candidate, index) => {
-                const scaledPoints = candidate.polygon.map(p => ({
+                const scaledPoints = (candidate.points || candidate.polygon).map(p => ({
                     x: p.x * imageScaleFactor,
                     y: p.y * imageScaleFactor
                 }));
@@ -1674,7 +1674,7 @@
                 canvas.remove(roofPolygonObject);
             }
 
-            roofPolygonPoints = candidate.polygon.map(p => ({
+            roofPolygonPoints = (candidate.points || candidate.polygon).map(p => ({
                 x: p.x * imageScaleFactor,
                 y: p.y * imageScaleFactor
             }));
