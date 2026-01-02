@@ -496,25 +496,35 @@
             font-size: 14px;
         }
 
-        /* Zoom Controls (sidebar) */
-        .zoom-controls {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
+        /* Zoom Controls (canvas overlay bottom) */
+        .zoom-overlay {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
             align-items: center;
+            z-index: 80;
         }
 
         .zoom-btn {
-            width: 100%;
-            height: 44px;
+            min-width: 44px;
+            height: 42px;
             border: 1px solid var(--border-color);
             background: white;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            padding: 0 12px;
             font-weight: 600;
             color: var(--text-dark);
             transition: all 0.15s;
@@ -536,12 +546,12 @@
         }
 
         .zoom-level {
-            grid-column: span 3;
-            text-align: center;
             font-size: 12px;
             font-weight: 700;
             color: var(--text-dark);
-            padding: 6px 0;
+            padding: 0 8px;
+            min-width: 48px;
+            text-align: center;
         }
 
         /* Icon Toolbars */
@@ -988,33 +998,19 @@
                 </div>
 
                 <div class="toolbar-divider"></div>
-
-                <div class="section-title" style="margin-bottom: 8px;">
-                    <i data-lucide="zoom-in"></i>
-                    <span>View & Zoom</span>
-                </div>
-                <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomInBtn" onclick="zoomIn()" disabled>
-                        <i data-lucide="zoom-in"></i>
-                        <span>Zoom In</span>
-                    </button>
-                    <button class="zoom-btn" id="zoomOutBtn" onclick="zoomOut()" disabled>
-                        <i data-lucide="zoom-out"></i>
-                        <span>Zoom Out</span>
-                    </button>
-                    <button class="zoom-btn" id="resetZoomBtn" onclick="resetZoom()" disabled>
-                        <i data-lucide="maximize"></i>
-                        <span>Fit View</span>
-                    </button>
-                    <div class="zoom-level" id="zoomLevel">100%</div>
-                </div>
+                <!-- Zoom controls moved to canvas overlay -->
             </div>
 
             <!-- Results Section -->
-            <div class="sidebar-section" id="resultsSection" style="display: none;">
-                <div class="results-panel">
-                    <h3>Layout Results</h3>
-                    <div class="result-grid">
+            <div class="sidebar-section" id="resultsSection" style="display: none; padding: 12px 14px;">
+                <div class="results-panel" style="padding: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h3 style="margin: 0; font-size: 13px; letter-spacing: 0.3px;">Layout Results</h3>
+                        <button class="icon-btn" id="collapseResultsBtn" style="width:36px; height:36px;" onclick="toggleResultsCollapse()">
+                            <i data-lucide="chevron-up"></i>
+                        </button>
+                    </div>
+                    <div class="result-grid" id="resultsGrid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
                         <div class="result-item">
                             <div class="result-label">Panels</div>
                             <div class="result-value" id="resultPanels">0</div>
@@ -1058,6 +1054,20 @@
             <!-- Canvas Container - Shows when image loaded -->
             <div class="canvas-container hidden" id="canvasContainer">
                 <canvas id="roofCanvas" width="1200" height="800"></canvas>
+            </div>
+
+            <!-- Zoom Controls (canvas overlay) -->
+            <div class="zoom-overlay" id="zoomControls" style="display: none;">
+                <button class="zoom-btn" id="zoomOutBtn" onclick="zoomOut()" disabled>
+                    <i data-lucide="zoom-out"></i>
+                </button>
+                <div class="zoom-level" id="zoomLevel">100%</div>
+                <button class="zoom-btn" id="zoomInBtn" onclick="zoomIn()" disabled>
+                    <i data-lucide="zoom-in"></i>
+                </button>
+                <button class="zoom-btn" id="resetZoomBtn" onclick="resetZoom()" disabled>
+                    <i data-lucide="maximize"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -1194,15 +1204,18 @@
         function toggleUploadOverlay(show) {
             const overlay = document.getElementById('canvasUploadOverlay');
             const container = document.getElementById('canvasContainer');
+            const zoomOverlay = document.getElementById('zoomControls');
 
             if (!overlay || !container) return;
 
             if (show) {
                 overlay.classList.remove('hidden');
                 container.classList.add('hidden');
+                if (zoomOverlay) zoomOverlay.style.display = 'none';
             } else {
                 overlay.classList.add('hidden');
                 container.classList.remove('hidden');
+                if (zoomOverlay) zoomOverlay.style.display = 'flex';
             }
             setZoomButtonsEnabled(!show && !!canvas);
         }
@@ -1934,6 +1947,16 @@
             document.getElementById('resultArea').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
         }
 
+        function toggleResultsCollapse() {
+            const grid = document.getElementById('resultsGrid');
+            const btn = document.getElementById('collapseResultsBtn');
+            if (!grid || !btn) return;
+            const isHidden = grid.style.display === 'none';
+            grid.style.display = isHidden ? 'grid' : 'none';
+            btn.querySelector('i')?.setAttribute('data-lucide', isHidden ? 'chevron-up' : 'chevron-down');
+            lucide.createIcons();
+        }
+
         // Save design
         async function saveDesign() {
             if (!roofPolygonObject || panels.length === 0) {
@@ -2022,7 +2045,7 @@
                 // Step 2: Poll for results
                 let attempts = 0;
                 const maxAttempts = 120; // 120 seconds max (2 minutes)
-                const pollInterval = 1000; // 1 second
+                let pollInterval = 700; // start faster, then back off
 
                 const pollJob = async () => {
                     attempts++;
@@ -2031,6 +2054,13 @@
                         hideLoading();
                         showModal('Timeout', 'Detection took too long. Please try with a smaller image or draw manually.', 'alert-circle');
                         return;
+                    }
+
+                    // Back off polling slightly after 20s to reduce load
+                    if (attempts === 20) {
+                        pollInterval = 1200;
+                    } else if (attempts === 60) {
+                        pollInterval = 1500;
                     }
 
                     // Update loading message
@@ -2420,7 +2450,7 @@
                     const scale = Math.min(
                         canvasWidth / img.width,
                         canvasHeight / img.height
-                    );
+                    ) * 0.92; // pad image to avoid touching edges
 
                     imageScaleFactor = scale;
 
@@ -2590,9 +2620,10 @@
                         objectType: 'preview'
                     }));
                 }
-
                 lines.forEach(line => canvas.add(line));
+            }
 
+            if (points.length >= 1) {
                 points.forEach(point => {
                     const circle = new fabric.Circle({
                         left: point.x,
