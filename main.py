@@ -1984,7 +1984,7 @@ def run_sam_detection_sync(job_id: str, image_path: str):
 
         if detection_result.get('success'):
             candidates = detection_result.get('candidates', [])
-            print(f"[JOB-{job_id}] ✓ Completed - Found {len(candidates)} candidates")
+            print(f"[JOB-{job_id}] Completed - Found {len(candidates)} candidate(s)")
 
             detection_jobs[job_id]["status"] = "completed"
             detection_jobs[job_id]["result"] = {
@@ -1995,7 +1995,7 @@ def run_sam_detection_sync(job_id: str, image_path: str):
             }
         else:
             error_msg = detection_result.get('error', 'Detection failed')
-            print(f"[JOB-{job_id}] ✗ Failed - {error_msg}")
+            print(f"[JOB-{job_id}] Failed - {error_msg}")
             detection_jobs[job_id]["status"] = "failed"
             detection_jobs[job_id]["error"] = error_msg
 

@@ -496,61 +496,52 @@
             font-size: 14px;
         }
 
-        /* Zoom Controls Overlay */
-        .zoom-overlay {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            z-index: 100;
+        /* Zoom Controls (sidebar) */
+        .zoom-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            align-items: center;
         }
 
-        .zoom-overlay button {
-            width: 36px;
-            height: 36px;
+        .zoom-btn {
+            width: 100%;
+            height: 44px;
             border: 1px solid var(--border-color);
             background: white;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
+            font-weight: 600;
+            color: var(--text-dark);
             transition: all 0.15s;
         }
 
-        .zoom-overlay button:hover {
+        .zoom-btn:hover:not(:disabled) {
             background: var(--bg-gray);
             border-color: var(--primary-blue);
         }
 
-        .zoom-overlay button i {
+        .zoom-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .zoom-btn i {
             width: 18px;
             height: 18px;
         }
 
         .zoom-level {
-            font-size: 11px;
-            font-weight: 600;
+            grid-column: span 3;
             text-align: center;
-            padding: 4px 0;
+            font-size: 12px;
+            font-weight: 700;
             color: var(--text-dark);
-        }
-
-        .zoom-tip {
-            font-size: 10px;
-            color: var(--text-medium);
-            text-align: center;
-            margin-top: 4px;
-            padding: 6px 8px;
-            background: var(--bg-gray);
-            border-radius: 4px;
+            padding: 6px 0;
         }
 
         /* Icon Toolbars */
@@ -562,7 +553,7 @@
         }
 
         .icon-btn {
-            width: 44px;
+            min-width: 44px;
             height: 44px;
             border: 1px solid var(--border-color);
             background: white;
@@ -573,6 +564,7 @@
             justify-content: center;
             transition: all 0.15s;
             position: relative;
+            padding: 0 10px;
         }
 
         .icon-btn:hover {
@@ -971,16 +963,19 @@
                     <button class="icon-btn" id="panelConfigBtn" onclick="openPanelConfigModal()" disabled
                             data-tooltip="Panel Settings">
                         <i data-lucide="settings"></i>
+                        <span style="font-size: 12px;">Panel Settings</span>
                     </button>
 
                     <button class="icon-btn" id="calculateBtn" onclick="calculatePanelLayout()" disabled
                             data-tooltip="Calculate Layout">
                         <i data-lucide="calculator"></i>
+                        <span style="font-size: 12px;">Calculate</span>
                     </button>
 
                     <button class="icon-btn" id="shortcutsBtn" onclick="showKeyboardShortcuts()" disabled
                             data-tooltip="Keyboard Shortcuts">
                         <i data-lucide="keyboard"></i>
+                        <span style="font-size: 12px;">Shortcuts</span>
                     </button>
                 </div>
 
@@ -990,6 +985,28 @@
                         <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled
                                style="font-size: 12px; padding: 6px 8px;">
                     </div>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="section-title" style="margin-bottom: 8px;">
+                    <i data-lucide="zoom-in"></i>
+                    <span>View & Zoom</span>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomInBtn" onclick="zoomIn()" disabled>
+                        <i data-lucide="zoom-in"></i>
+                        <span>Zoom In</span>
+                    </button>
+                    <button class="zoom-btn" id="zoomOutBtn" onclick="zoomOut()" disabled>
+                        <i data-lucide="zoom-out"></i>
+                        <span>Zoom Out</span>
+                    </button>
+                    <button class="zoom-btn" id="resetZoomBtn" onclick="resetZoom()" disabled>
+                        <i data-lucide="maximize"></i>
+                        <span>Fit View</span>
+                    </button>
+                    <div class="zoom-level" id="zoomLevel">100%</div>
                 </div>
             </div>
 
@@ -1041,23 +1058,6 @@
             <!-- Canvas Container - Shows when image loaded -->
             <div class="canvas-container hidden" id="canvasContainer">
                 <canvas id="roofCanvas" width="1200" height="800"></canvas>
-            </div>
-
-            <!-- Zoom Controls Overlay -->
-            <div class="zoom-overlay hidden" id="zoomControls">
-                <button onclick="zoomIn()">
-                    <i data-lucide="zoom-in"></i>
-                </button>
-                <div class="zoom-level" id="zoomLevel">100%</div>
-                <button onclick="zoomOut()">
-                    <i data-lucide="zoom-out"></i>
-                </button>
-                <button onclick="resetZoom()">
-                    <i data-lucide="maximize"></i>
-                </button>
-                <div class="zoom-tip">
-                    Hold <kbd>Space</kbd> + drag to pan
-                </div>
             </div>
         </div>
     </div>
@@ -1186,25 +1186,25 @@
         let showingCandidates = false;
         let selectedCandidateIndex = null;
         let highlightedCandidatePolygon = null;
+        let drawingUndoStack = [];
+        let drawingRedoStack = [];
         const closePolygonBtn = document.getElementById('closePolygonBtn');
         const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'Close Polygon' : 'Close Polygon';
 
         function toggleUploadOverlay(show) {
             const overlay = document.getElementById('canvasUploadOverlay');
             const container = document.getElementById('canvasContainer');
-            const zoomControls = document.getElementById('zoomControls');
 
-            if (!overlay || !container || !zoomControls) return;
+            if (!overlay || !container) return;
 
             if (show) {
                 overlay.classList.remove('hidden');
                 container.classList.add('hidden');
-                zoomControls.classList.add('hidden');
             } else {
                 overlay.classList.add('hidden');
                 container.classList.remove('hidden');
-                zoomControls.classList.remove('hidden');
             }
+            setZoomButtonsEnabled(!show && !!canvas);
         }
 
         function updateClosePolygonButton(enabled, tooltipText = defaultCloseTooltip) {
@@ -1247,6 +1247,26 @@
         }
 
         function undo() {
+            if (drawingMode && drawingUndoStack.length > 0) {
+                drawingRedoStack.push({
+                    mode: drawingMode,
+                    roofPoints: [...roofPolygonPoints],
+                    exclusionPoints: [...currentExclusionPoints]
+                });
+                const prevState = drawingUndoStack.pop();
+
+                if (drawingMode === 'roof') {
+                    roofPolygonPoints = [...prevState.roofPoints];
+                    drawPolygonPreview(roofPolygonPoints, 'rgba(59, 130, 246, 0.2)', '#2563eb');
+                } else if (drawingMode === 'exclusion') {
+                    currentExclusionPoints = [...prevState.exclusionPoints];
+                    drawPolygonPreview(currentExclusionPoints, 'rgba(239, 68, 68, 0.2)', '#ef4444');
+                }
+
+                updateUndoRedoButtons();
+                return;
+            }
+
             if (commandHistory.undoStack.length === 0) return;
 
             const command = commandHistory.undoStack.pop();
@@ -1256,6 +1276,27 @@
         }
 
         function redo() {
+            if (drawingMode && drawingRedoStack.length > 0) {
+                drawingUndoStack.push({
+                    mode: drawingMode,
+                    roofPoints: [...roofPolygonPoints],
+                    exclusionPoints: [...currentExclusionPoints]
+                });
+
+                const nextState = drawingRedoStack.pop();
+
+                if (drawingMode === 'roof') {
+                    roofPolygonPoints = [...nextState.roofPoints];
+                    drawPolygonPreview(roofPolygonPoints, 'rgba(59, 130, 246, 0.2)', '#2563eb');
+                } else if (drawingMode === 'exclusion') {
+                    currentExclusionPoints = [...nextState.exclusionPoints];
+                    drawPolygonPreview(currentExclusionPoints, 'rgba(239, 68, 68, 0.2)', '#ef4444');
+                }
+
+                updateUndoRedoButtons();
+                return;
+            }
+
             if (commandHistory.redoStack.length === 0) return;
 
             const command = commandHistory.redoStack.pop();
@@ -1267,8 +1308,12 @@
         function updateUndoRedoButtons() {
             const undoBtn = document.getElementById('undoBtn');
             const redoBtn = document.getElementById('redoBtn');
-            if (undoBtn) undoBtn.disabled = commandHistory.undoStack.length === 0;
-            if (redoBtn) redoBtn.disabled = commandHistory.redoStack.length === 0;
+            const hasDrawingUndo = (drawingMode === 'roof' && roofPolygonPoints.length > 0) ||
+                                   (drawingMode === 'exclusion' && currentExclusionPoints.length > 0);
+            const hasDrawingRedo = drawingRedoStack.length > 0;
+
+            if (undoBtn) undoBtn.disabled = (commandHistory.undoStack.length === 0) && !hasDrawingUndo;
+            if (redoBtn) redoBtn.disabled = (commandHistory.redoStack.length === 0) && !hasDrawingRedo;
         }
 
         // Zoom functions
@@ -1290,6 +1335,13 @@
             canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
             canvas.renderAll();
             updateZoomDisplay();
+        }
+
+        function setZoomButtonsEnabled(enabled) {
+            ['zoomInBtn', 'zoomOutBtn', 'resetZoomBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = !enabled;
+            });
         }
 
         function setZoom(zoom, centerPoint = null) {
@@ -1404,6 +1456,7 @@
             drawingMode = 'roof';
             clearCandidatePolygons();
             exitEditMode();
+            resetDrawingUndoRedo();
             document.getElementById('drawRoofBtn').classList.add('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
@@ -1418,6 +1471,7 @@
             currentExclusionPoints = [];
             clearCandidatePolygons();
             exitEditMode();
+            resetDrawingUndoRedo();
             document.getElementById('drawExclusionBtn').classList.add('active');
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
@@ -1434,6 +1488,22 @@
             } else {
                 instruction.textContent = 'Select a tool to begin';
             }
+        }
+
+        function resetDrawingUndoRedo() {
+            drawingUndoStack = [];
+            drawingRedoStack = [];
+            updateUndoRedoButtons();
+        }
+
+        function pushDrawingUndoState() {
+            drawingUndoStack.push({
+                mode: drawingMode,
+                roofPoints: [...roofPolygonPoints],
+                exclusionPoints: [...currentExclusionPoints]
+            });
+            drawingRedoStack = [];
+            updateUndoRedoButtons();
         }
 
         function closePolygon() {
@@ -1468,9 +1538,9 @@
                 updateDrawingInstruction();
                 enablePanelConfig();
                 updateClosePolygonButton(false);
+                resetDrawingUndoRedo();
 
-                // Remove redundant modal
-                document.getElementById('drawingInstruction').textContent = 'Roof created! Edit points or configure panels.';
+                document.getElementById('drawingInstruction').textContent = 'Roof applied. Adjust points or configure panels when ready.';
             } else if (drawingMode === 'exclusion' && currentExclusionPoints.length >= 3) {
                 const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
                     fill: 'rgba(239, 68, 68, 0.3)',
@@ -1494,6 +1564,7 @@
                 document.getElementById('drawExclusionBtn').classList.remove('active');
                 updateDrawingInstruction();
                 updateClosePolygonButton(false);
+                resetDrawingUndoRedo();
             } else {
                 showModal('Error', 'You need at least 3 points to close a polygon.', 'alert-circle');
             }
@@ -1579,6 +1650,7 @@
                     disablePanelConfig();
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);
+                    resetDrawingUndoRedo();
                     document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
                 }
             );
@@ -1612,6 +1684,7 @@
                     commandHistory.undoStack = [];
                     commandHistory.redoStack = [];
                     updateUndoRedoButtons();
+                    resetDrawingUndoRedo();
                 }
             );
         }
@@ -1638,6 +1711,7 @@
             document.getElementById('pixelsPerMeter').disabled = false;
             document.getElementById('shortcutsBtn').disabled = false;
             updateClosePolygonButton(false);
+            setZoomButtonsEnabled(true);
         }
 
         function disableDrawingTools() {
@@ -1650,6 +1724,7 @@
             document.getElementById('pixelsPerMeter').disabled = true;
             document.getElementById('shortcutsBtn').disabled = true;
             updateClosePolygonButton(false);
+            setZoomButtonsEnabled(false);
         }
 
         // Calculate panel layout
@@ -1919,6 +1994,7 @@
             canvas.renderAll();
             clearCandidatePolygons();
             updateClosePolygonButton(false);
+            resetDrawingUndoRedo();
 
             showLoading('AI is analyzing your roof...');
 
@@ -2001,6 +2077,7 @@
 
         function displayCandidates(candidates) {
             clearCandidatePolygons();
+            resetDrawingUndoRedo();
 
             // Clear drawing mode and deactivate manual buttons
             drawingMode = null;
@@ -2116,7 +2193,7 @@
 
             // Update instruction
             document.getElementById('drawingInstruction').textContent =
-                'Roof applied! Edit points if needed or configure panels.';
+                'Roof ready. Use Edit Points or Panel Settings as needed.';
 
             // Add to canvas
             canvas.add(roofPolygonObject);
@@ -2124,6 +2201,7 @@
 
             // Enable panel configuration
             enablePanelConfig();
+            resetDrawingUndoRedo();
         }
 
         // Keyboard shortcuts
@@ -2322,6 +2400,7 @@
             commandHistory.undoStack = [];
             commandHistory.redoStack = [];
             updateUndoRedoButtons();
+            resetDrawingUndoRedo();
 
             return new Promise((resolve, reject) => {
                 fabric.Image.fromURL(imageUrl, (img) => {
@@ -2333,8 +2412,10 @@
                     originalImageWidth = img.width;
                     originalImageHeight = img.height;
 
-                    const canvasWidth = 1200;
-                    const canvasHeight = 800;
+                    const canvasArea = document.querySelector('.canvas-area');
+                    const areaRect = canvasArea ? canvasArea.getBoundingClientRect() : { width: 1200, height: 800 };
+                    const canvasWidth = Math.max(800, Math.floor(areaRect.width - 32));
+                    const canvasHeight = Math.max(600, Math.floor(areaRect.height - 32));
 
                     const scale = Math.min(
                         canvasWidth / img.width,
@@ -2355,6 +2436,8 @@
                         selection: false,
                         backgroundColor: '#F3F4F6'
                     });
+                    canvasZoom = 1;
+                    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
 
                     img.scale(scale);
                     img.set({
@@ -2372,6 +2455,8 @@
 
                     toggleUploadOverlay(false);
                     enableDrawingTools();
+                    setZoomButtonsEnabled(true);
+                    updateZoomDisplay();
                     document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
                     // Don't auto-activate manual mode - let user choose AI or manual
                     // startDrawingRoof();
@@ -2416,11 +2501,15 @@
                 const pointer = canvas.getPointer(opt.e);
 
                 if (drawingMode === 'roof') {
+                    pushDrawingUndoState();
                     roofPolygonPoints.push({ x: pointer.x, y: pointer.y });
                     drawPolygonPreview(roofPolygonPoints, 'rgba(59, 130, 246, 0.2)', '#2563eb');
+                    updateUndoRedoButtons();
                 } else if (drawingMode === 'exclusion') {
+                    pushDrawingUndoState();
                     currentExclusionPoints.push({ x: pointer.x, y: pointer.y });
                     drawPolygonPreview(currentExclusionPoints, 'rgba(239, 68, 68, 0.2)', '#ef4444');
+                    updateUndoRedoButtons();
                 }
             });
 
