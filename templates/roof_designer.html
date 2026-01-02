@@ -1968,7 +1968,7 @@
                 // Step 2: Poll for results
                 let attempts = 0;
                 const maxAttempts = 120; // 120 seconds max (2 minutes)
-                let pollInterval = 700; // start faster, then back off
+                const pollInterval = 1000; // steady 1s polling to avoid flicker
 
                 const pollJob = async () => {
                     attempts++;
@@ -1977,13 +1977,6 @@
                         hideLoading();
                         showModal('Timeout', 'Detection took too long. Please try with a smaller image or draw manually.', 'alert-circle');
                         return;
-                    }
-
-                    // Back off polling slightly after 20s to reduce load
-                    if (attempts === 20) {
-                        pollInterval = 1200;
-                    } else if (attempts === 60) {
-                        pollInterval = 1500;
                     }
 
                     // Update loading message
