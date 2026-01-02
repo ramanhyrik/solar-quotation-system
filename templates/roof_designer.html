@@ -1954,6 +1954,12 @@
                     body: formData
                 });
 
+                if (!startResponse.ok) {
+                    hideLoading();
+                    showModal('Error', `Failed to start detection (status ${startResponse.status}).`, 'alert-circle');
+                    return;
+                }
+
                 const startResult = await startResponse.json();
 
                 if (!startResult.success || !startResult.job_id) {
@@ -1969,6 +1975,7 @@
                 let attempts = 0;
                 const maxAttempts = 120; // 120 seconds max (2 minutes)
                 const pollInterval = 1000; // steady 1s polling to avoid flicker
+                let consecutiveErrors = 0;
 
                 const pollJob = async () => {
                     attempts++;
@@ -1986,7 +1993,13 @@
 
                     try {
                         const statusResponse = await fetch(`/api/roof-designer/auto-detect-status/${jobId}`);
+                        if (!statusResponse.ok) {
+                            hideLoading();
+                            showModal('Detection Error', `Status check failed (status ${statusResponse.status}).`, 'alert-circle');
+                            return;
+                        }
                         const statusResult = await statusResponse.json();
+                        consecutiveErrors = 0;
 
                         if (statusResult.status === 'completed') {
                             hideLoading();
@@ -2002,12 +2015,21 @@
                         } else if (statusResult.status === 'failed') {
                             hideLoading();
                             showModal('Detection Failed', statusResult.error || 'Detection failed', 'alert-circle');
+                        } else if (!statusResult.status) {
+                            hideLoading();
+                            showModal('Detection Error', 'Received malformed status response.', 'alert-circle');
                         } else {
                             // Still pending or running - poll again
                             setTimeout(pollJob, pollInterval);
                         }
                     } catch (pollError) {
                         console.error('[AI-DETECT] Poll error:', pollError);
+                        consecutiveErrors += 1;
+                        if (consecutiveErrors >= 5) {
+                            hideLoading();
+                            showModal('Detection Error', 'Status checks keep failing. Please try again.', 'alert-circle');
+                            return;
+                        }
                         setTimeout(pollJob, pollInterval);
                     }
                 };
