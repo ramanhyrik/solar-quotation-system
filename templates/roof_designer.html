@@ -70,17 +70,19 @@
             display: flex;
             height: calc(100vh - 60px);
             overflow: hidden;
+            flex-direction: row;
         }
 
-        /* Left Sidebar */
+        /* Right Sidebar */
         .sidebar {
             width: var(--sidebar-width);
             background: white;
-            border-right: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
+            order: 2;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -404,6 +406,63 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            order: 1;
+        }
+
+        /* Canvas Upload Overlay */
+        .canvas-upload-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(249, 250, 251, 0.98);
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        }
+
+        .canvas-upload-overlay.hidden {
+            display: none;
+        }
+
+        .canvas-upload-zone {
+            border: 3px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 60px 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .canvas-upload-zone:hover {
+            background: #EFF6FF;
+            border-color: var(--primary-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+        }
+
+        .canvas-upload-zone svg {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            color: var(--text-medium);
+        }
+
+        .canvas-upload-zone h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .canvas-upload-zone p {
+            font-size: 16px;
+            color: var(--text-medium);
         }
 
         .canvas-container {
@@ -839,39 +898,8 @@
 
     <!-- Main Layout -->
     <div class="main-container">
-        <!-- Left Sidebar -->
+        <!-- Right Sidebar -->
         <div class="sidebar">
-            <!-- Upload Section -->
-            <div class="sidebar-section">
-                <div class="section-title">
-                    <i data-lucide="upload"></i>
-                    <span>Upload Roof Image</span>
-                </div>
-
-                <div class="upload-zone" id="uploadZone">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <h3>Click or drag image</h3>
-                    <p>JPG, PNG (Max 10MB)</p>
-                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                </div>
-
-                <div id="imagePreviewContainer" class="hidden">
-                    <div class="image-preview">
-                        <img id="uploadedImageThumb" src="" alt="Uploaded roof">
-                        <div class="image-info">
-                            <span id="imageFileName">roof.jpg</span>
-                            <button class="tool-btn" onclick="clearImage()" style="width: auto; padding: 4px 8px; font-size: 11px;">
-                                <i data-lucide="x"></i>
-                                Clear
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
             <!-- Tools Section -->
             <div class="sidebar-section" id="toolsSection">
                 <div class="section-title">
@@ -998,14 +1026,19 @@
 
         <!-- Canvas Area -->
         <div class="canvas-area">
-            <div id="canvasPlaceholder" class="canvas-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <h2>Upload a Roof Image to Begin</h2>
-                <p>Upload a clear, top-down photo of the roof to start designing</p>
+            <!-- Upload Overlay - Shows when no image -->
+            <div class="canvas-upload-overlay" id="canvasUploadOverlay">
+                <div class="canvas-upload-zone" id="canvasUploadZone">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 80px; height: 80px; margin: 0 auto 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <h2>Upload Roof Image to Begin</h2>
+                    <p>Click to select or drag & drop (JPG, PNG - Max 10MB)</p>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
             </div>
 
+            <!-- Canvas Container - Shows when image loaded -->
             <div class="canvas-container hidden" id="canvasContainer">
                 <canvas id="roofCanvas" width="1200" height="800"></canvas>
             </div>
@@ -1153,6 +1186,45 @@
         let showingCandidates = false;
         let selectedCandidateIndex = null;
         let highlightedCandidatePolygon = null;
+        const closePolygonBtn = document.getElementById('closePolygonBtn');
+        const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'Close Polygon' : 'Close Polygon';
+
+        function toggleUploadOverlay(show) {
+            const overlay = document.getElementById('canvasUploadOverlay');
+            const container = document.getElementById('canvasContainer');
+            const zoomControls = document.getElementById('zoomControls');
+
+            if (!overlay || !container || !zoomControls) return;
+
+            if (show) {
+                overlay.classList.remove('hidden');
+                container.classList.add('hidden');
+                zoomControls.classList.add('hidden');
+            } else {
+                overlay.classList.add('hidden');
+                container.classList.remove('hidden');
+                zoomControls.classList.remove('hidden');
+            }
+        }
+
+        function updateClosePolygonButton(enabled, tooltipText = defaultCloseTooltip) {
+            const btn = document.getElementById('closePolygonBtn');
+            if (!btn) return;
+            btn.disabled = !enabled;
+            btn.setAttribute('data-tooltip', tooltipText);
+        }
+
+        function clearCandidatePolygons() {
+            if (canvas && candidatePolygons.length) {
+                candidatePolygons.forEach(poly => canvas.remove(poly));
+                canvas.renderAll();
+            }
+
+            candidatePolygons = [];
+            showingCandidates = false;
+            selectedCandidateIndex = null;
+            highlightedCandidatePolygon = null;
+        }
 
         class Command {
             constructor(execute, undo, description) {
@@ -1330,10 +1402,12 @@
             if (!canvas) return;
 
             drawingMode = 'roof';
+            clearCandidatePolygons();
             exitEditMode();
             document.getElementById('drawRoofBtn').classList.add('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
+            updateClosePolygonButton(true);
             updateDrawingInstruction();
         }
 
@@ -1342,10 +1416,12 @@
 
             drawingMode = 'exclusion';
             currentExclusionPoints = [];
+            clearCandidatePolygons();
             exitEditMode();
             document.getElementById('drawExclusionBtn').classList.add('active');
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
+            updateClosePolygonButton(true);
             updateDrawingInstruction();
         }
 
@@ -1391,6 +1467,7 @@
                 document.getElementById('drawRoofBtn').classList.remove('active');
                 updateDrawingInstruction();
                 enablePanelConfig();
+                updateClosePolygonButton(false);
 
                 // Remove redundant modal
                 document.getElementById('drawingInstruction').textContent = 'Roof created! Edit points or configure panels.';
@@ -1416,6 +1493,7 @@
                 drawingMode = null;
                 document.getElementById('drawExclusionBtn').classList.remove('active');
                 updateDrawingInstruction();
+                updateClosePolygonButton(false);
             } else {
                 showModal('Error', 'You need at least 3 points to close a polygon.', 'alert-circle');
             }
@@ -1499,6 +1577,9 @@
                     commandHistory.redoStack = [];
                     updateUndoRedoButtons();
                     disablePanelConfig();
+                    clearCandidatePolygons();
+                    updateClosePolygonButton(false);
+                    document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
                 }
             );
         }
@@ -1514,14 +1595,16 @@
                     }
 
                     uploadedImage = null;
+                    designId = null;
                     roofPolygonPoints = [];
                     roofPolygonObject = null;
                     exclusionZones = [];
-
-                    document.getElementById('imagePreviewContainer').classList.add('hidden');
-                    document.getElementById('canvasContainer').classList.add('hidden');
-                    document.getElementById('canvasPlaceholder').classList.remove('hidden');
-                    document.getElementById('zoomControls').classList.add('hidden');
+                    detectedCandidates = [];
+                    panels = [];
+                    clearCandidatePolygons();
+                    toggleUploadOverlay(true);
+                    updateClosePolygonButton(false);
+                    document.getElementById('drawingInstruction').textContent = 'Upload an image to get started';
 
                     disableDrawingTools();
                     disablePanelConfig();
@@ -1549,24 +1632,24 @@
             document.getElementById('autoDetectBtn').disabled = false;
             document.getElementById('drawRoofBtn').disabled = false;
             document.getElementById('drawExclusionBtn').disabled = false;
-            document.getElementById('closePolygonBtn').disabled = false;
             document.getElementById('editModeBtn').disabled = false;
             document.getElementById('deleteBtn').disabled = false;
             document.getElementById('clearAllBtn').disabled = false;
             document.getElementById('pixelsPerMeter').disabled = false;
             document.getElementById('shortcutsBtn').disabled = false;
+            updateClosePolygonButton(false);
         }
 
         function disableDrawingTools() {
             document.getElementById('autoDetectBtn').disabled = true;
             document.getElementById('drawRoofBtn').disabled = true;
             document.getElementById('drawExclusionBtn').disabled = true;
-            document.getElementById('closePolygonBtn').disabled = true;
             document.getElementById('editModeBtn').disabled = true;
             document.getElementById('deleteBtn').disabled = true;
             document.getElementById('clearAllBtn').disabled = true;
             document.getElementById('pixelsPerMeter').disabled = true;
             document.getElementById('shortcutsBtn').disabled = true;
+            updateClosePolygonButton(false);
         }
 
         // Calculate panel layout
@@ -1834,6 +1917,8 @@
                 }
             });
             canvas.renderAll();
+            clearCandidatePolygons();
+            updateClosePolygonButton(false);
 
             showLoading('AI is analyzing your roof...');
 
@@ -1915,10 +2000,7 @@
         }
 
         function displayCandidates(candidates) {
-            candidatePolygons.forEach(poly => canvas.remove(poly));
-            candidatePolygons = [];
-            selectedCandidateIndex = null;
-            highlightedCandidatePolygon = null;
+            clearCandidatePolygons();
 
             // Clear drawing mode and deactivate manual buttons
             drawingMode = null;
@@ -1926,7 +2008,7 @@
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent = `${candidates.length} roof${candidates.length > 1 ? 's' : ''} detected - Click to highlight, then use "Close Polygon" to confirm`;
+            document.getElementById('drawingInstruction').textContent = `${candidates.length} roof${candidates.length > 1 ? 's' : ''} detected - first candidate selected. Click another outline to change, then Confirm Selection.`;
 
             candidates.forEach((candidate, index) => {
                 // Convert API coordinates (original image coords) to canvas coordinates
@@ -1953,9 +2035,12 @@
             });
 
             showingCandidates = true;
-            // Enable close polygon button to confirm selection
-            document.getElementById('closePolygonBtn').disabled = false;
+            updateClosePolygonButton(true, 'Confirm roof selection');
             canvas.renderAll();
+
+            if (candidatePolygons.length > 0) {
+                highlightCandidate(0);
+            }
         }
 
         function highlightCandidate(index) {
@@ -1986,7 +2071,7 @@
                 ? ` (${Math.round(candidate.confidence * 100)}% confidence)`
                 : '';
             document.getElementById('drawingInstruction').textContent =
-                `Roof selected${confidenceText} - Click "Close Polygon" button to confirm`;
+                `Roof selected${confidenceText} - Click "Confirm Selection" to apply`;
         }
 
         function confirmCandidateSelection() {
@@ -2020,18 +2105,14 @@
             });
 
             // Clean up candidates
-            candidatePolygons.forEach(poly => canvas.remove(poly));
-            candidatePolygons = [];
-            showingCandidates = false;
-            selectedCandidateIndex = null;
-            highlightedCandidatePolygon = null;
+            clearCandidatePolygons();
 
             // Clear drawing mode and ensure buttons are not active
             drawingMode = null;
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
-            document.getElementById('closePolygonBtn').disabled = true;
+            updateClosePolygonButton(false);
 
             // Update instruction
             document.getElementById('drawingInstruction').textContent =
@@ -2152,23 +2233,41 @@
         }
 
         // Upload and canvas initialization
-        document.getElementById('uploadZone').addEventListener('click', () => {
-            document.getElementById('imageInput').click();
-        });
+        const canvasUploadZone = document.getElementById('canvasUploadZone');
+        const canvasUploadOverlay = document.getElementById('canvasUploadOverlay');
 
-        document.getElementById('uploadZone').addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
+        if (canvasUploadOverlay) {
+            ['dragenter', 'dragover', 'dragleave'].forEach(eventName => {
+                canvasUploadOverlay.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
 
-        document.getElementById('uploadZone').addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                await handleImageUpload(file);
-            }
-        });
+            canvasUploadOverlay.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    await handleImageUpload(file);
+                }
+            });
+        }
+
+        if (canvasUploadZone) {
+            canvasUploadZone.addEventListener('click', () => {
+                document.getElementById('imageInput').click();
+            });
+
+            canvasUploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    await handleImageUpload(file);
+                }
+            });
+        }
 
         document.getElementById('imageInput').addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -2200,10 +2299,8 @@
                 if (result.success) {
                     designId = result.design_id;
                     await loadImageOnCanvas(result.image_url);
-
-                    document.getElementById('imageFileName').textContent = file.name;
-                    document.getElementById('uploadedImageThumb').src = result.image_url;
-                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                    clearCandidatePolygons();
+                    updateClosePolygonButton(false);
                 } else {
                     showModal('Error', result.error || 'Upload failed.', 'alert-circle');
                 }
@@ -2214,6 +2311,18 @@
         }
 
         async function loadImageOnCanvas(imageUrl) {
+            roofPolygonPoints = [];
+            roofPolygonObject = null;
+            exclusionZones = [];
+            panels = [];
+            detectedCandidates = [];
+            drawingMode = null;
+            clearCandidatePolygons();
+            disablePanelConfig();
+            commandHistory.undoStack = [];
+            commandHistory.redoStack = [];
+            updateUndoRedoButtons();
+
             return new Promise((resolve, reject) => {
                 fabric.Image.fromURL(imageUrl, (img) => {
                     if (!img || !img.width || !img.height) {
@@ -2261,11 +2370,9 @@
 
                     setupCanvasEvents();
 
-                    document.getElementById('canvasPlaceholder').classList.add('hidden');
-                    document.getElementById('canvasContainer').classList.remove('hidden');
-                    document.getElementById('zoomControls').classList.remove('hidden');
-
+                    toggleUploadOverlay(false);
                     enableDrawingTools();
+                    document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
                     // Don't auto-activate manual mode - let user choose AI or manual
                     // startDrawingRoof();
 
