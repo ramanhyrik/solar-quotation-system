@@ -1151,6 +1151,8 @@
         let detectedCandidates = [];
         let candidatePolygons = [];
         let showingCandidates = false;
+        let selectedCandidateIndex = null;
+        let highlightedCandidatePolygon = null;
 
         class Command {
             constructor(execute, undo, description) {
@@ -1361,6 +1363,13 @@
         function closePolygon() {
             if (!canvas) return;
 
+            // If showing AI candidates, confirm the selected candidate
+            if (showingCandidates) {
+                confirmCandidateSelection();
+                return;
+            }
+
+            // Manual drawing mode
             if (drawingMode === 'roof' && roofPolygonPoints.length >= 3) {
                 if (roofPolygonObject) {
                     canvas.remove(roofPolygonObject);
@@ -1383,7 +1392,8 @@
                 updateDrawingInstruction();
                 enablePanelConfig();
 
-                showModal('Success', 'Roof boundary created! You can now configure panel layout.', 'info-circle');
+                // Remove redundant modal
+                document.getElementById('drawingInstruction').textContent = 'Roof created! Edit points or configure panels.';
             } else if (drawingMode === 'exclusion' && currentExclusionPoints.length >= 3) {
                 const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
                     fill: 'rgba(239, 68, 68, 0.3)',
@@ -1907,6 +1917,8 @@
         function displayCandidates(candidates) {
             candidatePolygons.forEach(poly => canvas.remove(poly));
             candidatePolygons = [];
+            selectedCandidateIndex = null;
+            highlightedCandidatePolygon = null;
 
             // Clear drawing mode and deactivate manual buttons
             drawingMode = null;
@@ -1914,7 +1926,7 @@
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent = 'Click on a highlighted area to select it';
+            document.getElementById('drawingInstruction').textContent = `${candidates.length} roof${candidates.length > 1 ? 's' : ''} detected - Click to highlight, then use "Close Polygon" to confirm`;
 
             candidates.forEach((candidate, index) => {
                 // Convert API coordinates (original image coords) to canvas coordinates
@@ -1925,18 +1937,15 @@
                 }));
 
                 const poly = new fabric.Polygon(scaledPoints, {
-                    fill: 'rgba(251, 191, 36, 0.3)',
+                    fill: 'rgba(251, 191, 36, 0.2)',
                     stroke: '#F59E0B',
                     strokeWidth: 3,
-                    selectable: true,
+                    selectable: false,
                     objectCaching: false,
                     polygonType: 'candidate',
                     candidateIndex: index,
-                    confidence: candidate.confidence
-                });
-
-                poly.on('selected', function() {
-                    selectCandidate(this.candidateIndex);
+                    confidence: candidate.confidence,
+                    hoverCursor: 'pointer'
                 });
 
                 candidatePolygons.push(poly);
@@ -1944,23 +1953,63 @@
             });
 
             showingCandidates = true;
+            // Enable close polygon button to confirm selection
+            document.getElementById('closePolygonBtn').disabled = false;
             canvas.renderAll();
         }
 
-        function selectCandidate(index) {
-            const candidate = detectedCandidates[index];
+        function highlightCandidate(index) {
+            // Un-highlight previous selection
+            if (highlightedCandidatePolygon) {
+                highlightedCandidatePolygon.set({
+                    fill: 'rgba(251, 191, 36, 0.2)',
+                    stroke: '#F59E0B',
+                    strokeWidth: 3
+                });
+            }
 
+            // Highlight new selection
+            const poly = candidatePolygons[index];
+            poly.set({
+                fill: 'rgba(59, 130, 246, 0.4)',
+                stroke: '#2563eb',
+                strokeWidth: 4
+            });
+
+            selectedCandidateIndex = index;
+            highlightedCandidatePolygon = poly;
+            canvas.renderAll();
+
+            // Update instruction
+            const candidate = detectedCandidates[index];
+            const confidenceText = candidate.confidence
+                ? ` (${Math.round(candidate.confidence * 100)}% confidence)`
+                : '';
+            document.getElementById('drawingInstruction').textContent =
+                `Roof selected${confidenceText} - Click "Close Polygon" button to confirm`;
+        }
+
+        function confirmCandidateSelection() {
+            if (selectedCandidateIndex === null) {
+                // No candidate selected, can't confirm
+                showModal('Error', 'Please click on a detected roof area first.', 'alert-circle');
+                return;
+            }
+
+            const candidate = detectedCandidates[selectedCandidateIndex];
+
+            // Remove existing roof if any
             if (roofPolygonObject) {
                 canvas.remove(roofPolygonObject);
             }
 
-            // Convert API coordinates (original image coords) to canvas coordinates
-            // Account for both scaling AND image offset on canvas
+            // Convert and store points
             roofPolygonPoints = (candidate.points || candidate.polygon).map(p => ({
                 x: (p.x * imageScaleFactor) + uploadedImage.left,
                 y: (p.y * imageScaleFactor) + uploadedImage.top
             }));
 
+            // Create roof polygon
             roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
                 fill: 'rgba(59, 130, 246, 0.3)',
                 stroke: '#2563eb',
@@ -1970,22 +2019,30 @@
                 polygonType: 'roof'
             });
 
+            // Clean up candidates
             candidatePolygons.forEach(poly => canvas.remove(poly));
             candidatePolygons = [];
             showingCandidates = false;
+            selectedCandidateIndex = null;
+            highlightedCandidatePolygon = null;
 
             // Clear drawing mode and ensure buttons are not active
             drawingMode = null;
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             document.getElementById('editModeBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent = 'Roof selected! Edit points or configure panels.';
+            document.getElementById('closePolygonBtn').disabled = true;
 
+            // Update instruction
+            document.getElementById('drawingInstruction').textContent =
+                'Roof applied! Edit points if needed or configure panels.';
+
+            // Add to canvas
             canvas.add(roofPolygonObject);
             canvas.renderAll();
 
+            // Enable panel configuration
             enablePanelConfig();
-            // Instruction text is enough - no need for modal
         }
 
         // Keyboard shortcuts
@@ -2236,12 +2293,12 @@
                     return;
                 }
 
-                // When showing AI candidates, only allow candidate selection
+                // When showing AI candidates, allow highlighting on click
                 // Prevent any drawing or other interactions
                 if (showingCandidates) {
                     const target = canvas.findTarget(opt.e);
                     if (target && target.polygonType === 'candidate') {
-                        selectCandidate(target.candidateIndex);
+                        highlightCandidate(target.candidateIndex);
                     }
                     // Always return when showing candidates to prevent drawing mode
                     return;
