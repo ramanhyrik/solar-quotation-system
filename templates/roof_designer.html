@@ -1270,11 +1270,15 @@
             exitEditMode();
             editingPolygon = polygon;
 
-            const points = polygon.points;
-            points.forEach((point, index) => {
+            // Use the actual stored points array (roofPolygonPoints) for correct positioning
+            // Don't rely on polygon's internal transformed points
+            const pointsArray = polygon.polygonType === 'roof' ? roofPolygonPoints :
+                                (exclusionZones.find(z => z.polygon === polygon)?.points || polygon.points);
+
+            pointsArray.forEach((point, index) => {
                 const circle = new fabric.Circle({
-                    left: polygon.left + point.x * polygon.scaleX,
-                    top: polygon.top + point.y * polygon.scaleY,
+                    left: point.x,
+                    top: point.y,
                     radius: 6,
                     fill: '#FCD34D',
                     stroke: '#92400E',
@@ -1285,16 +1289,30 @@
                     hasBorders: false,
                     selectable: true,
                     pointIndex: index,
-                    parentPolygon: polygon
+                    parentPolygon: polygon,
+                    isRoofPoint: polygon.polygonType === 'roof'
                 });
 
                 circle.on('moving', function() {
-                    const poly = this.parentPolygon;
                     const idx = this.pointIndex;
-                    const newX = (this.left - poly.left) / poly.scaleX;
-                    const newY = (this.top - poly.top) / poly.scaleY;
-                    poly.points[idx].x = newX;
-                    poly.points[idx].y = newY;
+
+                    // Update the stored points array
+                    if (this.isRoofPoint) {
+                        roofPolygonPoints[idx].x = this.left;
+                        roofPolygonPoints[idx].y = this.top;
+                    } else {
+                        const zone = exclusionZones.find(z => z.polygon === this.parentPolygon);
+                        if (zone) {
+                            zone.points[idx].x = this.left;
+                            zone.points[idx].y = this.top;
+                        }
+                    }
+
+                    // Recreate polygon with updated points
+                    const poly = this.parentPolygon;
+                    const updatedPoints = this.isRoofPoint ? roofPolygonPoints :
+                                         exclusionZones.find(z => z.polygon === poly)?.points;
+                    poly.set({ points: updatedPoints });
                     canvas.renderAll();
                 });
 
@@ -1558,15 +1576,17 @@
                 const spacing = parseFloat(document.getElementById('spacing').value) / 100;
                 const pixelsPerMeter = parseFloat(document.getElementById('pixelsPerMeter').value);
 
+                // Convert canvas coordinates back to original image coordinates
+                // Subtract image offset, then divide by scale factor
                 const roofPointsOriginal = roofPolygonPoints.map(p => ({
-                    x: p.x / imageScaleFactor,
-                    y: p.y / imageScaleFactor
+                    x: (p.x - uploadedImage.left) / imageScaleFactor,
+                    y: (p.y - uploadedImage.top) / imageScaleFactor
                 }));
 
                 const exclusionsOriginal = exclusionZones.map(zone =>
                     zone.points.map(p => ({
-                        x: p.x / imageScaleFactor,
-                        y: p.y / imageScaleFactor
+                        x: (p.x - uploadedImage.left) / imageScaleFactor,
+                        y: (p.y - uploadedImage.top) / imageScaleFactor
                     }))
                 );
 
@@ -1613,9 +1633,11 @@
             });
 
             panels.forEach((panel, index) => {
+                // Convert original image coordinates to canvas coordinates
+                // Multiply by scale factor, then add image offset
                 const scaledPanel = panel.map(p => ({
-                    x: p.x * imageScaleFactor,
-                    y: p.y * imageScaleFactor
+                    x: (p.x * imageScaleFactor) + uploadedImage.left,
+                    y: (p.y * imageScaleFactor) + uploadedImage.top
                 }));
 
                 const panelRect = new fabric.Polygon(scaledPanel, {
@@ -1753,7 +1775,7 @@
                             if (result && result.candidates && result.candidates.length > 0) {
                                 detectedCandidates = result.candidates;
                                 displayCandidates(detectedCandidates);
-                                showModal('AI Detection Complete', `Found ${result.candidates.length} potential roof area(s). Click on a highlighted area to select it.`, 'sparkles');
+                                // Don't show modal - instruction text is enough
                             } else {
                                 showModal('No Roof Detected', 'AI could not detect a roof. Please draw manually.', 'alert-circle');
                             }
@@ -1792,9 +1814,11 @@
             document.getElementById('drawingInstruction').textContent = 'Click on a highlighted area to select it';
 
             candidates.forEach((candidate, index) => {
+                // Convert API coordinates (original image coords) to canvas coordinates
+                // Account for both scaling AND image offset on canvas
                 const scaledPoints = (candidate.points || candidate.polygon).map(p => ({
-                    x: p.x * imageScaleFactor,
-                    y: p.y * imageScaleFactor
+                    x: (p.x * imageScaleFactor) + uploadedImage.left,
+                    y: (p.y * imageScaleFactor) + uploadedImage.top
                 }));
 
                 const poly = new fabric.Polygon(scaledPoints, {
@@ -1827,9 +1851,11 @@
                 canvas.remove(roofPolygonObject);
             }
 
+            // Convert API coordinates (original image coords) to canvas coordinates
+            // Account for both scaling AND image offset on canvas
             roofPolygonPoints = (candidate.points || candidate.polygon).map(p => ({
-                x: p.x * imageScaleFactor,
-                y: p.y * imageScaleFactor
+                x: (p.x * imageScaleFactor) + uploadedImage.left,
+                y: (p.y * imageScaleFactor) + uploadedImage.top
             }));
 
             roofPolygonObject = new fabric.Polygon(roofPolygonPoints, {
@@ -1856,7 +1882,7 @@
             canvas.renderAll();
 
             enablePanelConfig();
-            showModal('Roof Selected', 'AI-detected roof boundary applied! You can now edit it or configure panels.', 'check-circle');
+            // Instruction text is enough - no need for modal
         }
 
         // Keyboard shortcuts
