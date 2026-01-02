@@ -1973,7 +1973,7 @@
 
                 // Step 2: Poll for results
                 let attempts = 0;
-                const maxAttempts = 120; // 120 seconds max (2 minutes)
+                const maxAttempts = 200; // 200 seconds max (backend has 180s timeout + buffer)
                 const pollInterval = 1000; // steady 1s polling to avoid flicker
                 let consecutiveErrors = 0;
 
