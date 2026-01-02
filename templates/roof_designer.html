@@ -1633,33 +1633,92 @@
             });
 
             panels.forEach((panel, index) => {
-                // Backend returns panels as rectangles: {x, y, width, height}
-                // Convert to corner points array for Fabric.js Polygon
-                const corners = [
-                    { x: panel.x, y: panel.y },
-                    { x: panel.x + panel.width, y: panel.y },
-                    { x: panel.x + panel.width, y: panel.y + panel.height },
-                    { x: panel.x, y: panel.y + panel.height }
-                ];
-
                 // Convert original image coordinates to canvas coordinates
-                // Multiply by scale factor, then add image offset
-                const scaledPanel = corners.map(p => ({
-                    x: (p.x * imageScaleFactor) + uploadedImage.left,
-                    y: (p.y * imageScaleFactor) + uploadedImage.top
-                }));
+                const x = (panel.x * imageScaleFactor) + uploadedImage.left;
+                const y = (panel.y * imageScaleFactor) + uploadedImage.top;
+                const width = panel.width * imageScaleFactor;
+                const height = panel.height * imageScaleFactor;
 
-                const panelRect = new fabric.Polygon(scaledPanel, {
-                    fill: 'rgba(16, 185, 129, 0.4)',
-                    stroke: '#059669',
-                    strokeWidth: 1,
+                // Create realistic solar panel with frame and cells
+                const panelGroup = new fabric.Group([], {
+                    left: x,
+                    top: y,
                     selectable: false,
                     objectCaching: false,
                     objectType: 'panel',
                     panelIndex: index
                 });
 
-                canvas.add(panelRect);
+                // Main panel background (dark blue solar cells)
+                const background = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: width,
+                    height: height,
+                    fill: '#1e3a8a',
+                    stroke: '#1e293b',
+                    strokeWidth: 2
+                });
+                panelGroup.addWithUpdate(background);
+
+                // Panel frame (aluminum frame)
+                const frameThickness = Math.max(2, width * 0.02);
+                const frame = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: width,
+                    height: height,
+                    fill: 'transparent',
+                    stroke: '#94a3b8',
+                    strokeWidth: frameThickness
+                });
+                panelGroup.addWithUpdate(frame);
+
+                // Solar cell grid lines
+                const cellsX = 6; // 6 cells horizontally
+                const cellsY = 10; // 10 cells vertically
+                const cellWidth = width / cellsX;
+                const cellHeight = height / cellsY;
+
+                // Vertical grid lines
+                for (let i = 1; i < cellsX; i++) {
+                    const line = new fabric.Line([
+                        i * cellWidth, 0,
+                        i * cellWidth, height
+                    ], {
+                        stroke: '#334155',
+                        strokeWidth: 0.5,
+                        selectable: false
+                    });
+                    panelGroup.addWithUpdate(line);
+                }
+
+                // Horizontal grid lines
+                for (let i = 1; i < cellsY; i++) {
+                    const line = new fabric.Line([
+                        0, i * cellHeight,
+                        width, i * cellHeight
+                    ], {
+                        stroke: '#334155',
+                        strokeWidth: 0.5,
+                        selectable: false
+                    });
+                    panelGroup.addWithUpdate(line);
+                }
+
+                // Add slight shine/reflection effect
+                const shine = new fabric.Rect({
+                    left: width * 0.1,
+                    top: height * 0.1,
+                    width: width * 0.3,
+                    height: height * 0.4,
+                    fill: 'rgba(255, 255, 255, 0.05)',
+                    angle: -20,
+                    selectable: false
+                });
+                panelGroup.addWithUpdate(shine);
+
+                canvas.add(panelGroup);
             });
 
             canvas.renderAll();
