@@ -934,11 +934,6 @@
                             data-tooltip="Close Polygon">
                         <i data-lucide="check-circle"></i>
                     </button>
-
-                    <button class="icon-btn" id="editModeBtn" onclick="toggleEditMode()" disabled
-                            data-tooltip="Edit Points">
-                        <i data-lucide="edit-3"></i>
-                    </button>
                 </div>
 
                 <div class="toolbar-divider"></div>
@@ -953,11 +948,6 @@
                     <button class="icon-btn" id="redoBtn" onclick="redo()" disabled
                             data-tooltip="Redo">
                         <i data-lucide="redo"></i>
-                    </button>
-
-                    <button class="icon-btn danger" id="deleteBtn" onclick="deleteSelected()" disabled
-                            data-tooltip="Delete Selected">
-                        <i data-lucide="trash-2"></i>
                     </button>
 
                     <button class="icon-btn danger" id="clearAllBtn" onclick="clearAll()" disabled
@@ -1378,24 +1368,7 @@
 
         // Edit mode functions
         function toggleEditMode() {
-            if (!canvas) return;
-
-            editMode = !editMode;
-            const editBtn = document.getElementById('editModeBtn');
-
-            if (editMode) {
-                editBtn.classList.add('active');
-                document.getElementById('drawingInstruction').textContent =
-                    'Edit mode: Drag yellow circles';
-
-                drawingMode = null;
-                document.getElementById('drawRoofBtn').classList.remove('active');
-                document.getElementById('drawExclusionBtn').classList.remove('active');
-            } else {
-                editBtn.classList.remove('active');
-                exitEditMode();
-                updateDrawingInstruction();
-            }
+            // Edit mode removed for simplicity
         }
 
         function exitEditMode() {
@@ -1481,7 +1454,6 @@
             resetDrawingUndoRedo();
             document.getElementById('drawRoofBtn').classList.add('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('editModeBtn').classList.remove('active');
             updateClosePolygonButton(true);
             updateDrawingInstruction();
         }
@@ -1496,7 +1468,6 @@
             resetDrawingUndoRedo();
             document.getElementById('drawExclusionBtn').classList.add('active');
             document.getElementById('drawRoofBtn').classList.remove('active');
-            document.getElementById('editModeBtn').classList.remove('active');
             updateClosePolygonButton(true);
             updateDrawingInstruction();
         }
@@ -1592,64 +1563,6 @@
             }
         }
 
-        function deleteSelected() {
-            if (!canvas) return;
-
-            const activeObject = canvas.getActiveObject();
-            if (!activeObject) {
-                showModal('Error', 'Please select a polygon first.', 'alert-circle');
-                return;
-            }
-
-            if (activeObject.polygonType === 'roof') {
-                const oldPolygon = roofPolygonObject;
-                const oldPoints = [...roofPolygonPoints];
-
-                const command = new Command(
-                    () => {
-                        exitEditMode();
-                        clearPreviewObjects();
-                        canvas.remove(roofPolygonObject);
-                        roofPolygonObject = null;
-                        roofPolygonPoints = [];
-                        canvas.renderAll();
-                        disablePanelConfig();
-                    },
-                    () => {
-                        roofPolygonPoints = oldPoints;
-                        roofPolygonObject = oldPolygon;
-                        canvas.add(roofPolygonObject);
-                        canvas.renderAll();
-                        enablePanelConfig();
-                    },
-                    'Delete roof polygon'
-                );
-                executeCommand(command);
-            } else if (activeObject.polygonType === 'exclusion') {
-                const zoneIndex = exclusionZones.findIndex(z => z.polygon === activeObject);
-                if (zoneIndex !== -1) {
-                    const oldZone = exclusionZones[zoneIndex];
-
-                    const command = new Command(
-                        () => {
-                            exitEditMode();
-                            clearPreviewObjects();
-                            canvas.remove(activeObject);
-                            exclusionZones.splice(zoneIndex, 1);
-                            canvas.renderAll();
-                        },
-                        () => {
-                            exclusionZones.splice(zoneIndex, 0, oldZone);
-                            canvas.add(oldZone.polygon);
-                            canvas.renderAll();
-                        },
-                        'Delete exclusion zone'
-                    );
-                    executeCommand(command);
-                }
-            }
-        }
-
         function clearAll() {
             if (!canvas) return;
 
@@ -1733,8 +1646,6 @@
             document.getElementById('autoDetectBtn').disabled = false;
             document.getElementById('drawRoofBtn').disabled = false;
             document.getElementById('drawExclusionBtn').disabled = false;
-            document.getElementById('editModeBtn').disabled = false;
-            document.getElementById('deleteBtn').disabled = false;
             document.getElementById('clearAllBtn').disabled = false;
             document.getElementById('pixelsPerMeter').disabled = false;
             document.getElementById('shortcutsBtn').disabled = false;
@@ -1746,8 +1657,6 @@
             document.getElementById('autoDetectBtn').disabled = true;
             document.getElementById('drawRoofBtn').disabled = true;
             document.getElementById('drawExclusionBtn').disabled = true;
-            document.getElementById('editModeBtn').disabled = true;
-            document.getElementById('deleteBtn').disabled = true;
             document.getElementById('clearAllBtn').disabled = true;
             document.getElementById('pixelsPerMeter').disabled = true;
             document.getElementById('shortcutsBtn').disabled = true;
@@ -2021,7 +1930,6 @@
             exitEditMode();
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('editModeBtn').classList.remove('active');
 
             // Clear any preview drawings
             canvas.getObjects().forEach(obj => {
@@ -2465,7 +2373,7 @@
                     const scale = Math.min(
                         canvasWidth / img.width,
                         canvasHeight / img.height
-                    ) * 0.92; // pad image to avoid touching edges
+                    ) * 0.85; // pad image to avoid touching edges more visibly
 
                     imageScaleFactor = scale;
 
@@ -2519,14 +2427,6 @@
                     isPanning = true;
                     canvas.selection = false;
                     panStartPoint = { x: evt.clientX, y: evt.clientY };
-                    return;
-                }
-
-                if (editMode) {
-                    const target = canvas.findTarget(opt.e);
-                    if (target && (target.polygonType === 'roof' || target.polygonType === 'exclusion')) {
-                        enableEditMode(target);
-                    }
                     return;
                 }
 
@@ -2601,9 +2501,6 @@
                 } else if (e.ctrlKey && e.key === 'y') {
                     e.preventDefault();
                     redo();
-                } else if (e.key === 'Delete') {
-                    e.preventDefault();
-                    deleteSelected();
                 } else if (e.ctrlKey && e.key === '0') {
                     e.preventDefault();
                     resetZoom();
