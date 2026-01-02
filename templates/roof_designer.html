@@ -1633,9 +1633,18 @@
             });
 
             panels.forEach((panel, index) => {
+                // Backend returns panels as rectangles: {x, y, width, height}
+                // Convert to corner points array for Fabric.js Polygon
+                const corners = [
+                    { x: panel.x, y: panel.y },
+                    { x: panel.x + panel.width, y: panel.y },
+                    { x: panel.x + panel.width, y: panel.y + panel.height },
+                    { x: panel.x, y: panel.y + panel.height }
+                ];
+
                 // Convert original image coordinates to canvas coordinates
                 // Multiply by scale factor, then add image offset
-                const scaledPanel = panel.map(p => ({
+                const scaledPanel = corners.map(p => ({
                     x: (p.x * imageScaleFactor) + uploadedImage.left,
                     y: (p.y * imageScaleFactor) + uploadedImage.top
                 }));
