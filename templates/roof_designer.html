@@ -2003,21 +2003,29 @@
 
                         if (statusResult.status === 'completed') {
                             hideLoading();
+                            console.log('[AI-DETECT] Job completed, processing results:', statusResult.result);
 
                             const result = statusResult.result;
                             if (result && result.candidates && result.candidates.length > 0) {
                                 detectedCandidates = result.candidates;
+                                console.log('[AI-DETECT] Displaying', detectedCandidates.length, 'candidates');
                                 displayCandidates(detectedCandidates);
                                 // Don't show modal - instruction text is enough
                             } else {
+                                console.log('[AI-DETECT] No candidates found');
                                 showModal('No Roof Detected', 'AI could not detect a roof. Please draw manually.', 'alert-circle');
                             }
+                            return; // Stop polling - job is done
                         } else if (statusResult.status === 'failed') {
                             hideLoading();
+                            console.error('[AI-DETECT] Job failed:', statusResult.error);
                             showModal('Detection Failed', statusResult.error || 'Detection failed', 'alert-circle');
+                            return; // Stop polling - job failed
                         } else if (!statusResult.status) {
                             hideLoading();
+                            console.error('[AI-DETECT] Malformed status response:', statusResult);
                             showModal('Detection Error', 'Received malformed status response.', 'alert-circle');
+                            return; // Stop polling - bad response
                         } else {
                             // Still pending or running - poll again
                             setTimeout(pollJob, pollInterval);
@@ -2052,7 +2060,6 @@
             exitEditMode();
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('editModeBtn').classList.remove('active');
             document.getElementById('drawingInstruction').textContent = `${candidates.length} roof${candidates.length > 1 ? 's' : ''} detected - first candidate selected. Click another outline to change, then Confirm Selection.`;
 
             candidates.forEach((candidate, index) => {
@@ -2156,7 +2163,6 @@
             drawingMode = null;
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('editModeBtn').classList.remove('active');
             updateClosePolygonButton(false);
 
             // Update instruction
