@@ -14,8 +14,8 @@ from typing import Dict
 # HuggingFace Space API URL
 SAM3_API_URL = "https://ramankamran-mobilesam-roof-api.hf.space/detect-roof"
 API_TIMEOUT = 180  # timeout for API calls (HF Spaces can cold-start)
-PING_TIMEOUT = 5    # quick warmup ping timeout
-PING_RETRIES = 2    # small number of retries to wake cold Space
+PING_TIMEOUT = 2    # quick warmup ping timeout
+PING_RETRIES = 1    # single lightweight ping to avoid extra delay
 
 
 def auto_detect_roof_boundary(image_path: str, max_candidates: int = 1) -> Dict:

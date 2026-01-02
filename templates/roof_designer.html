@@ -1405,6 +1405,15 @@
             if (canvas) canvas.renderAll();
         }
 
+        function clearPreviewObjects() {
+            if (!canvas) return;
+            canvas.getObjects().forEach(obj => {
+                if (obj.objectType === 'preview') {
+                    canvas.remove(obj);
+                }
+            });
+        }
+
         function enableEditMode(polygon) {
             exitEditMode();
             editingPolygon = polygon;
@@ -1598,6 +1607,8 @@
 
                 const command = new Command(
                     () => {
+                        exitEditMode();
+                        clearPreviewObjects();
                         canvas.remove(roofPolygonObject);
                         roofPolygonObject = null;
                         roofPolygonPoints = [];
@@ -1621,6 +1632,8 @@
 
                     const command = new Command(
                         () => {
+                            exitEditMode();
+                            clearPreviewObjects();
                             canvas.remove(activeObject);
                             exclusionZones.splice(zoneIndex, 1);
                             canvas.renderAll();
@@ -1644,6 +1657,8 @@
                 'Clear All',
                 'Are you sure you want to clear all drawings? This cannot be undone.',
                 () => {
+                    exitEditMode();
+                    clearPreviewObjects();
                     canvas.getObjects().forEach(obj => {
                         if (obj.polygonType === 'roof' || obj.polygonType === 'exclusion') {
                             canvas.remove(obj);
