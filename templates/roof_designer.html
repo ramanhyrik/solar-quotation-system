@@ -31,6 +31,7 @@
             color: var(--text-dark);
             line-height: 1.6;
             overflow: hidden;
+            direction: rtl;
         }
 
         /* Header */
@@ -70,7 +71,8 @@
             display: flex;
             height: calc(100vh - 60px);
             overflow: hidden;
-            flex-direction: row-reverse; /* RTL: sidebar on right, canvas on left */
+            flex-direction: row; /* Normal row, RTL handled by direction */
+            direction: rtl;
         }
 
         /* Right Sidebar (RTL) */
@@ -82,6 +84,9 @@
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
+            order: 1; /* First item in RTL (appears on right) */
+            direction: rtl;
+            text-align: right;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -405,6 +410,8 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            order: 2; /* Second item in RTL (appears on left) */
+            direction: ltr; /* Canvas content should be LTR */
         }
 
         /* Canvas Upload Overlay */
