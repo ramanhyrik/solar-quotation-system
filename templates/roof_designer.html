@@ -821,6 +821,7 @@
         .loading-spinner {
             text-align: center;
             color: white;
+            direction: rtl;
         }
 
         .spinner {
@@ -1045,6 +1046,15 @@
                     </div>
                 </div>
 
+                <div class="form-group" style="margin-top: 12px;">
+                    <label>שם לקוח (אופציונלי)</label>
+                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן">
+                </div>
+                <div class="form-group" style="margin-top: -4px;">
+                    <label>כתובת (אופציונלי)</label>
+                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב">
+                </div>
+
                 <button class="tool-btn success" onclick="saveDesign()" id="saveBtn" style="margin-top: 12px;" disabled>
                     <i data-lucide="save"></i>
                     <span>שמור עיצוב</span>
@@ -1061,7 +1071,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <h2>העלה תמונת גג כדי להתחיל</h2>
-                    <p>(JPG, PNG - מקסימום 10MB) לחץ לבחירה או גרור ושחרר</p>
+                    <p>(<span class="ltr-text">JPG, PNG</span> - מקסימום <span class="ltr-text">10MB</span>) לחץ לבחירה או גרור ושחרר</p>
                     <input type="file" id="imageInput" accept="image/*" style="display: none;">
                 </div>
             </div>
@@ -1917,6 +1927,8 @@
 
             try {
                 const canvasData = canvas.toDataURL('image/png');
+                const customerName = (document.getElementById('customerNameInput')?.value || '').trim();
+                const customerAddress = (document.getElementById('customerAddressInput')?.value || '').trim();
 
                 const formData = new FormData();
                 formData.append('design_id', designId);
@@ -1931,13 +1943,37 @@
                 hideLoading();
 
                 if (result.success) {
-                    showModal('הצלחה', 'העיצוב נשמר בהצלחה!', 'check-circle');
+                    try {
+                        if (customerName || customerAddress) {
+                            await updateDesignMetadata(customerName, customerAddress);
+                        }
+                        showModal('הצלחה', 'העיצוב נשמר בהצלחה!', 'check-circle');
+                    } catch (metaError) {
+                        showModal('הצלחה חלקית', 'העיצוב נשמר, אך לא הצלחנו לשמור את פרטי הלקוח: ' + metaError.message, 'alert-circle');
+                    }
                 } else {
                     showModal('שגיאה', result.error || 'שמירת העיצוב נכשלה.', 'alert-circle');
                 }
             } catch (error) {
                 hideLoading();
                 showModal('שגיאה', 'שמירת העיצוב נכשלה: ' + error.message, 'alert-circle');
+            }
+        }
+
+        async function updateDesignMetadata(customerName, customerAddress) {
+            const formData = new FormData();
+            formData.append('design_id', designId);
+            formData.append('customer_name', customerName);
+            formData.append('customer_address', customerAddress);
+
+            const response = await fetch('/api/roof-designer/update-metadata', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'שמירת פרטי הלקוח נכשלה');
             }
         }
 
@@ -1965,7 +2001,7 @@
             updateClosePolygonButton(false);
             resetDrawingUndoRedo();
 
-            showLoading('...AI מנתח את הגג שלך');
+            showLoading('...בודק עם בינה מלאכותית את הגג שלך');
 
             try {
                 // Step 1: Start detection job
@@ -2011,7 +2047,7 @@
 
                     // Update loading message
                     if (attempts % 3 === 0) {
-                        showLoading(`AI analyzing... ${attempts}s`);
+                        showLoading(`בודק עם בינה מלאכותית... ${attempts} שניות`);
                     }
 
                     try {
