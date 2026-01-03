@@ -1,7 +1,7 @@
 # Minimal Dockerfile for Render deployment
 # Render uses render.yaml for build config, but needs Dockerfile present for Docker mode detection
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
