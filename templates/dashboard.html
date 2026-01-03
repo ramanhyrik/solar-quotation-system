@@ -558,12 +558,10 @@
             <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
             <a href="#" onclick="showSection('roofDesigns')" id="nav-roof-designs">עיצובי גגות</a>
-            {% if user.role == 'ADMIN' %}
             <a href="/admin">לוח ניהול</a>
             <a href="/users">ניהול משתמשים</a>
             <a href="/submissions">פניות לקוחות</a>
             <a href="/roof-designer">מעצב גגות</a>
-            {% endif %}
             <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
             <a href="#" onclick="showSection('comparison')" id="nav-comparison">השוואת תזרים מזומנים</a>
             <a href="/logout">התנתק</a>

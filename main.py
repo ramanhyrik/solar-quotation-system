@@ -226,7 +226,7 @@ async def dashboard(request: Request, user=Depends(get_current_user)):
 @app.get("/admin", response_class=HTMLResponse)
 async def admin(request: Request, user=Depends(get_current_user)):
     """Admin panel"""
-    if not user or user["role"] != "ADMIN":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("admin.html", {
         "request": request,
@@ -236,7 +236,7 @@ async def admin(request: Request, user=Depends(get_current_user)):
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, user=Depends(get_current_user)):
     """User management page"""
-    if not user or user["role"] != "ADMIN":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("users.html", {
         "request": request,
@@ -246,7 +246,7 @@ async def users_page(request: Request, user=Depends(get_current_user)):
 @app.get("/submissions", response_class=HTMLResponse)
 async def submissions_page(request: Request, user=Depends(get_current_user)):
     """Customer submissions management page"""
-    if not user or user["role"] != "ADMIN":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("submissions.html", {
         "request": request,
@@ -544,8 +544,8 @@ async def create_user(
     role: str = Form(...),
     user=Depends(get_current_user)
 ):
-    """Create new user (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Create new user"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Validate inputs
@@ -583,8 +583,8 @@ async def update_user(
     password: str = Form(None),
     user=Depends(get_current_user)
 ):
-    """Update user (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Update user"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Validate inputs
@@ -630,8 +630,8 @@ async def update_user(
 
 @app.delete("/api/users/{user_id}")
 async def delete_user(user_id: int, user=Depends(get_current_user)):
-    """Delete user (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Delete user"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Prevent deleting yourself
