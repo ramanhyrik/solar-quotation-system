@@ -404,6 +404,7 @@
             color: #E5E7EB;
             font-size: 15px;
             transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+            background-clip: padding-box;
         }
 
         .quote-form input::placeholder,
@@ -426,8 +427,10 @@
         .quote-form select:-webkit-autofill,
         .quote-form select:-webkit-autofill:hover,
         .quote-form select:-webkit-autofill:focus {
-            -webkit-box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.85) inset;
-            -webkit-text-fill-color: #E5E7EB;
+            -webkit-box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.85) inset !important;
+            box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.85) inset !important;
+            background-color: rgba(20, 24, 31, 0.85) !important;
+            -webkit-text-fill-color: #E5E7EB !important;
             caret-color: #E5E7EB;
         }
 

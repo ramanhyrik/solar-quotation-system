@@ -103,6 +103,7 @@
             background: rgba(20, 24, 31, 0.6);
             text-align: right;
             color: #ffffff;
+            background-clip: padding-box;
         }
 
         input:focus {
@@ -110,6 +111,17 @@
             border-color: #3AE478;
             background: rgba(20, 24, 31, 0.8);
             box-shadow: 0 0 0 4px rgba(58, 228, 120, 0.2);
+        }
+
+        /* Keep filled/auto-filled inputs on dark background */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.6) inset !important;
+            box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.6) inset !important;
+            background-color: rgba(20, 24, 31, 0.6) !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff;
         }
 
         button {
