@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manual Roof Designer - Solar Panel Layout Calculator</title>
+    <title>מעצב גגות - מחשבון פריסת פאנלים סולאריים</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -890,11 +890,11 @@
     <!-- Header -->
     <div class="header">
         <div>
-            <h1>Manual Roof Designer</h1>
+            <h1>מעצב גגות</h1>
         </div>
         <div class="header-right">
-            <span>Welcome, {{ user.name }}!</span>
-            <a href="/dashboard">Dashboard</a>
+            <span>!{{ user.name }} שלום</span>
+            <a href="/dashboard">לוח בקרה</a>
         </div>
     </div>
 
@@ -906,32 +906,32 @@
             <div class="sidebar-section" id="toolsSection">
                 <div class="section-title">
                     <i data-lucide="wrench"></i>
-                    <span>Tools</span>
+                    <span>כלים</span>
                 </div>
 
                 <div id="drawingInstruction" class="instruction-badge" style="font-size: 11px;">
-                    Choose AI Auto-Detect or Manual Draw
+                    בחר זיהוי אוטומטי או ציור ידני
                 </div>
 
                 <!-- Drawing Tools -->
                 <div class="icon-toolbar">
                     <button class="icon-btn primary" id="autoDetectBtn" onclick="autoDetectRoof()" disabled
-                            data-tooltip="AI Auto-Detect">
+                            data-tooltip="זיהוי אוטומטי">
                         <i data-lucide="sparkles"></i>
                     </button>
 
                     <button class="icon-btn" id="drawRoofBtn" onclick="startDrawingRoof()" disabled
-                            data-tooltip="Draw Roof">
+                            data-tooltip="צייר גג">
                         <i data-lucide="home"></i>
                     </button>
 
                     <button class="icon-btn" id="drawExclusionBtn" onclick="startDrawingExclusion()" disabled
-                            data-tooltip="Add Exclusion">
+                            data-tooltip="הוסף אזור מוחרג">
                         <i data-lucide="octagon-x"></i>
                     </button>
 
                     <button class="icon-btn" id="closePolygonBtn" onclick="closePolygon()" disabled
-                            data-tooltip="Close Polygon">
+                            data-tooltip="סגור מצולע">
                         <i data-lucide="check-circle"></i>
                     </button>
                 </div>
@@ -941,17 +941,17 @@
                 <!-- Edit Tools -->
                 <div class="icon-toolbar">
                     <button class="icon-btn" id="undoBtn" onclick="undo()" disabled
-                            data-tooltip="Undo">
+                            data-tooltip="בטל פעולה">
                         <i data-lucide="undo"></i>
                     </button>
 
                     <button class="icon-btn" id="redoBtn" onclick="redo()" disabled
-                            data-tooltip="Redo">
+                            data-tooltip="בצע שוב">
                         <i data-lucide="redo"></i>
                     </button>
 
                     <button class="icon-btn danger" id="clearAllBtn" onclick="clearAll()" disabled
-                            data-tooltip="Clear All">
+                            data-tooltip="נקה הכל">
                         <i data-lucide="rotate-ccw"></i>
                     </button>
                 </div>
@@ -961,27 +961,27 @@
                 <!-- Settings & Config -->
                 <div class="icon-toolbar">
                     <button class="icon-btn" id="panelConfigBtn" onclick="openPanelConfigModal()" disabled
-                            data-tooltip="Panel Settings">
+                            data-tooltip="הגדרות פאנל">
                         <i data-lucide="settings"></i>
-                        <span style="font-size: 12px;">Panel Settings</span>
+                        <span style="font-size: 12px;">הגדרות פאנל</span>
                     </button>
 
                     <button class="icon-btn" id="calculateBtn" onclick="calculatePanelLayout()" disabled
-                            data-tooltip="Calculate Layout">
+                            data-tooltip="חשב פריסה">
                         <i data-lucide="calculator"></i>
-                        <span style="font-size: 12px;">Calculate</span>
+                        <span style="font-size: 12px;">חשב</span>
                     </button>
 
                     <button class="icon-btn" id="shortcutsBtn" onclick="showKeyboardShortcuts()" disabled
-                            data-tooltip="Keyboard Shortcuts">
+                            data-tooltip="קיצורי מקלדת">
                         <i data-lucide="keyboard"></i>
-                        <span style="font-size: 12px;">Shortcuts</span>
+                        <span style="font-size: 12px;">קיצורים</span>
                     </button>
                 </div>
 
                 <div style="margin-top: 16px;">
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-size: 11px;">Scale (px/m)</label>
+                        <label style="font-size: 11px;">(px/m) סקלה</label>
                         <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled
                                style="font-size: 12px; padding: 6px 8px;">
                     </div>
@@ -995,26 +995,26 @@
             <div class="sidebar-section" id="resultsSection" style="display: none; padding: 12px 14px;">
                 <div class="results-panel" style="padding: 12px;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <h3 style="margin: 0; font-size: 13px; letter-spacing: 0.3px;">Layout Results</h3>
+                        <h3 style="margin: 0; font-size: 13px; letter-spacing: 0.3px;">תוצאות פריסה</h3>
                         <button class="icon-btn" id="collapseResultsBtn" style="width:36px; height:36px;" onclick="toggleResultsCollapse()">
                             <i data-lucide="chevron-up"></i>
                         </button>
                     </div>
                     <div class="result-grid" id="resultsGrid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
                         <div class="result-item">
-                            <div class="result-label">Panels</div>
+                            <div class="result-label">פאנלים</div>
                             <div class="result-value" id="resultPanels">0</div>
                         </div>
                         <div class="result-item">
-                            <div class="result-label">Power</div>
+                            <div class="result-label">הספק</div>
                             <div class="result-value" id="resultPower">0 kW</div>
                         </div>
                         <div class="result-item">
-                            <div class="result-label">Coverage</div>
+                            <div class="result-label">כיסוי</div>
                             <div class="result-value" id="resultCoverage">0%</div>
                         </div>
                         <div class="result-item">
-                            <div class="result-label">Area</div>
+                            <div class="result-label">שטח</div>
                             <div class="result-value" id="resultArea">0 m²</div>
                         </div>
                     </div>
@@ -1022,7 +1022,7 @@
 
                 <button class="tool-btn success" onclick="saveDesign()" id="saveBtn" style="margin-top: 12px;" disabled>
                     <i data-lucide="save"></i>
-                    <span>Save Design</span>
+                    <span>שמור עיצוב</span>
                 </button>
             </div>
         </div>
@@ -1035,8 +1035,8 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 80px; height: 80px; margin: 0 auto 20px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <h2>Upload Roof Image to Begin</h2>
-                    <p>Click to select or drag & drop (JPG, PNG - Max 10MB)</p>
+                    <h2>העלה תמונת גג כדי להתחיל</h2>
+                    <p>(JPG, PNG - מקסימום 10MB) לחץ לבחירה או גרור ושחרר</p>
                     <input type="file" id="imageInput" accept="image/*" style="display: none;">
                 </div>
             </div>
@@ -1067,7 +1067,7 @@
         <div class="modal-container">
             <div class="modal-header">
                 <i data-lucide="alert-circle" id="modalIcon"></i>
-                <h3 id="modalTitle">Alert</h3>
+                <h3 id="modalTitle">התראה</h3>
                 <button class="modal-close" onclick="closeModal()">
                     <i data-lucide="x"></i>
                 </button>
@@ -1076,8 +1076,8 @@
                 <p id="modalMessage"></p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal(false)" id="modalCancelBtn" style="display: none;">Cancel</button>
-                <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">OK</button>
+                <button class="btn btn-secondary" onclick="closeModal(false)" id="modalCancelBtn" style="display: none;">ביטול</button>
+                <button class="btn btn-primary" onclick="closeModal()" id="modalOkBtn">אישור</button>
             </div>
         </div>
     </div>
@@ -1087,50 +1087,50 @@
         <div class="modal-container">
             <div class="modal-header">
                 <i data-lucide="settings"></i>
-                <h3>Panel Configuration</h3>
+                <h3>הגדרות פאנל</h3>
                 <button class="modal-close" onclick="closePanelConfigModal()">
                     <i data-lucide="x"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="info-box" style="margin-bottom: 16px;">
-                    <p>Configure solar panel specifications and layout preferences</p>
+                    <p>הגדר מפרטי פאנל סולארי והעדפות פריסה</p>
                 </div>
 
                 <div class="form-group">
-                    <label>Panel Width (m)</label>
+                    <label>(m) רוחב פאנל</label>
                     <input type="number" id="panelWidth" value="1.7" min="0.8" max="2.5" step="0.1">
-                    <small>Range: 0.8m - 2.5m</small>
+                    <small>טווח: 0.8m - 2.5m</small>
                 </div>
 
                 <div class="form-group">
-                    <label>Panel Height (m)</label>
+                    <label>(m) גובה פאנל</label>
                     <input type="number" id="panelHeight" value="1.0" min="0.8" max="2.0" step="0.1">
-                    <small>Range: 0.8m - 2.0m</small>
+                    <small>טווח: 0.8m - 2.0m</small>
                 </div>
 
                 <div class="form-group">
-                    <label>Panel Power (W)</label>
+                    <label>(W) הספק פאנל</label>
                     <input type="number" id="panelPower" value="400" min="100" max="1000" step="50">
                 </div>
 
                 <div class="form-group">
-                    <label>Orientation</label>
+                    <label>אוריינטציה</label>
                     <select id="orientation">
-                        <option value="auto" selected>Auto (Optimal Mix)</option>
-                        <option value="landscape">Landscape Only</option>
-                        <option value="portrait">Portrait Only</option>
+                        <option value="auto" selected>(שילוב מיטבי) אוטומטי</option>
+                        <option value="landscape">רק לרוחב</option>
+                        <option value="portrait">רק לאורך</option>
                     </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>Spacing (cm)</label>
+                    <label>(cm) מרווח</label>
                     <input type="number" id="spacing" value="5" min="0" max="20" step="1">
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closePanelConfigModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="savePanelConfig()">Save Settings</button>
+                <button class="btn btn-secondary" onclick="closePanelConfigModal()">ביטול</button>
+                <button class="btn btn-primary" onclick="savePanelConfig()">שמור הגדרות</button>
             </div>
         </div>
     </div>
@@ -1139,7 +1139,7 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner">
             <div class="spinner"></div>
-            <p id="loadingMessage">Processing...</p>
+            <p id="loadingMessage">...מעבד</p>
         </div>
     </div>
 
@@ -1475,11 +1475,11 @@
         function updateDrawingInstruction() {
             const instruction = document.getElementById('drawingInstruction');
             if (drawingMode === 'roof') {
-                instruction.textContent = 'Click to draw roof boundary';
+                instruction.textContent = 'לחץ לציור גבול גג';
             } else if (drawingMode === 'exclusion') {
-                instruction.textContent = 'Click to draw exclusion zone';
+                instruction.textContent = 'לחץ לציור אזור מוחרג';
             } else {
-                instruction.textContent = 'Select a tool to begin';
+                instruction.textContent = 'בחר כלי כדי להתחיל';
             }
         }
 
@@ -1533,7 +1533,7 @@
                 updateClosePolygonButton(false);
                 resetDrawingUndoRedo();
 
-                document.getElementById('drawingInstruction').textContent = 'Roof applied. Adjust points or configure panels when ready.';
+                document.getElementById('drawingInstruction').textContent = 'גג הוחל. התאם נקודות או הגדר פאנלים כשאתה מוכן.';
             } else if (drawingMode === 'exclusion' && currentExclusionPoints.length >= 3) {
                 const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
                     fill: 'rgba(239, 68, 68, 0.3)',
@@ -1559,7 +1559,7 @@
                 updateClosePolygonButton(false);
                 resetDrawingUndoRedo();
             } else {
-                showModal('Error', 'You need at least 3 points to close a polygon.', 'alert-circle');
+                showModal('שגיאה', 'נדרשות לפחות 3 נקודות כדי לסגור מצולע.', 'alert-circle');
             }
         }
 
@@ -1592,7 +1592,7 @@
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);
                     resetDrawingUndoRedo();
-                    document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
+                    document.getElementById('drawingInstruction').textContent = 'בחר זיהוי אוטומטי או ציור ידני';
                 }
             );
         }
@@ -1617,7 +1617,7 @@
                     clearCandidatePolygons();
                     toggleUploadOverlay(true);
                     updateClosePolygonButton(false);
-                    document.getElementById('drawingInstruction').textContent = 'Upload an image to get started';
+                    document.getElementById('drawingInstruction').textContent = 'העלה תמונה כדי להתחיל';
 
                     disableDrawingTools();
                     disablePanelConfig();
@@ -1667,11 +1667,11 @@
         // Calculate panel layout
         async function calculatePanelLayout() {
             if (!roofPolygonObject) {
-                showModal('Error', 'Please draw a roof boundary first.', 'alert-circle');
+                showModal('שגיאה', 'אנא צייר תחילה גבול גג.', 'alert-circle');
                 return;
             }
 
-            showLoading('Calculating optimal panel layout...');
+            showLoading('...מחשב פריסת פאנל מיטבית');
 
             try {
                 const panelWidth = parseFloat(document.getElementById('panelWidth').value);
@@ -1720,13 +1720,13 @@
                     displayResults(result);
                     document.getElementById('resultsSection').style.display = 'block';
                     document.getElementById('saveBtn').disabled = false;
-                    showModal('Success', `Successfully placed ${result.total_panels || result.num_panels} panels!`, 'check-circle');
+                    showModal('הצלחה', `הוצבו ${result.total_panels || result.num_panels} פאנלים בהצלחה!`, 'check-circle');
                 } else {
-                    showModal('Error', result.error || 'Failed to calculate layout.', 'alert-circle');
+                    showModal('שגיאה', result.error || 'חישוב הפריסה נכשל.', 'alert-circle');
                 }
             } catch (error) {
                 hideLoading();
-                showModal('Error', 'Failed to calculate panel layout: ' + error.message, 'alert-circle');
+                showModal('שגיאה', 'חישוב פריסת פאנל נכשל: ' + error.message, 'alert-circle');
             }
         }
 
@@ -1884,11 +1884,11 @@
         // Save design
         async function saveDesign() {
             if (!roofPolygonObject || panels.length === 0) {
-                showModal('Error', 'Please calculate panel layout first.', 'alert-circle');
+                showModal('שגיאה', 'אנא חשב תחילה פריסת פאנל.', 'alert-circle');
                 return;
             }
 
-            showLoading('Saving your design...');
+            showLoading('...שומר את העיצוב שלך');
 
             try {
                 const canvasData = canvas.toDataURL('image/png');
@@ -1906,22 +1906,22 @@
                 hideLoading();
 
                 if (result.success) {
-                    showModal('Success', 'Design saved successfully!', 'check-circle', () => {
+                    showModal('הצלחה', 'העיצוב נשמר בהצלחה!', 'check-circle', () => {
                         window.location.href = '/dashboard';
                     });
                 } else {
-                    showModal('Error', result.error || 'Failed to save design.', 'alert-circle');
+                    showModal('שגיאה', result.error || 'שמירת העיצוב נכשלה.', 'alert-circle');
                 }
             } catch (error) {
                 hideLoading();
-                showModal('Error', 'Failed to save design: ' + error.message, 'alert-circle');
+                showModal('שגיאה', 'שמירת העיצוב נכשלה: ' + error.message, 'alert-circle');
             }
         }
 
         // AI Auto-detect
         async function autoDetectRoof() {
             if (!uploadedImage || !designId) {
-                showModal('Error', 'Please upload an image first.', 'alert-circle');
+                showModal('שגיאה', 'אנא העלה תחילה תמונה.', 'alert-circle');
                 return;
             }
 
@@ -1942,7 +1942,7 @@
             updateClosePolygonButton(false);
             resetDrawingUndoRedo();
 
-            showLoading('AI is analyzing your roof...');
+            showLoading('...AI מנתח את הגג שלך');
 
             try {
                 // Step 1: Start detection job
@@ -2183,37 +2183,37 @@
             const shortcuts = `
                 <table class="shortcuts-table">
                     <tr>
-                        <th>Action</th>
-                        <th>Shortcut</th>
+                        <th>פעולה</th>
+                        <th>קיצור</th>
                     </tr>
                     <tr>
-                        <td>Undo</td>
+                        <td>בטל פעולה</td>
                         <td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td>
                     </tr>
                     <tr>
-                        <td>Redo</td>
+                        <td>בצע שוב</td>
                         <td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td>
                     </tr>
                     <tr>
-                        <td>Delete Selected</td>
+                        <td>מחק נבחר</td>
                         <td><kbd>Delete</kbd></td>
                     </tr>
                     <tr>
-                        <td>Pan Canvas</td>
-                        <td>Hold <kbd>Space</kbd> + Drag</td>
+                        <td>הזז קנבס</td>
+                        <td>החזק <kbd>Space</kbd> + גרור</td>
                     </tr>
                     <tr>
-                        <td>Zoom In/Out</td>
+                        <td>הגדל/הקטן</td>
                         <td><kbd>Ctrl</kbd> + Scroll</td>
                     </tr>
                     <tr>
-                        <td>Reset Zoom</td>
+                        <td>אפס זום</td>
                         <td><kbd>Ctrl</kbd> + <kbd>0</kbd></td>
                     </tr>
                 </table>
             `;
 
-            showModal('Keyboard Shortcuts', shortcuts, 'keyboard');
+            showModal('קיצורי מקלדת', shortcuts, 'keyboard');
         }
 
         // Modal functions
@@ -2281,7 +2281,7 @@
 
         function savePanelConfig() {
             closePanelConfigModal();
-            showModal('Settings Saved', 'Panel configuration has been updated. Click "Calculate Layout" to apply.', 'check-circle');
+            showModal('ההגדרות נשמרו', 'הגדרות הפאנל עודכנו. לחץ "חשב פריסה" כדי להחיל.', 'check-circle');
         }
 
         // Upload and canvas initialization
@@ -2330,11 +2330,11 @@
 
         async function handleImageUpload(file) {
             if (file.size > 10 * 1024 * 1024) {
-                showModal('Error', 'File size exceeds 10MB limit.', 'alert-circle');
+                showModal('שגיאה', 'הקובץ חורג ממגבלת 10MB.', 'alert-circle');
                 return;
             }
 
-            showLoading('Uploading image...');
+            showLoading('...מעלה תמונה');
 
             try {
                 const formData = new FormData();
@@ -2354,11 +2354,11 @@
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);
                 } else {
-                    showModal('Error', result.error || 'Upload failed.', 'alert-circle');
+                    showModal('שגיאה', result.error || 'ההעלאה נכשלה.', 'alert-circle');
                 }
             } catch (error) {
                 hideLoading();
-                showModal('Error', 'Failed to upload image: ' + error.message, 'alert-circle');
+                showModal('שגיאה', 'העלאת התמונה נכשלה: ' + error.message, 'alert-circle');
             }
         }
 
@@ -2431,7 +2431,7 @@
                     enableDrawingTools();
                     setZoomButtonsEnabled(true);
                     updateZoomDisplay();
-                    document.getElementById('drawingInstruction').textContent = 'Choose AI Auto-Detect or Manual Draw';
+                    document.getElementById('drawingInstruction').textContent = 'בחר זיהוי אוטומטי או ציור ידני';
                     // Don't auto-activate manual mode - let user choose AI or manual
                     // startDrawingRoof();
 

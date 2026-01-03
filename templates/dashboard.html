@@ -557,11 +557,12 @@
         <nav>
             <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
+            <a href="#" onclick="showSection('roofDesigns')" id="nav-roof-designs">העיצובים שלי</a>
             {% if user.role == 'ADMIN' %}
             <a href="/admin">לוח ניהול</a>
             <a href="/users">ניהול משתמשים</a>
             <a href="/submissions">פניות לקוחות</a>
-            <a href="/roof-designer">מעצב גגות AI</a>
+            <a href="/roof-designer">מעצב גגות</a>
             {% endif %}
             <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
             <a href="#" onclick="showSection('comparison')" id="nav-comparison">השוואת תזרים מזומנים</a>
@@ -771,6 +772,33 @@
             </table>
         </div>
 
+        <!-- My Roof Designs Section -->
+        <div id="roofDesignsSection" style="display:none;">
+            <h1>העיצובים שלי</h1>
+            <div style="margin-bottom: 20px;">
+                <button onclick="window.location.href='/roof-designer'" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                    עיצוב חדש +
+                </button>
+            </div>
+            <table id="roofDesignsTable">
+                <thead>
+                    <tr>
+                        <th>מזהה</th>
+                        <th>שם לקוח</th>
+                        <th>כתובת</th>
+                        <th>פאנלים</th>
+                        <th>הספק (kW)</th>
+                        <th>שטח (m²)</th>
+                        <th>תאריך</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody id="roofDesignsTableBody">
+                    <!-- Populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
         <!-- Financial Comparison Section -->
         <div id="comparisonSection" style="display:none;">
             <h1>ניתוח פיננסי - תזרים מזומנים 25 שנה</h1>
@@ -902,6 +930,7 @@
             document.getElementById('calculatorSection').style.display = 'none';
             document.getElementById('quoteSection').style.display = 'none';
             document.getElementById('historySection').style.display = 'none';
+            document.getElementById('roofDesignsSection').style.display = 'none';
             document.getElementById('comparisonSection').style.display = 'none';
 
             // Remove active class from all nav items
@@ -918,6 +947,10 @@
                 document.getElementById('historySection').style.display = 'block';
                 document.getElementById('nav-history').classList.add('active');
                 loadQuoteHistory();
+            } else if (section === 'roofDesigns') {
+                document.getElementById('roofDesignsSection').style.display = 'block';
+                document.getElementById('nav-roof-designs').classList.add('active');
+                loadRoofDesigns();
             } else if (section === 'comparison') {
                 document.getElementById('comparisonSection').style.display = 'block';
                 document.getElementById('nav-comparison').classList.add('active');
@@ -1149,6 +1182,78 @@
             tbody.appendChild(totalRow);
         }
 
+        // Roof Designer Functions
+        async function loadRoofDesigns() {
+            try {
+                const response = await fetch('/api/roof-designer/list');
+                const data = await response.json();
+                const designs = data.designs || [];
+
+                const tbody = document.getElementById('roofDesignsTableBody');
+                tbody.innerHTML = '';
+
+                if (designs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #6B7280;">אין עיצובים שמורים</td></tr>';
+                    return;
+                }
+
+                designs.forEach(design => {
+                    const row = document.createElement('tr');
+                    const createdDate = new Date(design.created_at).toLocaleDateString('he-IL');
+
+                    row.innerHTML = `
+                        <td>${design.id}</td>
+                        <td>${design.customer_name || '-'}</td>
+                        <td>${design.customer_address || '-'}</td>
+                        <td>${design.panel_count || '-'}</td>
+                        <td>${design.system_power_kw ? design.system_power_kw.toFixed(2) : '-'}</td>
+                        <td>${design.roof_area_m2 ? design.roof_area_m2.toFixed(2) : '-'}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button onclick="downloadVisualization(${design.id})" style="background: #10B981; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 12px;">
+                                הורד
+                            </button>
+                            <button onclick="deleteRoofDesign(${design.id})" style="background: #EF4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                מחק
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading roof designs:', error);
+                alert('שגיאה בטעינת העיצובים');
+            }
+        }
+
+        function downloadVisualization(designId) {
+            window.location.href = `/api/roof-designer/download/${designId}`;
+        }
+
+        async function deleteRoofDesign(designId) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק עיצוב זה? פעולה זו לא ניתנת לביטול.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/roof-designer/delete/${designId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('העיצוב נמחק בהצלחה');
+                    loadRoofDesigns(); // Refresh the table
+                } else {
+                    alert('שגיאה במחיקת העיצוב: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting design:', error);
+                alert('שגיאה במחיקת העיצוב');
+            }
+        }
+
         // Check URL parameter on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize Lucide icons
@@ -1156,7 +1261,7 @@
 
             const urlParams = new URLSearchParams(window.location.search);
             const section = urlParams.get('section');
-            if (section === 'calculator' || section === 'history' || section === 'comparison') {
+            if (section === 'calculator' || section === 'history' || section === 'comparison' || section === 'roofDesigns') {
                 showSection(section);
             }
         });

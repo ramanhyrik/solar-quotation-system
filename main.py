@@ -2356,6 +2356,164 @@ async def list_roof_designs(user=Depends(get_current_user)):
         print(f"[ERROR] Failed to list designs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/roof-designer/update-metadata")
+async def update_roof_design_metadata(
+    design_id: int = Form(...),
+    customer_name: str = Form(""),
+    customer_address: str = Form(""),
+    user=Depends(get_current_user)
+):
+    """Update customer name/address for a saved roof design"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Verify ownership (admin can edit all, users can only edit their own)
+            cursor.execute('SELECT created_by FROM roof_designs WHERE id = ?', (design_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            if user['role'] != 'ADMIN' and design[0] != user['user_id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            # Update metadata
+            cursor.execute('''
+                UPDATE roof_designs
+                SET customer_name = ?, customer_address = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (customer_name, customer_address, design_id))
+
+            conn.commit()
+            return {"success": True, "message": "Design metadata updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to update design metadata: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/roof-designer/delete/{design_id}")
+async def delete_roof_design(
+    design_id: int,
+    user=Depends(get_current_user)
+):
+    """Delete a roof design and associated image files"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get design details and verify ownership
+            cursor.execute('''
+                SELECT created_by, original_image_path, processed_image_path
+                FROM roof_designs WHERE id = ?
+            ''', (design_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            created_by, original_image_path, processed_image_path = design
+
+            if user['role'] != 'ADMIN' and created_by != user['user_id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            # Delete image files if they exist
+            if original_image_path and os.path.exists(original_image_path):
+                try:
+                    os.remove(original_image_path)
+                    print(f"[DELETE] Removed original image: {original_image_path}")
+                except Exception as e:
+                    print(f"[WARNING] Failed to delete original image: {e}")
+
+            if processed_image_path and os.path.exists(processed_image_path):
+                try:
+                    os.remove(processed_image_path)
+                    print(f"[DELETE] Removed visualization image: {processed_image_path}")
+                except Exception as e:
+                    print(f"[WARNING] Failed to delete visualization image: {e}")
+
+            # Delete database record
+            cursor.execute('DELETE FROM roof_designs WHERE id = ?', (design_id,))
+            conn.commit()
+
+            return {"success": True, "message": "Design deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to delete design: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/roof-designer/download/{design_id}")
+async def download_roof_visualization(
+    design_id: int,
+    user=Depends(get_current_user)
+):
+    """Download roof visualization image as attachment"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get design details and verify ownership
+            cursor.execute('''
+                SELECT created_by, processed_image_path, customer_name
+                FROM roof_designs WHERE id = ?
+            ''', (design_id,))
+            design = cursor.fetchone()
+
+            if not design:
+                raise HTTPException(status_code=404, detail="Design not found")
+
+            created_by, processed_image_path, customer_name = design
+
+            if user['role'] != 'ADMIN' and created_by != user['user_id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            # Check if visualization exists
+            if not processed_image_path or not os.path.exists(processed_image_path):
+                raise HTTPException(status_code=404, detail="Visualization not found. Please save the design first.")
+
+            # Read the image file
+            with open(processed_image_path, 'rb') as img_file:
+                image_data = img_file.read()
+
+            # Create safe filename
+            safe_customer_name = sanitize_filename(customer_name) if customer_name else "design"
+            filename = f"roof_design_{safe_customer_name}_{design_id}.jpg"
+
+            # Return image as downloadable attachment
+            return StreamingResponse(
+                io.BytesIO(image_data),
+                media_type="image/jpeg",
+                headers={
+                    "Content-Disposition": f"attachment; filename={filename}"
+                }
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Failed to download visualization: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
