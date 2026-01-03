@@ -124,6 +124,7 @@
         .sidebar-section {
             padding: 20px;
             border-bottom: 1px solid var(--border-color);
+            color: var(--text-dark);
         }
 
         .sidebar-section:last-child {
@@ -316,6 +317,7 @@
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             background: var(--panel-alt);
             color: var(--text-dark);
+            caret-color: var(--text-dark);
         }
 
         .form-group input:focus,
@@ -323,6 +325,25 @@
             outline: none;
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 3px rgba(43, 126, 180, 0.2);
+        }
+
+        .form-group input:disabled,
+        .form-group select:disabled {
+            background: var(--panel-alt);
+            color: var(--text-medium);
+            opacity: 1;
+        }
+
+        /* Keep filled/auto-filled inputs on dark background */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        select:-webkit-autofill,
+        select:-webkit-autofill:hover,
+        select:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px var(--panel-alt) inset;
+            -webkit-text-fill-color: var(--text-dark);
+            caret-color: var(--text-dark);
         }
 
         .form-group small {
@@ -469,6 +490,7 @@
             transition: all 0.3s;
             background: var(--panel-bg);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25);
+            color: var(--text-dark);
         }
 
         .canvas-upload-zone:hover {
@@ -735,16 +757,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--text-dark);
         }
 
         .modal-close:hover {
             background: var(--panel-alt);
+            color: var(--success-green);
         }
 
         .modal-close i {
             width: 20px;
             height: 20px;
             margin: 0;
+            color: inherit;
         }
 
         .modal-body {
