@@ -17,17 +17,17 @@ from PIL import Image
 SAM3_API_URL = "https://ramankamran-mobilesam-roof-api.hf.space/detect-roof"
 API_TIMEOUT = 180  # timeout for API calls (HF Spaces can cold-start)
 
-# Image optimization settings
-MAX_IMAGE_DIMENSION = 1280  # Max width/height for SAM3 processing
-JPEG_QUALITY = 85  # Good balance between quality and file size
+# Image optimization settings (balanced for speed + accuracy)
+MAX_IMAGE_DIMENSION = 1920  # Max width/height - preserves detail while reducing size
+JPEG_QUALITY = 92  # High quality to preserve roof details for accurate detection
 
 
 def optimize_image_for_sam(image_path: str) -> tuple[bytes, tuple[int, int]]:
     """
-    Optimize image for faster SAM3 processing without losing accuracy.
+    Optimize image for faster SAM3 processing while preserving detection accuracy.
 
-    Resizes large images to max 1280px (preserving aspect ratio) and compresses
-    to JPEG quality 85. This reduces upload time and SAM3 inference time by 30-50%.
+    Only resizes very large images (>1920px) to prevent loss of roof details.
+    Uses high-quality JPEG compression (92) to maintain edge clarity.
 
     Args:
         image_path: Path to the original image
