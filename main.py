@@ -114,10 +114,8 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler"""
-    # Startup - Ensure all directories exist
-    for directory in [UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
-        os.makedirs(directory, exist_ok=True)
-    print(f"[OK] Storage directories created in: {STATIC_BASE}")
+    # Startup - directories already created at module import time
+    print(f"[OK] Using storage directory: {STATIC_BASE}")
 
     init_database()
 
@@ -144,6 +142,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure static directories exist before mounting (required at import time)
+for directory in [STATIC_BASE, UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
+    os.makedirs(directory, exist_ok=True)
 
 # Mount static files (from persistent disk in production, local in development)
 app.mount("/static", StaticFiles(directory=STATIC_BASE), name="static")
