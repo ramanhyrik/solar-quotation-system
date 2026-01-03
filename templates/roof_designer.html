@@ -824,6 +824,11 @@
             direction: rtl;
         }
 
+        .loading-spinner p {
+            direction: rtl;
+            unicode-bidi: plaintext;
+        }
+
         .spinner {
             width: 60px;
             height: 60px;
@@ -1706,7 +1711,7 @@
                 return;
             }
 
-            showLoading('...מחשב פריסת פאנל מיטבית');
+            showLoading('מחשב פריסת פאנל מיטבית…');
 
             try {
                 const panelWidth = parseFloat(document.getElementById('panelWidth').value);
@@ -1923,7 +1928,7 @@
                 return;
             }
 
-            showLoading('...שומר את העיצוב שלך');
+            showLoading('שומר את העיצוב שלך…');
 
             try {
                 const canvasData = canvas.toDataURL('image/png');
@@ -2001,7 +2006,7 @@
             updateClosePolygonButton(false);
             resetDrawingUndoRedo();
 
-            showLoading('...בודק עם בינה מלאכותית את הגג שלך');
+            showLoading('בודק עם בינה מלאכותית את הגג שלך…');
 
             try {
                 // Step 1: Start detection job
@@ -2047,7 +2052,7 @@
 
                     // Update loading message
                     if (attempts % 3 === 0) {
-                        showLoading(`בודק עם בינה מלאכותית... ${attempts} שניות`);
+                        showLoading(`בודק עם בינה מלאכותית… ${attempts} שניות`);
                     }
 
                     try {
@@ -2393,7 +2398,7 @@
                 return;
             }
 
-            showLoading('...מעלה תמונה');
+            showLoading('מעלה תמונה…');
 
             try {
                 const formData = new FormData();
