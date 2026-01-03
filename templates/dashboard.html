@@ -892,11 +892,14 @@
         }
 
         // Direction efficiency factors (south = 100%)
+        // Calculator settings (defaults; will be overwritten from server)
+        let calculatorSettings = null;
+        let calculatorSettingsLoaded = false;
         const directionFactors = {
-            'south': 1.0,
-            'southeast': 0.95,
-            'southwest': 0.95,
-            'east_west': 0.85
+            south: 1.0,
+            southeast: 0.95,
+            southwest: 0.95,
+            east_west: 0.9
         };
 
         function setDirection(direction) {
@@ -923,6 +926,25 @@
             }
         }
 
+        async function loadCalculatorSettings() {
+            try {
+                const response = await fetch('/api/pricing');
+                if (!response.ok) throw new Error('Failed to load settings');
+                const data = await response.json();
+                calculatorSettings = data || {};
+                calculatorSettingsLoaded = true;
+
+                // Update direction factors map for runtime use
+                directionFactors.south = Number(calculatorSettings.direction_south ?? directionFactors.south);
+                directionFactors.southeast = Number(calculatorSettings.direction_southeast ?? directionFactors.southeast);
+                directionFactors.southwest = Number(calculatorSettings.direction_southwest ?? directionFactors.southwest);
+                directionFactors.east_west = Number(calculatorSettings.direction_east_west ?? directionFactors.east_west);
+            } catch (error) {
+                console.error('Error loading calculator settings:', error);
+                alert('טעינת הגדרות המחשבון נכשלה');
+            }
+        }
+
         function showSection(section) {
             // Hide all sections
             document.getElementById('calculatorSection').style.display = 'none';
@@ -938,6 +960,9 @@
             if (section === 'calculator') {
                 document.getElementById('calculatorSection').style.display = 'block';
                 document.getElementById('nav-calculator').classList.add('active');
+                if (!calculatorSettingsLoaded) {
+                    loadCalculatorSettings();
+                }
             } else if (section === 'quote') {
                 document.getElementById('quoteSection').style.display = 'block';
                 document.getElementById('nav-quote').classList.add('active');
@@ -996,14 +1021,17 @@
 
         async function calculateModel() {
             const roofArea = parseFloat(document.getElementById('calcRoofArea').value);
+            const roofAreaPerKw = Number(calculatorSettings?.roof_area_per_kw || 7);
+            const shadingSetting = Number(calculatorSettings?.shading_factor || 0.85);
+            const leasingRatio = Number(calculatorSettings?.leasing_payment_ratio || 0.3);
 
             if (!roofArea || roofArea <= 0) {
                 alert('נא להזין שטח גג תקין');
                 return;
             }
 
-            // Calculate system size from roof area (7 sqm per kWp)
-            const systemSize = roofArea / 7;
+            // Calculate system size from roof area (configurable sqm per kWp)
+            const systemSize = roofArea / roofAreaPerKw;
 
             try {
                 const formData = new FormData();
@@ -1017,10 +1045,14 @@
                 const data = await response.json();
 
                 // Apply direction factor
-                const directionFactor = directionFactors[currentDirection];
+                const directionFactor = Number(
+                    calculatorSettings?.[`direction_${currentDirection}`] ??
+                    directionFactors[currentDirection] ??
+                    1
+                );
 
-                // Apply shading factor (15% reduction if there's shading)
-                const shadingFactor = noShading ? 1.0 : 0.85;
+                // Apply shading factor (configurable reduction if there's shading)
+                const shadingFactor = noShading ? 1.0 : shadingSetting;
 
                 // Combined efficiency factor
                 const efficiencyFactor = directionFactor * shadingFactor;
@@ -1030,11 +1062,10 @@
 
                 // Adjust for leasing model
                 if (window.currentModel === 'leasing') {
-                    // Leasing takes about 30% of revenue as payment
-                    const monthlyPayment = Math.round(annualRevenue * 0.3 / 12);
+                    // Leasing takes configured share of revenue as payment
+                    const monthlyPayment = Math.round(annualRevenue * leasingRatio / 12);
                     const yearlyPayment = monthlyPayment * 12;
-                    annualRevenue = data.annual_revenue * efficiencyFactor - yearlyPayment;
-                    annualRevenue = Math.round(annualRevenue);
+                    annualRevenue = Math.round((data.annual_revenue * efficiencyFactor) - yearlyPayment);
                     totalRevenue = annualRevenue * 25;
                     document.getElementById('monthlyPayment').textContent = `₪${monthlyPayment.toLocaleString()}`;
                 }

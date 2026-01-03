@@ -174,6 +174,30 @@ def init_database():
             conn.commit()
             print("[OK] Added model_type column to quotes table")
 
+        # Add calculator parameters to pricing_parameters table (migration)
+        cursor.execute("PRAGMA table_info(pricing_parameters)")
+        pricing_columns = [col[1] for col in cursor.fetchall()]
+
+        calculator_params = {
+            'direction_south': 1.0,
+            'direction_southeast': 0.95,
+            'direction_southwest': 0.95,
+            'direction_east_west': 0.9,
+            'shading_factor': 0.85,
+            'degradation_rate': 0.004,
+            'operating_cost_base': 0.005,
+            'operating_cost_increase': 0.02,
+            'roof_area_per_kw': 7.0,
+            'leasing_payment_ratio': 0.3
+        }
+
+        for param, default_value in calculator_params.items():
+            if param not in pricing_columns:
+                cursor.execute(f"ALTER TABLE pricing_parameters ADD COLUMN {param} REAL DEFAULT {default_value}")
+                print(f"[OK] Added {param} to pricing_parameters")
+
+        conn.commit()
+
         # Insert default pricing parameters if not exists
         cursor.execute("SELECT COUNT(*) FROM pricing_parameters")
         if cursor.fetchone()[0] == 0:

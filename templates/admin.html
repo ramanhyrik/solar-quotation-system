@@ -88,6 +88,71 @@
                 <button type="button" id="deleteLogo" class="btn-calculate" style="background: #dc3545; margin-right: 10px; display: none;">מחק לוגו</button>
             </form>
         </div>
+
+        <div class="quote-form" style="margin-top: 20px;">
+            <h3>הגדרות מחשבון סולארי</h3>
+            <form id="calculatorForm">
+                <h4 style="margin-bottom: 15px; color: #00358A;">מקדמי כיוון גג</h4>
+                <div class="form-grid">
+                    <div>
+                        <label>דרום (100%)</label>
+                        <input type="number" id="directionSouth" step="0.01" min="0" max="1" value="1.0" required>
+                    </div>
+                    <div>
+                        <label>דרום-מזרח</label>
+                        <input type="number" id="directionSoutheast" step="0.01" min="0" max="1" value="0.95" required>
+                    </div>
+                    <div>
+                        <label>דרום-מערב</label>
+                        <input type="number" id="directionSouthwest" step="0.01" min="0" max="1" value="0.95" required>
+                    </div>
+                    <div>
+                        <label>מזרח-מערב</label>
+                        <input type="number" id="directionEastWest" step="0.01" min="0" max="1" value="0.9" required>
+                    </div>
+                </div>
+
+                <h4 style="margin: 20px 0 15px; color: #00358A;">פרמטרים טכניים</h4>
+                <div class="form-grid">
+                    <div>
+                        <label>מקדם הצללה</label>
+                        <input type="number" id="shadingFactor" step="0.01" min="0" max="1" value="0.85" required>
+                        <small>0.85 = 15% ירידה בייצור</small>
+                    </div>
+                    <div>
+                        <label>קצב ירידה שנתי</label>
+                        <input type="number" id="degradationRate" step="0.001" min="0" max="0.1" value="0.004" required>
+                        <small>0.004 = 0.4% בשנה</small>
+                    </div>
+                    <div>
+                        <label>עלות תפעול בסיסית</label>
+                        <input type="number" id="operatingCostBase" step="0.001" min="0" max="0.1" value="0.005" required>
+                        <small>0.005 = 0.5% ממחיר מערכת</small>
+                    </div>
+                    <div>
+                        <label>עליית עלות תפעול שנתית</label>
+                        <input type="number" id="operatingCostIncrease" step="0.01" min="0" max="0.5" value="0.02" required>
+                        <small>0.02 = 2% בשנה</small>
+                    </div>
+                </div>
+
+                <h4 style="margin: 20px 0 15px; color: #00358A;">פרמטרי חישוב</h4>
+                <div class="form-grid">
+                    <div>
+                        <label>מ"ר גג לכל קילוואט</label>
+                        <input type="number" id="roofAreaPerKw" step="0.1" min="1" max="20" value="7.0" required>
+                        <small>7 מ"ר = 1 קילוואט</small>
+                    </div>
+                    <div>
+                        <label>אחוז תשלום חודשי בליסינג</label>
+                        <input type="number" id="leasingPaymentRatio" step="0.01" min="0" max="1" value="0.3" required>
+                        <small>0.3 = 30% מהכנסה שנתית</small>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-calculate" style="margin-top: 15px;">עדכן הגדרות מחשבון</button>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -101,6 +166,18 @@
             document.getElementById('tariffRate').value = pricing.tariff_rate;
             document.getElementById('treesMultiplier').value = pricing.trees_multiplier;
             document.getElementById('vatRate').value = pricing.vat_rate * 100;
+
+            // טעינת הגדרות מחשבון
+            document.getElementById('directionSouth').value = pricing.direction_south || 1.0;
+            document.getElementById('directionSoutheast').value = pricing.direction_southeast || 0.95;
+            document.getElementById('directionSouthwest').value = pricing.direction_southwest || 0.95;
+            document.getElementById('directionEastWest').value = pricing.direction_east_west || 0.9;
+            document.getElementById('shadingFactor').value = pricing.shading_factor || 0.85;
+            document.getElementById('degradationRate').value = pricing.degradation_rate || 0.004;
+            document.getElementById('operatingCostBase').value = pricing.operating_cost_base || 0.005;
+            document.getElementById('operatingCostIncrease').value = pricing.operating_cost_increase || 0.02;
+            document.getElementById('roofAreaPerKw').value = pricing.roof_area_per_kw || 7.0;
+            document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio || 0.3;
 
             const companyResponse = await fetch('/api/company');
             const company = await companyResponse.json();
@@ -148,6 +225,47 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('שגיאה בעדכון התמחור');
+            }
+        });
+
+        // עדכון הגדרות מחשבון
+        document.getElementById('calculatorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            // Pricing parameters (keep existing values)
+            formData.append('price_per_kwp', document.getElementById('pricePerKwp').value);
+            formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
+            formData.append('tariff_rate', document.getElementById('tariffRate').value);
+            formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
+            formData.append('vat_rate', parseFloat(document.getElementById('vatRate').value) / 100);
+
+            // Calculator parameters
+            formData.append('direction_south', document.getElementById('directionSouth').value);
+            formData.append('direction_southeast', document.getElementById('directionSoutheast').value);
+            formData.append('direction_southwest', document.getElementById('directionSouthwest').value);
+            formData.append('direction_east_west', document.getElementById('directionEastWest').value);
+            formData.append('shading_factor', document.getElementById('shadingFactor').value);
+            formData.append('degradation_rate', document.getElementById('degradationRate').value);
+            formData.append('operating_cost_base', document.getElementById('operatingCostBase').value);
+            formData.append('operating_cost_increase', document.getElementById('operatingCostIncrease').value);
+            formData.append('roof_area_per_kw', document.getElementById('roofAreaPerKw').value);
+            formData.append('leasing_payment_ratio', document.getElementById('leasingPaymentRatio').value);
+
+            try {
+                const response = await fetch('/api/pricing', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('הגדרות המחשבון עודכנו בהצלחה!');
+                } else {
+                    alert('שגיאה בעדכון הגדרות המחשבון');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('שגיאה בעדכון הגדרות המחשבון');
             }
         });
 

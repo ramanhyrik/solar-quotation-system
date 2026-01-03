@@ -289,9 +289,19 @@ async def update_pricing(
     tariff_rate: float = Form(...),
     trees_multiplier: float = Form(0.05),
     vat_rate: float = Form(0.17),
+    direction_south: float = Form(1.0),
+    direction_southeast: float = Form(0.95),
+    direction_southwest: float = Form(0.95),
+    direction_east_west: float = Form(0.9),
+    shading_factor: float = Form(0.85),
+    degradation_rate: float = Form(0.004),
+    operating_cost_base: float = Form(0.005),
+    operating_cost_increase: float = Form(0.02),
+    roof_area_per_kw: float = Form(7.0),
+    leasing_payment_ratio: float = Form(0.3),
     user=Depends(get_current_user)
 ):
-    """Update pricing parameters"""
+    """Update pricing and calculator parameters"""
     if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
@@ -304,10 +314,23 @@ async def update_pricing(
             tariff_rate = ?,
             trees_multiplier = ?,
             vat_rate = ?,
+            direction_south = ?,
+            direction_southeast = ?,
+            direction_southwest = ?,
+            direction_east_west = ?,
+            shading_factor = ?,
+            degradation_rate = ?,
+            operating_cost_base = ?,
+            operating_cost_increase = ?,
+            roof_area_per_kw = ?,
+            leasing_payment_ratio = ?,
             updated_at = CURRENT_TIMESTAMP
-        ''', (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate))
+        ''', (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate,
+              direction_south, direction_southeast, direction_southwest, direction_east_west,
+              shading_factor, degradation_rate, operating_cost_base, operating_cost_increase,
+              roof_area_per_kw, leasing_payment_ratio))
         conn.commit()
-        return {"message": "Pricing updated successfully"}
+        return {"message": "Settings updated successfully"}
 
 @app.post("/api/calculate")
 async def calculate_quote(
