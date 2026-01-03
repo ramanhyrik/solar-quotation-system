@@ -35,7 +35,7 @@
                 <button type="button" class="btn-calculate admin-card" data-target-section="pricingSection" style="text-align: center; width: 100%;">תמחור והכנסות</button>
                 <button type="button" class="btn-calculate admin-card" data-target-section="companySection" style="text-align: center; width: 100%;">הגדרות חברה ולוגו</button>
                 <button type="button" class="btn-calculate admin-card" data-target-section="calculatorSection" style="text-align: center; width: 100%;">הגדרות מחשבון</button>
-                <a href="/users" class="btn-calculate admin-card" style="text-align: center; width: 100%;">ניהול משתמשים</a>
+                <button type="button" class="btn-calculate admin-card" data-target-section="userSection" style="text-align: center; width: 100%;">ניהול משתמשים</button>
             </div>
         </div>
 
@@ -94,6 +94,12 @@
 
                 <button type="submit" class="btn-calculate">עדכן פרטי חברה</button>
             </form>
+        </div>
+
+        <div class="quote-form" style="margin-top: 20px; display: none;" id="userSection">
+            <h3>ניהול משתמשים</h3>
+            <p style="margin-bottom: 12px; color: #374151;">פתחו את מסך ניהול המשתמשים בכרטיסיה נפרדת כדי לשמור על הניווט הקיים.</p>
+            <a href="/users" target="_blank" class="btn-calculate" style="display: inline-block;">פתח ניהול משתמשים</a>
         </div>
 
         <div class="quote-form" style="margin-top: 20px; display: none;" id="calculatorSection">
@@ -362,7 +368,7 @@
 
         // ניווט בין כרטיסי הניהול
         function showAdminSection(sectionId) {
-            const sections = ['pricingSection', 'companySection', 'calculatorSection'];
+            const sections = ['pricingSection', 'companySection', 'calculatorSection', 'userSection'];
             sections.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = id === sectionId ? 'block' : 'none';
