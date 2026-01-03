@@ -198,13 +198,17 @@ def init_database():
             print("[OK] Default admin user created: admin@solar.com / admin123")
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt"""
-    return bcrypt.hash(password)
+    """Hash password using bcrypt (max 72 bytes)"""
+    # Bcrypt has a 72-byte limit, truncate if necessary
+    password_bytes = password.encode('utf-8')[:72]
+    return bcrypt.hash(password_bytes.decode('utf-8', errors='ignore'))
 
 def verify_password(password: str, hashed: str) -> bool:
     """Verify password against bcrypt hash"""
     try:
-        return bcrypt.verify(password, hashed)
+        # Bcrypt has a 72-byte limit, truncate if necessary
+        password_bytes = password.encode('utf-8')[:72]
+        return bcrypt.verify(password_bytes.decode('utf-8', errors='ignore'), hashed)
     except:
         # Fallback for old SHA-256 hashes (for migration)
         return hashlib.sha256(password.encode()).hexdigest() == hashed
