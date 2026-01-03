@@ -9,11 +9,12 @@
     <style>
         .submissions-table {
             width: 100%;
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             margin-top: 20px;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .submissions-table table {
@@ -22,7 +23,7 @@
         }
 
         .submissions-table th {
-            background: linear-gradient(135deg, #00358A 0%, #002d75 100%);
+            background: linear-gradient(135deg, #2B7EB4 0%, #1A1D22 100%);
             color: white;
             padding: 15px;
             text-align: right;
@@ -32,12 +33,13 @@
 
         .submissions-table td {
             padding: 12px 15px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid rgba(58, 228, 120, 0.1);
             font-size: 14px;
+            color: #ffffff;
         }
 
         .submissions-table tr:hover {
-            background: #f8fafc;
+            background: rgba(58, 228, 120, 0.1);
         }
 
         .status-badge {
@@ -66,21 +68,21 @@
         }
 
         .btn-view {
-            background: #3b82f6;
-            color: white;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
         }
 
         .btn-view:hover {
-            background: #2563eb;
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
         }
 
         .btn-delete {
-            background: #dc3545;
+            background: #F97316;
             color: white;
         }
 
         .btn-delete:hover {
-            background: #c82333;
+            background: #EA580C;
         }
 
         .modal {
@@ -90,19 +92,21 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 1000;
             padding: 20px;
             overflow-y: auto;
         }
 
         .modal-content {
-            background: white;
+            background: rgba(26, 29, 34, 0.98);
             max-width: 800px;
             margin: 50px auto;
             padding: 30px;
             border-radius: 12px;
             position: relative;
+            border: 2px solid rgba(58, 228, 120, 0.3);
+            color: #ffffff;
         }
 
         .modal-close {
@@ -173,21 +177,22 @@
         }
 
         .stat-card {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .stat-value {
             font-size: 32px;
             font-weight: 700;
-            color: #00358A;
+            color: #3AE478;
             margin-bottom: 5px;
         }
 
         .stat-label {
-            color: #666;
+            color: #A0AEC0;
             font-size: 14px;
         }
 

@@ -34,9 +34,9 @@
         }
 
         .model-tab.active {
-            background: #D9FF0D;
-            color: #00358A;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            background: #3AE478;
+            color: #14181F;
+            box-shadow: 0 2px 8px rgba(58, 228, 120, 0.4);
         }
 
         .model-tab:hover:not(.active) {
@@ -44,55 +44,59 @@
         }
 
         .calculator-input {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 16px;
             padding: 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             margin-bottom: 20px;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .calculator-input label {
             display: block;
             margin-bottom: 10px;
             font-weight: 600;
-            color: #4a5568;
+            color: #ffffff;
         }
 
         .calculator-input input {
             width: 100%;
             padding: 14px 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.3);
             border-radius: 10px;
             font-size: 18px;
             transition: all 0.3s;
+            background: rgba(20, 24, 31, 0.6);
+            color: #ffffff;
         }
 
         .calculator-input input:focus {
             outline: none;
-            border-color: #00358A;
-            box-shadow: 0 0 0 4px rgba(0, 53, 138, 0.1);
+            border-color: #3AE478;
+            box-shadow: 0 0 0 4px rgba(58, 228, 120, 0.2);
         }
 
         .calculator-input small {
             display: block;
             margin-top: 8px;
-            color: #718096;
+            color: #A0AEC0;
         }
 
         /* Direction Selector */
         .direction-selector {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 16px;
             padding: 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             margin-bottom: 20px;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .direction-selector label {
             display: block;
             margin-bottom: 15px;
             font-weight: 600;
-            color: #4a5568;
+            color: #ffffff;
             text-align: center;
         }
 
@@ -104,26 +108,26 @@
 
         .direction-btn {
             padding: 12px 8px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.3);
             border-radius: 10px;
-            background: white;
+            background: rgba(20, 24, 31, 0.6);
             cursor: pointer;
             transition: all 0.3s;
             text-align: center;
             font-size: 13px;
             font-weight: 500;
-            color: #4a5568;
+            color: #ffffff;
         }
 
         .direction-btn:hover {
-            border-color: #00358A;
-            background: #f7fafc;
+            border-color: #3AE478;
+            background: rgba(58, 228, 120, 0.1);
         }
 
         .direction-btn.active {
-            background: #00358A;
-            color: white;
-            border-color: #00358A;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
+            border-color: #3AE478;
         }
 
         .direction-btn .icon {
@@ -134,19 +138,20 @@
 
         /* Shading Toggle */
         .shading-toggle {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 16px;
             padding: 20px 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .shading-toggle .shading-label {
             font-weight: 600;
-            color: #4a5568;
+            color: #ffffff;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -194,7 +199,7 @@
         }
 
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #D9FF0D;
+            background-color: #3AE478;
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
@@ -202,10 +207,11 @@
         }
 
         .calculator-results {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 16px;
             padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .results-header {
@@ -214,13 +220,13 @@
         }
 
         .results-header h3 {
-            color: #2d3748;
+            color: #ffffff;
             font-size: 20px;
             margin-bottom: 5px;
         }
 
         .results-header p {
-            color: #718096;
+            color: #A0AEC0;
             font-size: 14px;
         }
 
@@ -232,16 +238,17 @@
         }
 
         .income-box {
-            background: #f7fafc;
+            background: rgba(20, 24, 31, 0.6);
             border-radius: 12px;
             padding: 25px;
             text-align: center;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.3);
+            color: #ffffff;
         }
 
         .income-box.highlight {
-            background: linear-gradient(135deg, #00358A 0%, #004CAD 100%);
-            color: white;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
             border: none;
         }
 
@@ -267,13 +274,14 @@
             justify-content: center;
             gap: 15px;
             padding: 20px;
-            background: linear-gradient(135deg, #D9FF0D 0%, #b8e600 100%);
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
             border-radius: 12px;
             margin-bottom: 25px;
         }
 
         .system-info .icon {
             font-size: 30px;
+            color: #14181F;
         }
 
         .system-info .details {
@@ -283,12 +291,12 @@
         .system-info .size {
             font-size: 28px;
             font-weight: 800;
-            color: #00358A;
+            color: #14181F;
         }
 
         .system-info .label {
             font-size: 14px;
-            color: #2d3748;
+            color: #1A1D22;
         }
 
         .environmental-impact {
@@ -345,23 +353,23 @@
         }
 
         .btn-recalculate {
-            background: white;
-            color: #00358A;
-            border: 2px solid #00358A !important;
+            background: rgba(26, 29, 34, 0.8);
+            color: #3AE478;
+            border: 2px solid #3AE478 !important;
         }
 
         .btn-recalculate:hover {
-            background: #00358A;
-            color: white;
+            background: #3AE478;
+            color: #14181F;
         }
 
         .btn-contact {
-            background: #D9FF0D;
-            color: #00358A;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
         }
 
         .btn-contact:hover {
-            background: #c4e600;
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
         }
 
         /* Leasing specific styles */
@@ -395,11 +403,12 @@
         }
 
         .metrics-panel {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             margin-top: 25px;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .metrics-grid {
@@ -415,45 +424,45 @@
             align-items: center;
             padding: 10px 16px;
             border-radius: 6px;
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
+            background: rgba(20, 24, 31, 0.6);
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .metric-row.highlight {
-            background: #D9FF0D;
-            border: 1px solid #D9FF0D;
+            background: linear-gradient(135deg, #3B82F6 0%, #2B7EB4 100%);
+            border: 1px solid #3B82F6;
             font-weight: 600;
         }
 
         .metric-row.success {
-            background: #D9FF0D;
-            border: 1px solid #D9FF0D;
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            border: 1px solid #3AE478;
             font-weight: 700;
             font-size: 18px;
         }
 
         .metric-label {
-            color: #2d3748;
+            color: #ffffff;
             font-size: 14px;
             text-align: right;
         }
 
         .metric-value {
-            color: #00358A;
+            color: #ffffff;
             font-size: 15px;
             font-weight: 600;
         }
 
         .analysis-section {
-            background: #f0f9ff;
+            background: rgba(59, 130, 246, 0.1);
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
-            border: 2px solid #00358A;
+            border: 2px solid #3B82F6;
         }
 
         .analysis-section h3 {
-            color: #00358A;
+            color: #3B82F6;
             margin-bottom: 15px;
             text-align: center;
             font-size: 16px;
@@ -480,11 +489,12 @@
         }
 
         .data-table-panel {
-            background: white;
+            background: rgba(26, 29, 34, 0.8);
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             overflow-x: auto;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .comparison-table {
@@ -494,7 +504,7 @@
         }
 
         .comparison-table thead {
-            background: #D9FF0D;
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
             position: sticky;
             top: 0;
         }
@@ -503,8 +513,8 @@
             padding: 10px 8px;
             text-align: center;
             font-weight: 700;
-            color: #00358A;
-            border: 1px solid #b8e600;
+            color: #14181F;
+            border: 1px solid #3AE378;
             font-size: 12px;
         }
 
@@ -513,40 +523,40 @@
         }
 
         .comparison-table tbody tr:hover {
-            background: #f7fafc;
+            background: rgba(58, 228, 120, 0.1);
         }
 
         .comparison-table tbody td {
             padding: 6px 4px;
             text-align: center;
-            border: 1px solid #e2e8f0;
-            color: #2d3748;
+            border: 1px solid rgba(58, 228, 120, 0.1);
+            color: #ffffff;
             font-size: 12px;
         }
 
         .comparison-table tbody tr:first-child {
-            background: #e2e8f0;
+            background: rgba(59, 130, 246, 0.2);
             font-weight: 700;
         }
 
         .comparison-table tbody tr.total-row {
-            background: #00358A;
-            color: white;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
             font-weight: 700;
             font-size: 15px;
         }
 
         .comparison-table tbody tr.total-row td {
-            border: 1px solid #002a6b;
-            color: white;
+            border: 1px solid #3AE378;
+            color: #14181F;
         }
 
         .section-title {
             font-size: 18px;
             font-weight: 700;
-            color: #2d3748;
+            color: #ffffff;
             margin-bottom: 15px;
-            border-bottom: 2px solid #D9FF0D;
+            border-bottom: 2px solid #3AE478;
             padding-bottom: 8px;
         }
     </style>
@@ -575,10 +585,10 @@
         <!-- Welcome Section -->
         <div id="welcomeSection">
             <div style="text-align: center; padding: 100px 20px;">
-                <h1 style="font-size: 36px; color: #00358A; margin-bottom: 10px;">
+                <h1 style="font-size: 36px; color: #ffffff; margin-bottom: 10px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);">
                     ברוכים הבאים למערכת הצעות המחיר הסולארית
                 </h1>
-                <p style="font-size: 18px; color: #666;">שלום, {{ user.name or user.email }}! השתמש בתפריט הצד כדי להתחיל.</p>
+                <p style="font-size: 18px; color: #3AE478;">שלום, {{ user.name or user.email }}! השתמש בתפריט הצד כדי להתחיל.</p>
             </div>
         </div>
 
@@ -755,7 +765,7 @@
                 <div class="actions">
                     <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
                     <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
-                    <button onclick="viewFinancialAnalysis()" class="btn-secondary" style="background: #D9FF0D; color: #00358A;">הצג ניתוח פיננסי</button>
+                    <button onclick="viewFinancialAnalysis()" class="btn-secondary" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; border: 2px solid #3AE478;">הצג ניתוח פיננסי</button>
                 </div>
             </div>
         </div>
@@ -783,7 +793,7 @@
         <div id="roofDesignsSection" style="display:none;">
             <h1>עיצובי גגות</h1>
             <div style="margin-bottom: 20px;">
-                <button onclick="window.location.href='/roof-designer'" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                <button onclick="window.location.href='/roof-designer'" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
                     עיצוב חדש +
                 </button>
             </div>
@@ -862,9 +872,9 @@
                         </div>
                     </div>
 
-                    <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border-right: 3px solid #00358A;">
-                        <div style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 8px;">הנחות יסוד</div>
-                        <div style="font-size: 12px; color: #4a5568; line-height: 1.6;">
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-right: 3px solid #3B82F6;">
+                        <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">הנחות יסוד</div>
+                        <div style="font-size: 12px; color: #A0AEC0; line-height: 1.6;">
                             • ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת, עלייה 2% בשנה<br>
                             • מחירי תעריפים עפ"י תקנות ייצור פרטי | אחריות: 25 שנה
                         </div>
@@ -1249,10 +1259,10 @@
                         <td>${design.roof_area_m2 ? design.roof_area_m2.toFixed(2) : '-'}</td>
                         <td>${createdDate}</td>
                         <td>
-                            <button onclick="downloadVisualization(${design.id})" style="background: #10B981; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 12px;">
+                            <button onclick="downloadVisualization(${design.id})" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 12px; font-weight: 600;">
                                 הורד
                             </button>
-                            <button onclick="deleteRoofDesign(${design.id})" style="background: #EF4444; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            <button onclick="deleteRoofDesign(${design.id})" style="background: #F97316; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
                                 מחק
                             </button>
                         </td>

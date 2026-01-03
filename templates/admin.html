@@ -119,7 +119,7 @@
                     </div>
                 </div>
 
-                <h4 style="margin: 20px 0 15px; color: #00358A;">פרמטרים טכניים</h4>
+                <h4 style="margin: 20px 0 15px; color: #3AE478;">פרמטרים טכניים</h4>
                 <div class="form-grid">
                     <div>
                         <label>מקדם הצללה</label>
@@ -143,7 +143,7 @@
                     </div>
                 </div>
 
-                <h4 style="margin: 20px 0 15px; color: #00358A;">פרמטרי חישוב</h4>
+                <h4 style="margin: 20px 0 15px; color: #3AE478;">פרמטרי חישוב</h4>
                 <div class="form-grid">
                     <div>
                         <label>מ"ר גג לכל קילוואט</label>
@@ -165,7 +165,7 @@
             <h3>ניהול משתמשים</h3>
 
             <div style="margin-bottom: 30px;">
-                <h4 style="margin-bottom: 15px; color: #00358A;">יצירת משתמש חדש</h4>
+                <h4 style="margin-bottom: 15px; color: #3AE478;">יצירת משתמש חדש</h4>
                 <form id="createUserForm">
                     <div class="form-grid">
                         <div>
@@ -189,7 +189,7 @@
                 </form>
             </div>
 
-            <h4 style="margin-bottom: 15px; color: #00358A;">משתמשים קיימים</h4>
+            <h4 style="margin-bottom: 15px; color: #3AE478;">משתמשים קיימים</h4>
             <div class="quote-history">
                 <table>
                     <thead>
@@ -211,30 +211,30 @@
         </div>
 
         <!-- חלון עריכת משתמש -->
-        <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                <h3 style="margin-bottom: 20px;">עריכת משתמש</h3>
+        <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: rgba(26, 29, 34, 0.98); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; border: 2px solid rgba(58, 228, 120, 0.3);">
+                <h3 style="margin-bottom: 20px; color: #ffffff;">עריכת משתמש</h3>
                 <form id="editUserForm">
                     <input type="hidden" id="editUserId">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">שם מלא</label>
-                        <input type="text" id="editUserName" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ffffff;">שם מלא</label>
+                        <input type="text" id="editUserName" required style="width: 100%; padding: 10px; border: 2px solid rgba(58, 228, 120, 0.3); border-radius: 8px; font-size: 14px; background: rgba(20, 24, 31, 0.6); color: #ffffff;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">אימייל</label>
-                        <input type="email" id="editUserEmail" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ffffff;">אימייל</label>
+                        <input type="email" id="editUserEmail" required style="width: 100%; padding: 10px; border: 2px solid rgba(58, 228, 120, 0.3); border-radius: 8px; font-size: 14px; background: rgba(20, 24, 31, 0.6); color: #ffffff;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">סיסמה חדשה (השאר ריק לשמירת הנוכחית)</label>
-                        <input type="password" id="editUserPassword" placeholder="אופציונלי" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ffffff;">סיסמה חדשה (השאר ריק לשמירת הנוכחית)</label>
+                        <input type="password" id="editUserPassword" placeholder="אופציונלי" style="width: 100%; padding: 10px; border: 2px solid rgba(58, 228, 120, 0.3); border-radius: 8px; font-size: 14px; background: rgba(20, 24, 31, 0.6); color: #ffffff;">
                     </div>
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">תפקיד</label>
-                        <input type="text" id="editUserRole" required placeholder="לדוגמה: מנהל, נציג מכירות, מעצב" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ffffff;">תפקיד</label>
+                        <input type="text" id="editUserRole" required placeholder="לדוגמה: מנהל, נציג מכירות, מעצב" style="width: 100%; padding: 10px; border: 2px solid rgba(58, 228, 120, 0.3); border-radius: 8px; font-size: 14px; background: rgba(20, 24, 31, 0.6); color: #ffffff;">
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <button type="submit" class="btn-calculate" style="flex: 1;">שמור שינויים</button>
-                        <button type="button" onclick="closeEditModal()" class="btn-calculate" style="flex: 1; background: #999;">ביטול</button>
+                        <button type="button" onclick="closeEditModal()" class="btn-calculate" style="flex: 1; background: rgba(26, 29, 34, 0.8); border: 2px solid rgba(58, 228, 120, 0.5);">ביטול</button>
                     </div>
                 </form>
             </div>
@@ -488,11 +488,11 @@
                 <tr>
                     <td>${user.name || 'לא זמין'}</td>
                     <td>${user.email}</td>
-                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#00358A' : '#52c41a'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role}</span></td>
+                    <td><span style="padding: 4px 8px; background: ${user.role === 'ADMIN' ? '#3B82F6' : '#3AE478'}; color: ${user.role === 'ADMIN' ? 'white' : '#14181F'}; border-radius: 4px; font-size: 12px; font-weight: 600;">${user.role}</span></td>
                     <td>${new Date(user.created_at).toLocaleDateString('he-IL')}</td>
                     <td>
-                        <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">ערוך</button>
-                        <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">מחק</button>
+                        <button onclick="editUser(${user.id})" style="padding: 6px 12px; background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-weight: 600;">ערוך</button>
+                        <button onclick="deleteUser(${user.id}, '${user.email}')" style="padding: 6px 12px; background: #F97316; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">מחק</button>
                     </td>
                 </tr>
             `).join('');

@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
+            background: linear-gradient(135deg, #14181F 0%, #1A1D22 50%, #2B7EB4 100%);
             background-attachment: fixed;
             min-height: 100vh;
             display: flex;
@@ -24,12 +24,14 @@
         }
 
         .calculator-container {
-            background: white;
+            background: rgba(26, 29, 34, 0.95);
             border-radius: 20px;
             padding: 40px;
             max-width: 500px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(58, 228, 120, 0.3);
+            backdrop-filter: blur(15px);
         }
 
         .header {
@@ -38,13 +40,13 @@
         }
 
         .header h1 {
-            color: #2d3748;
+            color: #ffffff;
             font-size: 32px;
             margin-bottom: 10px;
         }
 
         .header p {
-            color: #718096;
+            color: #3AE478;
             font-size: 14px;
         }
 
@@ -61,7 +63,7 @@
 
         .input-group label {
             display: block;
-            color: #2d3748;
+            color: #ffffff;
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 14px;
@@ -74,18 +76,20 @@
         .input-group input {
             width: 100%;
             padding: 14px 50px 14px 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.3);
             border-radius: 12px;
             font-size: 16px;
             transition: all 0.3s;
             direction: ltr;
             text-align: right;
+            background: rgba(20, 24, 31, 0.6);
+            color: #ffffff;
         }
 
         .input-group input:focus {
             outline: none;
-            border-color: #D9FF0D;
-            box-shadow: 0 0 0 3px rgba(217, 255, 13, 0.1);
+            border-color: #3AE478;
+            box-shadow: 0 0 0 3px rgba(58, 228, 120, 0.2);
         }
 
         .input-unit {
@@ -107,20 +111,20 @@
         .model-btn {
             flex: 1;
             padding: 12px;
-            border: 2px solid #e2e8f0;
-            background: white;
+            border: 2px solid rgba(58, 228, 120, 0.3);
+            background: rgba(20, 24, 31, 0.6);
             border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            color: #4a5568;
+            color: #ffffff;
             transition: all 0.3s;
         }
 
         .model-btn.active {
-            background: #00358A;
-            color: white;
-            border-color: #00358A;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
+            border-color: #3AE478;
         }
 
         .direction-selector {
@@ -129,7 +133,7 @@
 
         .direction-label {
             display: block;
-            color: #2d3748;
+            color: #ffffff;
             font-weight: 600;
             margin-bottom: 12px;
             font-size: 14px;
@@ -149,13 +153,13 @@
 
         .direction-btn {
             padding: 12px;
-            border: 2px solid #e2e8f0;
-            background: white;
+            border: 2px solid rgba(58, 228, 120, 0.3);
+            background: rgba(20, 24, 31, 0.6);
             border-radius: 12px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            color: #4a5568;
+            color: #ffffff;
             transition: all 0.3s;
             display: flex;
             align-items: center;
@@ -164,9 +168,9 @@
         }
 
         .direction-btn.active {
-            background: #D9FF0D;
-            color: #00358A;
-            border-color: #D9FF0D;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
+            border-color: #3AE478;
         }
 
         .direction-btn .icon {
@@ -179,9 +183,10 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            background: #f7fafc;
+            background: rgba(20, 24, 31, 0.6);
             border-radius: 12px;
             margin-bottom: 25px;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .shading-label {
@@ -189,7 +194,7 @@
             align-items: center;
             gap: 8px;
             font-weight: 600;
-            color: #2d3748;
+            color: #ffffff;
         }
 
         .toggle-switch {
@@ -229,7 +234,7 @@
         }
 
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #48bb78;
+            background-color: #3AE478;
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
@@ -239,8 +244,8 @@
         .btn-calculate {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #00358A 0%, #D9FF0D 100%);
-            color: white;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
             border: none;
             border-radius: 12px;
             font-size: 16px;
@@ -252,7 +257,7 @@
 
         .btn-calculate:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 53, 138, 0.4);
+            box-shadow: 0 10px 25px rgba(58, 228, 120, 0.6);
         }
 
         .calculator-results {
@@ -265,13 +270,13 @@
         }
 
         .results-header h3 {
-            color: #2d3748;
+            color: #ffffff;
             font-size: 24px;
             margin-bottom: 8px;
         }
 
         .results-header p {
-            color: #718096;
+            color: #A0AEC0;
             font-size: 13px;
         }
 
@@ -283,22 +288,22 @@
         }
 
         .income-box {
-            background: #f7fafc;
+            background: rgba(20, 24, 31, 0.6);
             border-radius: 12px;
             padding: 20px;
             text-align: center;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.3);
         }
 
         .income-box.highlight {
-            background: linear-gradient(135deg, #D9FF0D 0%, #b8e600 100%);
-            border-color: #D9FF0D;
+            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            border-color: #3AE478;
         }
 
         .income-box .value {
             font-size: 28px;
             font-weight: 700;
-            color: #2d3748;
+            color: #ffffff;
             margin-bottom: 8px;
             display: flex;
             align-items: center;
@@ -306,19 +311,31 @@
             gap: 5px;
         }
 
+        .income-box.highlight .value {
+            color: #14181F;
+        }
+
         .income-box .currency {
             font-size: 18px;
-            color: #4a5568;
+            color: #A0AEC0;
+        }
+
+        .income-box.highlight .currency {
+            color: #1A1D22;
         }
 
         .income-box .label {
-            color: #4a5568;
+            color: #A0AEC0;
             font-size: 13px;
             font-weight: 600;
         }
 
+        .income-box.highlight .label {
+            color: #1A1D22;
+        }
+
         .system-info {
-            background: linear-gradient(135deg, #00358A 0%, #003d9e 100%);
+            background: linear-gradient(135deg, #2B7EB4 0%, #1A1D22 100%);
             border-radius: 12px;
             padding: 20px;
             display: flex;
@@ -326,6 +343,7 @@
             gap: 15px;
             margin-bottom: 20px;
             color: white;
+            border: 1px solid rgba(58, 228, 120, 0.2);
         }
 
         .system-info .icon {
@@ -427,22 +445,24 @@
         }
 
         .btn-recalculate {
-            background: #e2e8f0;
-            color: #2d3748;
+            background: rgba(26, 29, 34, 0.8);
+            color: #3AE478;
+            border: 2px solid rgba(58, 228, 120, 0.5);
         }
 
         .btn-recalculate:hover {
-            background: #cbd5e0;
+            background: #3AE478;
+            color: #14181F;
         }
 
         .btn-contact {
-            background: linear-gradient(135deg, #D9FF0D 0%, #b8e600 100%);
-            color: #00358A;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
         }
 
         .btn-contact:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(217, 255, 13, 0.3);
+            box-shadow: 0 5px 15px rgba(58, 228, 120, 0.6);
         }
 
         .btn-contact-link {
@@ -450,19 +470,19 @@
             align-items: center;
             gap: 8px;
             padding: 12px 24px;
-            background: linear-gradient(135deg, #00358A 0%, #003d9e 100%);
-            color: white;
+            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            color: #14181F;
             text-decoration: none;
             border-radius: 10px;
             font-size: 14px;
             font-weight: 700;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.2);
+            box-shadow: 0 4px 12px rgba(58, 228, 120, 0.4);
         }
 
         .btn-contact-link:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.4);
+            box-shadow: 0 6px 20px rgba(58, 228, 120, 0.6);
         }
 
         @media (max-width: 600px) {
