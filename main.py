@@ -541,16 +541,19 @@ async def create_user(
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
-    role: str = Form("SALES_REP"),
+    role: str = Form(...),
     user=Depends(get_current_user)
 ):
     """Create new user (admin only)"""
     if not user or user["role"] != "ADMIN":
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    # Validate role
-    if role not in ["ADMIN", "SALES_REP"]:
-        raise HTTPException(status_code=400, detail="Invalid role")
+    # Validate inputs
+    if not name or not email or not password or not role:
+        raise HTTPException(status_code=400, detail="All fields are required")
+
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     # Check if email already exists
     with get_db() as conn:
@@ -559,13 +562,15 @@ async def create_user(
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already exists")
 
-        # Create user
+        # Create user with hashed password
         hashed_password = hash_password(password)
         cursor.execute('''
             INSERT INTO users (email, password, name, role)
             VALUES (?, ?, ?, ?)
         ''', (email, hashed_password, name, role))
         conn.commit()
+
+        print(f"[USER-CREATE] New user created: {email} with role: {role}")
 
     return {"message": "User created successfully"}
 
@@ -582,9 +587,9 @@ async def update_user(
     if not user or user["role"] != "ADMIN":
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    # Validate role
-    if role not in ["ADMIN", "SALES_REP"]:
-        raise HTTPException(status_code=400, detail="Invalid role")
+    # Validate inputs
+    if not name or not email or not role:
+        raise HTTPException(status_code=400, detail="Name, email, and role are required")
 
     with get_db() as conn:
         cursor = conn.cursor()
