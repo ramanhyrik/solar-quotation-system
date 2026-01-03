@@ -26,16 +26,15 @@ from concurrent.futures import ThreadPoolExecutor
 # Detect if running in production (on Render or other HTTPS environment)
 IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") is not None
 
-# Persistent storage paths (use Render persistent disk in production, local in development)
-PERSISTENT_DIR = "/opt/render/project/src" if os.getenv("RENDER") else "."
-STATIC_BASE = os.path.join(PERSISTENT_DIR, "static")
+# Persistent storage for user uploads (persistent disk in production, local in development)
+PERSISTENT_UPLOADS_DIR = "/opt/render/project/src/uploads" if os.getenv("RENDER") else "static"
 
-# Define all storage directories
-UPLOADS_DIR = os.path.join(STATIC_BASE, "uploads")
-ROOF_IMAGES_DIR = os.path.join(STATIC_BASE, "roof_images")
-ROOF_VISUALIZATIONS_DIR = os.path.join(STATIC_BASE, "roof_visualizations")
-SIGNATURES_DIR = os.path.join(STATIC_BASE, "quote_signatures")
-SIGNED_PDFS_DIR = os.path.join(STATIC_BASE, "signed_pdfs")
+# Define all storage directories (user uploads go to persistent disk)
+UPLOADS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "uploads")
+ROOF_IMAGES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_images")
+ROOF_VISUALIZATIONS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_visualizations")
+SIGNATURES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "quote_signatures")
+SIGNED_PDFS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "signed_pdfs")
 
 # Session store (in-memory for simplicity)
 sessions = {}
@@ -115,7 +114,7 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 async def lifespan(app: FastAPI):
     """Lifespan event handler"""
     # Startup - directories already created at module import time
-    print(f"[OK] Using storage directory: {STATIC_BASE}")
+    print(f"[OK] Using uploads directory: {PERSISTENT_UPLOADS_DIR}")
 
     init_database()
 
@@ -143,12 +142,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure static directories exist before mounting (required at import time)
-for directory in [STATIC_BASE, UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
+# Ensure upload directories exist before mounting (required at import time)
+for directory in [UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
     os.makedirs(directory, exist_ok=True)
 
-# Mount static files (from persistent disk in production, local in development)
-app.mount("/static", StaticFiles(directory=STATIC_BASE), name="static")
+# Mount static files (CSS, JS, logos from app code)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Mount uploads directory (from persistent disk in production)
+if os.getenv("RENDER"):
+    app.mount("/uploads", StaticFiles(directory=PERSISTENT_UPLOADS_DIR), name="uploads")
 
 # Templates
 templates = Jinja2Templates(directory="templates")
@@ -493,7 +496,7 @@ async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_use
         f.write(content)
 
     # Update database with logo path
-    logo_url = f"/static/uploads/{filename}"
+    logo_url = f"/uploads/uploads/{filename}" if os.getenv("RENDER") else f"/static/uploads/{filename}"
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -1972,7 +1975,7 @@ async def upload_roof_image_endpoint(
         return JSONResponse(content={
             "success": True,
             "design_id": design_id,
-            "image_url": f"/static/roof_images/{filename}",
+            "image_url": f"/uploads/roof_images/{filename}" if os.getenv("RENDER") else f"/static/roof_images/{filename}",
             "image_dimensions": {"width": width, "height": height}
         })
 
@@ -2317,7 +2320,7 @@ async def save_visualization_endpoint(
 
         return JSONResponse(content={
             "success": True,
-            "visualization_url": f"/static/roof_visualizations/{vis_filename}"
+            "visualization_url": f"/uploads/roof_visualizations/{vis_filename}" if os.getenv("RENDER") else f"/static/roof_visualizations/{vis_filename}"
         })
 
     except HTTPException:
