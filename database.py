@@ -1,8 +1,8 @@
 import sqlite3
 import hashlib
+import bcrypt
 from datetime import datetime
 from contextlib import contextmanager
-from passlib.hash import bcrypt_sha256
 
 DATABASE_FILE = "solar_quotes.db"
 
@@ -198,18 +198,26 @@ def init_database():
             print("[OK] Default admin user created: admin@solar.com / admin123")
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt_sha256 (handles any length)"""
-    # bcrypt_sha256 pre-hashes with SHA-256, avoiding the 72-byte bcrypt limit
-    return bcrypt_sha256.hash(password)
+    """Hash password using bcrypt with SHA-256 pre-hash (handles any length)"""
+    # Pre-hash with SHA-256 to handle passwords longer than 72 bytes
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    # Hash with bcrypt
+    return bcrypt.hashpw(password_hash.encode(), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verify password against bcrypt_sha256 or legacy hashes"""
+    """Verify password against bcrypt with SHA-256 pre-hash or legacy hashes"""
     try:
-        # Try bcrypt_sha256 (new format)
-        return bcrypt_sha256.verify(password, hashed)
-    except:
-        # Fallback for old SHA-256 hashes (default admin user)
-        return hashlib.sha256(password.encode()).hexdigest() == hashed
+        # Check if it's a bcrypt hash (starts with $2b$, $2a$, or $2y$)
+        if hashed.startswith('$2'):
+            # Pre-hash with SHA-256 (same as hash_password)
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            return bcrypt.checkpw(password_hash.encode(), hashed.encode())
+        else:
+            # Fallback for old SHA-256 hashes (default admin user)
+            return hashlib.sha256(password.encode()).hexdigest() == hashed
+    except Exception as e:
+        print(f"[AUTH] Password verification error: {e}")
+        return False
 
 def generate_quote_number() -> str:
     """Generate unique quote number"""
