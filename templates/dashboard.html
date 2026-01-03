@@ -125,7 +125,7 @@
         }
 
         .direction-btn.active {
-            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            background: #3AE478;
             color: #14181F;
             border-color: #3AE478;
         }
@@ -247,9 +247,9 @@
         }
 
         .income-box.highlight {
-            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            background: #3AE478;
             color: #14181F;
-            border: none;
+            border: 2px solid #3AE478;
         }
 
         .income-box .value {
@@ -274,7 +274,7 @@
             justify-content: center;
             gap: 15px;
             padding: 20px;
-            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            background: #3AE478;
             border-radius: 12px;
             margin-bottom: 25px;
         }
@@ -364,12 +364,12 @@
         }
 
         .btn-contact {
-            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            background: #3AE478;
             color: #14181F;
         }
 
         .btn-contact:hover {
-            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            background: #32c86a;
         }
 
         /* Leasing specific styles */
@@ -429,13 +429,13 @@
         }
 
         .metric-row.highlight {
-            background: linear-gradient(135deg, #3B82F6 0%, #2B7EB4 100%);
-            border: 1px solid #3B82F6;
+            background: #2B7EB4;
+            border: 1px solid #2B7EB4;
             font-weight: 600;
         }
 
         .metric-row.success {
-            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            background: #3AE478;
             border: 1px solid #3AE478;
             font-weight: 700;
             font-size: 18px;
@@ -504,7 +504,7 @@
         }
 
         .comparison-table thead {
-            background: linear-gradient(135deg, #3AE478 0%, #3AE378 100%);
+            background: #3AE478;
             position: sticky;
             top: 0;
         }
@@ -514,7 +514,7 @@
             text-align: center;
             font-weight: 700;
             color: #14181F;
-            border: 1px solid #3AE378;
+            border: 1px solid #3AE478;
             font-size: 12px;
         }
 
@@ -540,14 +540,14 @@
         }
 
         .comparison-table tbody tr.total-row {
-            background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%);
+            background: #3AE478;
             color: #14181F;
             font-weight: 700;
             font-size: 15px;
         }
 
         .comparison-table tbody tr.total-row td {
-            border: 1px solid #3AE378;
+            border: 1px solid #3AE478;
             color: #14181F;
         }
 
@@ -765,7 +765,7 @@
                 <div class="actions">
                     <button onclick="saveQuote()" class="btn-primary">שמור הצעה</button>
                     <button onclick="generatePDF()" class="btn-secondary">הפק PDF</button>
-                    <button onclick="viewFinancialAnalysis()" class="btn-secondary" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; border: 2px solid #3AE478;">הצג ניתוח פיננסי</button>
+                    <button onclick="viewFinancialAnalysis()" class="btn-secondary" style="background: #3AE478; color: #14181F; border: 2px solid #3AE478;">הצג ניתוח פיננסי</button>
                 </div>
             </div>
         </div>
@@ -793,7 +793,7 @@
         <div id="roofDesignsSection" style="display:none;">
             <h1>עיצובי גגות</h1>
             <div style="margin-bottom: 20px;">
-                <button onclick="window.location.href='/roof-designer'" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                <button onclick="window.location.href='/roof-designer'" style="background: #3AE478; color: #14181F; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
                     עיצוב חדש +
                 </button>
             </div>
@@ -1259,7 +1259,7 @@
                         <td>${design.roof_area_m2 ? design.roof_area_m2.toFixed(2) : '-'}</td>
                         <td>${createdDate}</td>
                         <td>
-                            <button onclick="downloadVisualization(${design.id})" style="background: linear-gradient(135deg, #3AE478 0%, #2B7EB4 100%); color: #14181F; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 12px; font-weight: 600;">
+                            <button onclick="downloadVisualization(${design.id})" style="background: #3AE478; color: #14181F; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; font-size: 12px; font-weight: 600;">
                                 הורד
                             </button>
                             <button onclick="deleteRoofDesign(${design.id})" style="background: #F97316; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
