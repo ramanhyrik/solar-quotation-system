@@ -2,7 +2,7 @@ import sqlite3
 import hashlib
 from datetime import datetime
 from contextlib import contextmanager
-from passlib.hash import bcrypt
+from passlib.hash import bcrypt_sha256
 
 DATABASE_FILE = "solar_quotes.db"
 
@@ -198,19 +198,17 @@ def init_database():
             print("[OK] Default admin user created: admin@solar.com / admin123")
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt (max 72 bytes)"""
-    # Bcrypt has a 72-byte limit, truncate if necessary
-    password_bytes = password.encode('utf-8')[:72]
-    return bcrypt.hash(password_bytes.decode('utf-8', errors='ignore'))
+    """Hash password using bcrypt_sha256 (handles any length)"""
+    # bcrypt_sha256 pre-hashes with SHA-256, avoiding the 72-byte bcrypt limit
+    return bcrypt_sha256.hash(password)
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verify password against bcrypt hash"""
+    """Verify password against bcrypt_sha256 or legacy hashes"""
     try:
-        # Bcrypt has a 72-byte limit, truncate if necessary
-        password_bytes = password.encode('utf-8')[:72]
-        return bcrypt.verify(password_bytes.decode('utf-8', errors='ignore'), hashed)
+        # Try bcrypt_sha256 (new format)
+        return bcrypt_sha256.verify(password, hashed)
     except:
-        # Fallback for old SHA-256 hashes (for migration)
+        # Fallback for old SHA-256 hashes (default admin user)
         return hashlib.sha256(password.encode()).hexdigest() == hashed
 
 def generate_quote_number() -> str:
