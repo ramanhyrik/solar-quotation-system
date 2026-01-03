@@ -2309,9 +2309,13 @@ async def save_visualization_endpoint(
 
 @app.get("/roof-designer", response_class=HTMLResponse)
 async def roof_designer_page(request: Request, user=Depends(get_current_user)):
-    """Roof designer UI page - standalone tool"""
+    """Roof designer UI page - ADMIN ONLY"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
+
+    # Admin-only access
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
 
     return templates.TemplateResponse("roof_designer.html", {
         "request": request,
