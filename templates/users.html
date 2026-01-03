@@ -6,6 +6,20 @@
     <title>ניהול משתמשים - הצעות מחיר סולאריות</title>
     <link rel="stylesheet" href="/static/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body.embedded {
+            background: #f9fafb;
+        }
+        body.embedded .sidebar {
+            display: none;
+        }
+        body.embedded .main-content {
+            margin-right: 0;
+            width: 100%;
+            padding: 20px;
+            max-width: 1200px;
+        }
+    </style>
 </head>
 <body>
     <div class="sidebar">
@@ -105,6 +119,12 @@
 
     <script>
         let users = [];
+
+        // Embedded mode: hide sidebar when loaded with ?embedded=1
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('embedded') === '1') {
+            document.body.classList.add('embedded');
+        }
 
         // טעינת משתמשים
         async function loadUsers() {
