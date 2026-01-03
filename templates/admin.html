@@ -32,12 +32,10 @@
         <div class="quote-form" style="margin-bottom: 20px;">
             <h3>מרכז ניהול</h3>
             <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px;">
-                <a href="#pricingSection" class="btn-calculate" style="text-align: center;">תמחור והכנסות</a>
-                <a href="#companySection" class="btn-calculate" style="text-align: center;">הגדרות חברה ולוגו</a>
-                <a href="#calculatorSection" class="btn-calculate" style="text-align: center;">הגדרות מחשבון</a>
-                <a href="/users" class="btn-calculate" style="text-align: center;">ניהול משתמשים</a>
-                <a href="/submissions" class="btn-calculate" style="text-align: center;">פניות לקוחות</a>
-                <a href="/roof-designer" class="btn-calculate" style="text-align: center;">מעצב גגות</a>
+                <button type="button" class="btn-calculate admin-card" data-target-section="pricingSection" style="text-align: center; width: 100%;">תמחור והכנסות</button>
+                <button type="button" class="btn-calculate admin-card" data-target-section="companySection" style="text-align: center; width: 100%;">הגדרות חברה ולוגו</button>
+                <button type="button" class="btn-calculate admin-card" data-target-section="calculatorSection" style="text-align: center; width: 100%;">הגדרות מחשבון</button>
+                <a href="/users" class="btn-calculate admin-card" style="text-align: center; width: 100%;">ניהול משתמשים</a>
             </div>
         </div>
 
@@ -70,7 +68,7 @@
             </form>
         </div>
 
-        <div class="quote-form" style="margin-top: 20px;" id="companySection">
+        <div class="quote-form" style="margin-top: 20px; display: none;" id="companySection">
             <h3>הגדרות חברה ולוגו</h3>
             <form id="companyForm">
                 <div class="form-grid">
@@ -98,7 +96,7 @@
             </form>
         </div>
 
-        <div class="quote-form" style="margin-top: 20px;" id="calculatorSection">
+        <div class="quote-form" style="margin-top: 20px; display: none;" id="calculatorSection">
             <h3>הגדרות מחשבון סולארי</h3>
             <form id="calculatorForm">
                 <h4 style="margin-bottom: 15px; color: #00358A;">מקדמי כיוון גג</h4>
@@ -362,8 +360,28 @@
             }
         });
 
+        // ניווט בין כרטיסי הניהול
+        function showAdminSection(sectionId) {
+            const sections = ['pricingSection', 'companySection', 'calculatorSection'];
+            sections.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = id === sectionId ? 'block' : 'none';
+            });
+            document.querySelectorAll('.admin-card').forEach(card => {
+                card.classList.toggle('active', card.getAttribute('data-target-section') === sectionId);
+            });
+        }
+
         loadSettings();
         lucide.createIcons();
+        showAdminSection('pricingSection');
+
+        document.querySelectorAll('.admin-card[data-target-section]').forEach(card => {
+            card.addEventListener('click', () => {
+                const target = card.getAttribute('data-target-section');
+                if (target) showAdminSection(target);
+            });
+        });
     </script>
 </body>
 </html>
