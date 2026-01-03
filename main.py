@@ -271,8 +271,8 @@ async def update_pricing(
     vat_rate: float = Form(0.17),
     user=Depends(get_current_user)
 ):
-    """Update pricing parameters (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Update pricing parameters"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -429,8 +429,8 @@ async def update_company(
     company_address: str = Form(None),
     user=Depends(get_current_user)
 ):
-    """Update company settings (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Update company settings"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -449,8 +449,8 @@ async def update_company(
 
 @app.post("/api/logo/upload")
 async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_user)):
-    """Upload company logo (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Upload company logo"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Validate file type
@@ -491,8 +491,8 @@ async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_use
 
 @app.delete("/api/logo/delete")
 async def delete_logo(user=Depends(get_current_user)):
-    """Delete company logo (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Delete company logo"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -526,8 +526,8 @@ async def delete_logo(user=Depends(get_current_user)):
 
 @app.get("/api/users")
 async def get_users(user=Depends(get_current_user)):
-    """Get all users (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Get all users"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -654,8 +654,8 @@ async def delete_user(user_id: int, user=Depends(get_current_user)):
 
 @app.get("/api/submissions")
 async def get_submissions(user=Depends(get_current_user)):
-    """Get all customer submissions (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Get all customer submissions"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -677,8 +677,8 @@ async def update_submission(
     notes: str = Form(None),
     user=Depends(get_current_user)
 ):
-    """Update submission status and notes (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Update submission status and notes"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     # Validate status
@@ -706,8 +706,8 @@ async def update_submission(
 
 @app.delete("/api/submissions/{submission_id}")
 async def delete_submission(submission_id: int, user=Depends(get_current_user)):
-    """Delete customer submission (admin only)"""
-    if not user or user["role"] != "ADMIN":
+    """Delete customer submission"""
+    if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
@@ -2274,10 +2274,6 @@ async def save_visualization_endpoint(
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            # Check ownership
-            if user['role'] != 'ADMIN' and design[0] != user['user_id']:
-                raise HTTPException(status_code=403, detail="Access denied")
-
         # Decode base64 canvas data (format: "data:image/png;base64,...")
         if visualization.startswith('data:image'):
             # Remove data URL prefix
@@ -2321,13 +2317,9 @@ async def save_visualization_endpoint(
 
 @app.get("/roof-designer", response_class=HTMLResponse)
 async def roof_designer_page(request: Request, user=Depends(get_current_user)):
-    """Roof designer UI page - ADMIN ONLY"""
+    """Roof designer UI page"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-
-    # Admin-only access
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
 
     return templates.TemplateResponse("roof_designer.html", {
         "request": request,
@@ -2344,22 +2336,13 @@ async def list_roof_designs(user=Depends(get_current_user)):
         with get_db() as conn:
             cursor = conn.cursor()
 
-            # Admin can see all, others see only their own
-            if user["role"] == "ADMIN":
-                cursor.execute('''
-                    SELECT id, customer_name, customer_address, panel_count,
-                           system_power_kw, roof_area_m2, created_at
-                    FROM roof_designs
-                    ORDER BY created_at DESC
-                ''')
-            else:
-                cursor.execute('''
-                    SELECT id, customer_name, customer_address, panel_count,
-                           system_power_kw, roof_area_m2, created_at
-                    FROM roof_designs
-                    WHERE created_by = ?
-                    ORDER BY created_at DESC
-                ''', (user['user_id'],))
+            # All users can see all designs
+            cursor.execute('''
+                SELECT id, customer_name, customer_address, panel_count,
+                       system_power_kw, roof_area_m2, created_at
+                FROM roof_designs
+                ORDER BY created_at DESC
+            ''')
 
             designs = [dict(row) for row in cursor.fetchall()]
             return {"designs": designs}
@@ -2390,9 +2373,6 @@ async def update_roof_design_metadata(
 
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
-
-            if user['role'] != 'ADMIN' and design[0] != user['user_id']:
-                raise HTTPException(status_code=403, detail="Access denied")
 
             # Update metadata
             cursor.execute('''
@@ -2436,9 +2416,6 @@ async def delete_roof_design(
                 raise HTTPException(status_code=404, detail="Design not found")
 
             created_by, original_image_path, processed_image_path = design
-
-            if user['role'] != 'ADMIN' and created_by != user['user_id']:
-                raise HTTPException(status_code=403, detail="Access denied")
 
             # Delete image files if they exist
             if original_image_path and os.path.exists(original_image_path):
@@ -2493,9 +2470,6 @@ async def download_roof_visualization(
                 raise HTTPException(status_code=404, detail="Design not found")
 
             created_by, processed_image_path, customer_name = design
-
-            if user['role'] != 'ADMIN' and created_by != user['user_id']:
-                raise HTTPException(status_code=403, detail="Access denied")
 
             # Check if visualization exists
             if not processed_image_path or not os.path.exists(processed_image_path):
