@@ -555,14 +555,14 @@
     <div class="sidebar">
         <h2><i data-lucide="sun" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 8px;"></i> אנרגיה סולארית</h2>
         <nav>
-            <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
+            <a href="#" onclick="showSection('quote')" id="nav-quote">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
             <a href="#" onclick="showSection('roofDesigns')" id="nav-roof-designs">עיצובי גגות</a>
-            <a href="/admin">לוח ניהול</a>
-            <a href="/submissions">פניות לקוחות</a>
-            <a href="/roof-designer">מעצב גגות</a>
             <a href="#" onclick="showSection('calculator')" id="nav-calculator">מחשבון</a>
             <a href="#" onclick="showSection('comparison')" id="nav-comparison">השוואת תזרים מזומנים</a>
+            <a href="/roof-designer">מעצב גגות</a>
+            <a href="/admin">לוח ניהול</a>
+            <a href="/submissions">פניות לקוחות</a>
             <a href="/logout">התנתק</a>
         </nav>
         <div class="user-info">
@@ -572,6 +572,43 @@
     </div>
 
     <div class="main-content">
+        <!-- Welcome Section -->
+        <div id="welcomeSection">
+            <div style="text-align: center; padding: 60px 20px;">
+                <h1 style="font-size: 42px; margin-bottom: 15px; color: #00358A;">
+                    <i data-lucide="sun" style="width: 48px; height: 48px; vertical-align: middle; margin-left: 12px; color: #D9FF0D;"></i>
+                    ברוכים הבאים למערכת הצעות המחיר הסולארית
+                </h1>
+                <p style="font-size: 20px; color: #666; margin-bottom: 40px;">שלום, {{ user.name or user.email }}! מה תרצה לעשות היום?</p>
+
+                <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; max-width: 1000px; margin: 0 auto;">
+                    <div onclick="showSection('quote')" style="background: linear-gradient(135deg, #00358A 0%, #0056b3 100%); padding: 30px; border-radius: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(0,53,138,0.2);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,53,138,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,53,138,0.2)'">
+                        <i data-lucide="file-plus" style="width: 48px; height: 48px; color: #D9FF0D; margin-bottom: 15px;"></i>
+                        <h3 style="color: white; margin-bottom: 10px; font-size: 22px;">הצעה חדשה</h3>
+                        <p style="color: rgba(255,255,255,0.8); font-size: 14px;">צור הצעת מחיר חדשה עבור לקוח</p>
+                    </div>
+
+                    <div onclick="showSection('history')" style="background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%); padding: 30px; border-radius: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(82,196,26,0.2);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(82,196,26,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(82,196,26,0.2)'">
+                        <i data-lucide="history" style="width: 48px; height: 48px; color: white; margin-bottom: 15px;"></i>
+                        <h3 style="color: white; margin-bottom: 10px; font-size: 22px;">היסטוריית הצעות</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px;">צפה וערוך הצעות קיימות</p>
+                    </div>
+
+                    <div onclick="showSection('calculator')" style="background: linear-gradient(135deg, #fa8c16 0%, #ffa940 100%); padding: 30px; border-radius: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(250,140,22,0.2);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(250,140,22,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(250,140,22,0.2)'">
+                        <i data-lucide="calculator" style="width: 48px; height: 48px; color: white; margin-bottom: 15px;"></i>
+                        <h3 style="color: white; margin-bottom: 10px; font-size: 22px;">מחשבון סולארי</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px;">חשב תשואה והכנסות צפויות</p>
+                    </div>
+
+                    <div onclick="window.location.href='/admin'" style="background: linear-gradient(135deg, #722ed1 0%, #9254de 100%); padding: 30px; border-radius: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(114,46,209,0.2);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(114,46,209,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(114,46,209,0.2)'">
+                        <i data-lucide="settings" style="width: 48px; height: 48px; color: white; margin-bottom: 15px;"></i>
+                        <h3 style="color: white; margin-bottom: 10px; font-size: 22px;">לוח ניהול</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px;">ניהול מערכת והגדרות</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Calculator Section -->
         <div id="calculatorSection" style="display: none;">
             <h1>מחשבון אנרגיה סולארית</h1>
@@ -691,7 +728,7 @@
         </div>
 
         <!-- Quote Form Section -->
-        <div id="quoteSection" class="quote-form-section">
+        <div id="quoteSection" class="quote-form-section" style="display: none;">
             <h1>יצירת הצעה חדשה</h1>
 
             <div class="model-tabs">
@@ -945,7 +982,8 @@
         }
 
         function showSection(section) {
-            // Hide all sections
+            // Hide all sections including welcome
+            document.getElementById('welcomeSection').style.display = 'none';
             document.getElementById('calculatorSection').style.display = 'none';
             document.getElementById('quoteSection').style.display = 'none';
             document.getElementById('historySection').style.display = 'none';
@@ -1287,10 +1325,14 @@
             // Initialize Lucide icons
             lucide.createIcons();
 
+            // Check if there's a section parameter in URL
             const urlParams = new URLSearchParams(window.location.search);
             const section = urlParams.get('section');
-            if (section === 'calculator' || section === 'history' || section === 'comparison' || section === 'roofDesigns') {
+            if (section === 'calculator' || section === 'history' || section === 'comparison' || section === 'roofDesigns' || section === 'quote') {
                 showSection(section);
+            } else {
+                // Show welcome screen by default
+                document.getElementById('welcomeSection').style.display = 'block';
             }
         });
     </script>
