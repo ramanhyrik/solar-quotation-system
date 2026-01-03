@@ -449,6 +449,8 @@
             document.querySelectorAll('.admin-card').forEach(card => {
                 card.classList.toggle('active', card.getAttribute('data-target-section') === sectionId);
             });
+            // שמירת המיקום האחרון ב-localStorage
+            localStorage.setItem('lastAdminSection', sectionId);
         }
 
         loadSettings();
@@ -610,7 +612,10 @@
         loadUsers();
 
         lucide.createIcons();
-        showAdminSection('pricingSection');
+
+        // שחזור המיקום האחרון מ-localStorage או ברירת מחדל
+        const lastSection = localStorage.getItem('lastAdminSection') || 'pricingSection';
+        showAdminSection(lastSection);
 
         document.querySelectorAll('.admin-card[data-target-section]').forEach(card => {
             card.addEventListener('click', () => {
