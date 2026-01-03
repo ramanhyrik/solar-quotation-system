@@ -441,7 +441,7 @@
 
         // ניווט בין כרטיסי הניהול
         function showAdminSection(sectionId) {
-            const sections = ['pricingSection', 'companySection', 'calculatorSection'];
+            const sections = ['pricingSection', 'companySection', 'calculatorSection', 'usersSection'];
             sections.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = id === sectionId ? 'block' : 'none';
