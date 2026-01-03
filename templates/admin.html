@@ -14,7 +14,6 @@
             <a href="/dashboard">הצעה חדשה</a>
             <a href="/dashboard?section=history">היסטוריית הצעות</a>
             <a href="/admin" class="active">לוח ניהול</a>
-            <a href="/users">ניהול משתמשים</a>
             <a href="/submissions">פניות לקוחות</a>
             <a href="/roof-designer">מעצב גגות</a>
             <a href="/dashboard?section=calculator">מחשבון</a>
@@ -30,7 +29,19 @@
     <div class="main-content">
         <h1>לוח ניהול</h1>
 
-        <div class="quote-form">
+        <div class="quote-form" style="margin-bottom: 20px;">
+            <h3>מרכז ניהול</h3>
+            <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px;">
+                <a href="#pricingSection" class="btn-calculate" style="text-align: center;">תמחור והכנסות</a>
+                <a href="#companySection" class="btn-calculate" style="text-align: center;">הגדרות חברה ולוגו</a>
+                <a href="#calculatorSection" class="btn-calculate" style="text-align: center;">הגדרות מחשבון</a>
+                <a href="/users" class="btn-calculate" style="text-align: center;">ניהול משתמשים</a>
+                <a href="/submissions" class="btn-calculate" style="text-align: center;">פניות לקוחות</a>
+                <a href="/roof-designer" class="btn-calculate" style="text-align: center;">מעצב גגות</a>
+            </div>
+        </div>
+
+        <div class="quote-form" id="pricingSection">
             <h3>פרמטרי תמחור</h3>
             <form id="pricingForm">
                 <div class="form-grid">
@@ -59,8 +70,8 @@
             </form>
         </div>
 
-        <div class="quote-form" style="margin-top: 20px;">
-            <h3>הגדרות חברה</h3>
+        <div class="quote-form" style="margin-top: 20px;" id="companySection">
+            <h3>הגדרות חברה ולוגו</h3>
             <form id="companyForm">
                 <div class="form-grid">
                     <input type="text" id="companyName" placeholder="שם החברה" required>
@@ -68,28 +79,26 @@
                     <input type="email" id="companyEmail" placeholder="אימייל">
                     <input type="text" id="companyAddress" placeholder="כתובת">
                 </div>
+
+                <div style="margin: 18px 0;">
+                    <div id="logoPreview" style="margin-bottom: 12px; text-align: center;">
+                        <img id="logoImage" src="" alt="לוגו חברה" style="max-width: 300px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                        <p id="noLogo" style="color: #999; font-style: italic;">עדיין לא הועלה לוגו</p>
+                    </div>
+                    <label for="logoFile" style="display: block; margin-bottom: 5px; font-weight: 600;">העלה לוגו (PNG, JPG, או SVG)</label>
+                    <input type="file" id="logoFile" name="logo" accept="image/png,image/jpeg,image/jpg,image/svg+xml">
+                    <p style="font-size: 12px; color: #666; margin-top: 5px;">גודל מומלץ: 300x100 פיקסלים</p>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button type="button" id="uploadLogoBtn" class="btn-calculate" style="flex: 1;">עדכן לוגו</button>
+                        <button type="button" id="deleteLogo" class="btn-calculate" style="flex: 1; background: #dc3545; display: none;">מחק לוגו</button>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-calculate">עדכן פרטי חברה</button>
             </form>
         </div>
 
-        <div class="quote-form" style="margin-top: 20px;">
-            <h3>לוגו חברה</h3>
-            <div id="logoPreview" style="margin-bottom: 15px; text-align: center;">
-                <img id="logoImage" src="" alt="לוגו חברה" style="max-width: 300px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
-                <p id="noLogo" style="color: #999; font-style: italic;">עדיין לא הועלה לוגו</p>
-            </div>
-            <form id="logoForm">
-                <div style="margin-bottom: 15px;">
-                    <label for="logoFile" style="display: block; margin-bottom: 5px; font-weight: 600;">העלה לוגו (PNG, JPG, או SVG)</label>
-                    <input type="file" id="logoFile" name="logo" accept="image/png,image/jpeg,image/jpg,image/svg+xml" required>
-                    <p style="font-size: 12px; color: #666; margin-top: 5px;">גודל מומלץ: 300x100 פיקסלים</p>
-                </div>
-                <button type="submit" class="btn-calculate">העלה לוגו</button>
-                <button type="button" id="deleteLogo" class="btn-calculate" style="background: #dc3545; margin-right: 10px; display: none;">מחק לוגו</button>
-            </form>
-        </div>
-
-        <div class="quote-form" style="margin-top: 20px;">
+        <div class="quote-form" style="margin-top: 20px;" id="calculatorSection">
             <h3>הגדרות מחשבון סולארי</h3>
             <form id="calculatorForm">
                 <h4 style="margin-bottom: 15px; color: #00358A;">מקדמי כיוון גג</h4>
@@ -297,8 +306,7 @@
         });
 
         // העלאת לוגו
-        document.getElementById('logoForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        document.getElementById('uploadLogoBtn').addEventListener('click', async () => {
 
             const fileInput = document.getElementById('logoFile');
             const file = fileInput.files[0];
