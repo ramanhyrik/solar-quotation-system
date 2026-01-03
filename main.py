@@ -26,6 +26,17 @@ from concurrent.futures import ThreadPoolExecutor
 # Detect if running in production (on Render or other HTTPS environment)
 IS_PRODUCTION = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") is not None
 
+# Persistent storage paths (use Render persistent disk in production, local in development)
+PERSISTENT_DIR = "/opt/render/project/src" if os.getenv("RENDER") else "."
+STATIC_BASE = os.path.join(PERSISTENT_DIR, "static")
+
+# Define all storage directories
+UPLOADS_DIR = os.path.join(STATIC_BASE, "uploads")
+ROOF_IMAGES_DIR = os.path.join(STATIC_BASE, "roof_images")
+ROOF_VISUALIZATIONS_DIR = os.path.join(STATIC_BASE, "roof_visualizations")
+SIGNATURES_DIR = os.path.join(STATIC_BASE, "quote_signatures")
+SIGNED_PDFS_DIR = os.path.join(STATIC_BASE, "signed_pdfs")
+
 # Session store (in-memory for simplicity)
 sessions = {}
 
@@ -103,7 +114,11 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler"""
-    # Startup
+    # Startup - Ensure all directories exist
+    for directory in [UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
+        os.makedirs(directory, exist_ok=True)
+    print(f"[OK] Storage directories created in: {STATIC_BASE}")
+
     init_database()
 
     # AI detection via HuggingFace Space (100% FREE)
@@ -130,8 +145,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files (from persistent disk in production, local in development)
+app.mount("/static", StaticFiles(directory=STATIC_BASE), name="static")
 
 # Templates
 templates = Jinja2Templates(directory="templates")
@@ -463,9 +478,8 @@ async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_use
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
 
-    # Create uploads directory if it doesn't exist
-    uploads_dir = "static/uploads"
-    os.makedirs(uploads_dir, exist_ok=True)
+    # Use configured uploads directory
+    uploads_dir = UPLOADS_DIR
 
     # Generate unique filename
     file_extension = logo.filename.split('.')[-1]
@@ -1647,9 +1661,8 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             if sig_data['status'] == 'signed':
                 raise HTTPException(status_code=400, detail="Quote already signed")
 
-            # Create quote_signatures directory if it doesn't exist
-            signatures_dir = os.path.join("static", "quote_signatures")
-            os.makedirs(signatures_dir, exist_ok=True)
+            # Use configured signatures directory
+            signatures_dir = SIGNATURES_DIR
 
             # Save signature image
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1690,9 +1703,8 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
         else:
             pdf_buffer = generate_quote_pdf(sig_data, company_info, signature_path)
 
-        # Save signed PDF
-        signed_pdfs_dir = os.path.join("static", "signed_pdfs")
-        os.makedirs(signed_pdfs_dir, exist_ok=True)
+        # Use configured signed PDFs directory
+        signed_pdfs_dir = SIGNED_PDFS_DIR
 
         signed_pdf_filename = f"signed_quote_{quote_number}_{timestamp}.pdf"
         signed_pdf_path = os.path.join(signed_pdfs_dir, signed_pdf_filename)
@@ -1916,9 +1928,8 @@ async def upload_roof_image_endpoint(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        # Create uploads directory
-        uploads_dir = os.path.join("static", "roof_images")
-        os.makedirs(uploads_dir, exist_ok=True)
+        # Use configured roof images directory
+        uploads_dir = ROOF_IMAGES_DIR
 
         # Save uploaded image
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2282,9 +2293,8 @@ async def save_visualization_endpoint(
         else:
             raise HTTPException(status_code=400, detail="Invalid image data format")
 
-        # Create visualization directory
-        vis_dir = os.path.join("static", "roof_visualizations")
-        os.makedirs(vis_dir, exist_ok=True)
+        # Use configured roof visualizations directory
+        vis_dir = ROOF_VISUALIZATIONS_DIR
 
         # Generate filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

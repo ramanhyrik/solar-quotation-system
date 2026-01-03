@@ -1,10 +1,13 @@
 import sqlite3
 import hashlib
 import bcrypt
+import os
 from datetime import datetime
 from contextlib import contextmanager
 
-DATABASE_FILE = "solar_quotes.db"
+# Use persistent disk on Render, local file for development
+PERSISTENT_DIR = os.getenv("RENDER") and "/opt/render/project/src" or "."
+DATABASE_FILE = os.path.join(PERSISTENT_DIR, "data", "solar_quotes.db")
 
 @contextmanager
 def get_db():
@@ -18,6 +21,12 @@ def get_db():
 
 def init_database():
     """Initialize database with tables"""
+    # Ensure database directory exists
+    db_dir = os.path.dirname(DATABASE_FILE)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        print(f"[OK] Created database directory: {db_dir}")
+
     with get_db() as conn:
         cursor = conn.cursor()
 
