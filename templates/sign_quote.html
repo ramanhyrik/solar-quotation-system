@@ -13,26 +13,39 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #000080 0%, #000060 100%);
+            background: url('/static/solarimg.jpg') center/cover no-repeat fixed;
+            position: relative;
             min-height: 100vh;
             padding: 20px;
             direction: rtl;
         }
 
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 24, 31, 0.78);
+            z-index: -1;
+        }
+
         .container {
             max-width: 900px;
             margin: 0 auto;
-            background: white;
+            background: rgba(26, 29, 34, 0.92);
             border-radius: 20px;
             padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(58, 228, 120, 0.3);
         }
 
         .header {
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 3px solid #D9FF0D;
+            border-bottom: 3px solid #3AE478;
         }
 
         .logo {
@@ -41,26 +54,26 @@
         }
 
         h1 {
-            color: #000080;
+            color: #ffffff;
             font-size: 32px;
             margin-bottom: 10px;
         }
 
         .subtitle {
-            color: #666;
+            color: #A0AEC0;
             font-size: 16px;
         }
 
         .quote-details {
-            background: #f7fafc;
+            background: rgba(43, 126, 180, 0.15);
             padding: 25px;
             border-radius: 12px;
             margin-bottom: 30px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid rgba(58, 228, 120, 0.25);
         }
 
         .quote-details h2 {
-            color: #000080;
+            color: #3AE478;
             font-size: 20px;
             margin-bottom: 15px;
         }
@@ -69,7 +82,7 @@
             display: flex;
             justify-content: space-between;
             padding: 10px 0;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid rgba(58, 228, 120, 0.15);
         }
 
         .detail-row:last-child {
@@ -78,31 +91,31 @@
 
         .detail-label {
             font-weight: 600;
-            color: #000080;
+            color: #3AE478;
         }
 
         .detail-value {
-            color: #333;
+            color: #ffffff;
         }
 
         .signature-section {
             margin: 30px 0;
             padding: 25px;
-            background: #f7fafc;
+            background: rgba(43, 126, 180, 0.15);
             border-radius: 12px;
-            border: 2px solid #000080;
+            border: 2px solid #3AE478;
         }
 
         .signature-label {
             font-weight: 600;
-            color: #000080;
+            color: #3AE478;
             margin-bottom: 15px;
             font-size: 18px;
             display: block;
         }
 
         .signature-instructions {
-            color: #666;
+            color: #A0AEC0;
             font-size: 14px;
             margin-bottom: 15px;
             line-height: 1.6;
@@ -110,8 +123,8 @@
 
         .signature-canvas-container {
             position: relative;
-            background: white;
-            border: 3px solid #000080;
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid #3AE478;
             border-radius: 12px;
             margin-top: 10px;
         }
@@ -151,9 +164,9 @@
         .consent-section {
             margin: 25px 0;
             padding: 20px;
-            background: #fff3cd;
+            background: rgba(247, 147, 22, 0.15);
             border-radius: 10px;
-            border: 2px solid #ffc107;
+            border: 2px solid #F97316;
         }
 
         .consent-checkbox {
@@ -173,7 +186,7 @@
 
         .consent-checkbox label {
             cursor: pointer;
-            color: #333;
+            color: #ffffff;
             font-size: 14px;
             line-height: 1.6;
         }
@@ -181,8 +194,8 @@
         .submit-btn {
             width: 100%;
             padding: 18px;
-            background: linear-gradient(135deg, #000080 0%, #000060 100%);
-            color: white;
+            background: #3AE478;
+            color: #14181F;
             border: none;
             border-radius: 12px;
             font-size: 20px;
@@ -190,15 +203,17 @@
             cursor: pointer;
             transition: all 0.3s;
             margin-top: 20px;
+            box-shadow: 0 6px 20px rgba(58, 228, 120, 0.35);
         }
 
         .submit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 53, 138, 0.4);
+            box-shadow: 0 10px 30px rgba(58, 228, 120, 0.5);
+            background: #45f085;
         }
 
         .submit-btn:disabled {
-            background: #ccc;
+            background: #999;
             cursor: not-allowed;
             transform: none;
         }
@@ -252,20 +267,20 @@
         .pdf-preview-btn {
             display: inline-block;
             padding: 14px 28px;
-            background: #00358A;
+            background: #2B7EB4;
             color: white;
             text-decoration: none;
             border-radius: 10px;
             font-weight: 600;
             font-size: 16px;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0, 53, 138, 0.2);
+            box-shadow: 0 4px 12px rgba(43, 126, 180, 0.3);
         }
 
         .pdf-preview-btn:hover {
-            background: #002a6b;
+            background: #3B82F6;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 53, 138, 0.3);
+            box-shadow: 0 6px 20px rgba(43, 126, 180, 0.5);
         }
 
         @media (max-width: 768px) {
