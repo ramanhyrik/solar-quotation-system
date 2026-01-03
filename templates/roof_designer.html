@@ -58,7 +58,7 @@
         .header-right a {
             color: #93C5FD;
             text-decoration: none;
-            margin-left: 16px;
+            margin-right: 16px; /* RTL: margin on right */
         }
 
         .header-right a:hover {
@@ -70,19 +70,18 @@
             display: flex;
             height: calc(100vh - 60px);
             overflow: hidden;
-            flex-direction: row;
+            flex-direction: row-reverse; /* RTL: sidebar on right, canvas on left */
         }
 
-        /* Right Sidebar */
+        /* Right Sidebar (RTL) */
         .sidebar {
             width: var(--sidebar-width);
             background: white;
-            border-left: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color); /* Border on left side of sidebar */
             display: flex;
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
-            order: 2;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -406,7 +405,6 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
-            order: 1;
         }
 
         /* Canvas Upload Overlay */

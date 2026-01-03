@@ -557,7 +557,7 @@
         <nav>
             <a href="#" onclick="showSection('quote')" id="nav-quote" class="active">הצעה חדשה</a>
             <a href="#" onclick="showSection('history')" id="nav-history">היסטוריית הצעות</a>
-            <a href="#" onclick="showSection('roofDesigns')" id="nav-roof-designs">העיצובים שלי</a>
+            <a href="#" onclick="showSection('roofDesigns')" id="nav-roof-designs">עיצובי גגות</a>
             {% if user.role == 'ADMIN' %}
             <a href="/admin">לוח ניהול</a>
             <a href="/users">ניהול משתמשים</a>
@@ -772,9 +772,9 @@
             </table>
         </div>
 
-        <!-- My Roof Designs Section -->
+        <!-- Roof Designs Section -->
         <div id="roofDesignsSection" style="display:none;">
-            <h1>העיצובים שלי</h1>
+            <h1>עיצובי גגות</h1>
             <div style="margin-bottom: 20px;">
                 <button onclick="window.location.href='/roof-designer'" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
                     עיצוב חדש +

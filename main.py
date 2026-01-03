@@ -2252,40 +2252,47 @@ async def get_roof_design(design_id: int, user=Depends(get_current_user)):
 @app.post("/api/roof-designer/save-visualization")
 async def save_visualization_endpoint(
     design_id: int = Form(...),
+    visualization: str = Form(...),
     user=Depends(get_current_user)
 ):
-    """Generate and save visualization image with roof, obstacles, and panels"""
+    """Save canvas visualization image with roof and panels"""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        # Get design data
+        # Verify design exists and user has access
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM roof_designs WHERE id = ?", (design_id,))
+            cursor.execute("SELECT created_by FROM roof_designs WHERE id = ?", (design_id,))
             design = cursor.fetchone()
 
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            design_data = dict(design)
+            # Check ownership
+            if user['role'] != 'ADMIN' and design[0] != user['user_id']:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-        # Parse data
-        roof_polygon = json.loads(design_data['roof_polygon_json'])
-        obstacles = json.loads(design_data['obstacles_json']) if design_data.get('obstacles_json') else []
-        panels = json.loads(design_data['panels_json']) if design_data.get('panels_json') else []
+        # Decode base64 canvas data (format: "data:image/png;base64,...")
+        if visualization.startswith('data:image'):
+            # Remove data URL prefix
+            image_data = visualization.split(',')[1]
+            image_bytes = base64.b64decode(image_data)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid image data format")
 
-        # Create visualization
-        detector = RoofDetector(design_data['original_image_path'])
-
+        # Create visualization directory
         vis_dir = os.path.join("static", "roof_visualizations")
         os.makedirs(vis_dir, exist_ok=True)
 
+        # Generate filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        vis_filename = f"vis_{design_id}_{timestamp}.jpg"
+        vis_filename = f"vis_{design_id}_{timestamp}.png"
         vis_path = os.path.join(vis_dir, vis_filename)
 
-        detector.save_visualization(vis_path, roof_polygon, obstacles, panels)
+        # Save image
+        with open(vis_path, 'wb') as f:
+            f.write(image_bytes)
 
         # Update database
         with get_db() as conn:
