@@ -372,6 +372,65 @@
             background: #32c86a;
         }
 
+        /* Quote form */
+        .quote-form {
+            background: rgba(20, 24, 31, 0.7);
+            border: 1px solid rgba(58, 228, 120, 0.25);
+            border-radius: 14px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .quote-form h3 {
+            color: #3AE478;
+            margin: 16px 0 12px;
+            font-size: 18px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+
+        .quote-form input,
+        .quote-form select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(20, 24, 31, 0.85);
+            border: 1px solid rgba(58, 228, 120, 0.3);
+            border-radius: 12px;
+            color: #E5E7EB;
+            font-size: 15px;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .quote-form input::placeholder,
+        .quote-form select::placeholder {
+            color: #A0AEC0;
+        }
+
+        .quote-form input:focus,
+        .quote-form select:focus {
+            outline: none;
+            border-color: #3AE478;
+            box-shadow: 0 0 0 3px rgba(58, 228, 120, 0.2);
+            background: rgba(20, 24, 31, 0.9);
+        }
+
+        /* Keep filled/auto-filled inputs on dark background */
+        .quote-form input:-webkit-autofill,
+        .quote-form input:-webkit-autofill:hover,
+        .quote-form input:-webkit-autofill:focus,
+        .quote-form select:-webkit-autofill,
+        .quote-form select:-webkit-autofill:hover,
+        .quote-form select:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px rgba(20, 24, 31, 0.85) inset;
+            -webkit-text-fill-color: #E5E7EB;
+            caret-color: #E5E7EB;
+        }
+
         /* Leasing specific styles */
         .leasing-terms {
             background: #fff3e0;
