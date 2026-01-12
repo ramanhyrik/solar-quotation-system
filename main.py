@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from contextlib import asynccontextmanager
 import secrets
-from database import get_db, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db, USE_POSTGRES
+from database import get_db, get_cursor, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db
 from datetime import datetime
 import json
 import os
@@ -58,20 +58,6 @@ def sanitize_filename(filename: str) -> str:
         sanitized = 'Quote.pdf'
     return sanitized
 
-def sql_query(query: str) -> str:
-    """Convert SQL query from SQLite syntax (?) to PostgreSQL syntax (%s) if needed"""
-    if USE_POSTGRES:
-        return query.replace('?', '%s')
-    return query
-
-def get_cursor(conn):
-    """Get the appropriate cursor for the database type"""
-    if USE_POSTGRES:
-        from psycopg2.extras import RealDictCursor
-        return conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        return conn.cursor()
-
 def find_customer_signature(customer_phone: str = None, customer_email: str = None):
     """
     Find customer signature from submissions table based on phone or email.
@@ -86,12 +72,12 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 
             # Try to find by phone first (most reliable)
             if customer_phone:
-                cursor.execute(sql_query('''
+                cursor.execute('''
                     SELECT signature_path FROM customer_submissions
-                    WHERE customer_phone = ?
+                    WHERE customer_phone = %s
                     ORDER BY submission_date DESC
                     LIMIT 1
-                '''), (customer_phone,))
+                ''', (customer_phone,))
                 result = cursor.fetchone()
                 if result and result['signature_path']:
                     signature_path = result['signature_path']
@@ -101,12 +87,12 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 
             # Try to find by email if phone didn't work
             if customer_email:
-                cursor.execute(sql_query('''
+                cursor.execute('''
                     SELECT signature_path FROM customer_submissions
-                    WHERE customer_email = ?
+                    WHERE customer_email = %s
                     ORDER BY submission_date DESC
                     LIMIT 1
-                '''), (customer_email,))
+                ''', (customer_email,))
                 result = cursor.fetchone()
                 if result and result['signature_path']:
                     signature_path = result['signature_path']
@@ -139,8 +125,7 @@ async def lifespan(app: FastAPI):
     print("[*] No API keys required - completely FREE!")
 
     print("[*] Solar Quotation System started with SAM 3 AI roof detection!")
-    db_type = "PostgreSQL (Neon)" if USE_POSTGRES else "SQLite (local)"
-    print(f"[*] Database: {db_type} - Persistence ENABLED")
+    print("[*] Database: PostgreSQL (Neon) - Persistence ENABLED")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)
@@ -208,7 +193,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
     """Handle login"""
     with get_db() as conn:
         cursor = get_cursor(conn)
-        cursor.execute(sql_query("SELECT * FROM users WHERE email = ?"), (email,))
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user or not verify_password(password, user["password"]):
@@ -318,21 +303,21 @@ async def update_pricing(
         cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE pricing_parameters SET
-            price_per_kwp = ?,
-            production_per_kwp = ?,
-            tariff_rate = ?,
-            trees_multiplier = ?,
-            vat_rate = ?,
-            direction_south = ?,
-            direction_southeast = ?,
-            direction_southwest = ?,
-            direction_east_west = ?,
-            shading_factor = ?,
-            degradation_rate = ?,
-            operating_cost_base = ?,
-            operating_cost_increase = ?,
-            roof_area_per_kw = ?,
-            leasing_payment_ratio = ?,
+            price_per_kwp = %s,
+            production_per_kwp = %s,
+            tariff_rate = %s,
+            trees_multiplier = %s,
+            vat_rate = %s,
+            direction_south = %s,
+            direction_southeast = %s,
+            direction_southwest = %s,
+            direction_east_west = %s,
+            shading_factor = %s,
+            degradation_rate = %s,
+            operating_cost_base = %s,
+            operating_cost_increase = %s,
+            roof_area_per_kw = %s,
+            leasing_payment_ratio = %s,
             updated_at = CURRENT_TIMESTAMP
         ''', (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate,
               direction_south, direction_southeast, direction_southwest, direction_east_west,
@@ -385,7 +370,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 system_size, roof_area, annual_production, panel_type, panel_count,
                 inverter_type, direction, tilt_angle, warranty_years,
                 total_price, annual_revenue, payback_period, model_type, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             generate_quote_number(),
             data.get("customer_name"),
@@ -442,7 +427,7 @@ async def get_quote(quote_id: int, user=Depends(get_current_user)):
             SELECT q.*, u.name as created_by_name, u.email as created_by_email
             FROM quotes q
             LEFT JOIN users u ON q.created_by = u.id
-            WHERE q.id = ?
+            WHERE q.id = %s
         ''', (quote_id,))
         quote = cursor.fetchone()
 
@@ -459,7 +444,7 @@ async def delete_quote(quote_id: int, user=Depends(get_current_user)):
 
     with get_db() as conn:
         cursor = get_cursor(conn)
-        cursor.execute(sql_query("DELETE FROM quotes WHERE id = ?"), (quote_id,))
+        cursor.execute("DELETE FROM quotes WHERE id = %s", (quote_id,))
         conn.commit()
 
     return {"message": "Quote deleted successfully"}
@@ -489,10 +474,10 @@ async def update_company(
         cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE company_settings SET
-            company_name = ?,
-            company_phone = ?,
-            company_email = ?,
-            company_address = ?,
+            company_name = %s,
+            company_phone = %s,
+            company_email = %s,
+            company_address = %s,
             updated_at = CURRENT_TIMESTAMP
         ''', (company_name, company_phone, company_email, company_address))
         conn.commit()
@@ -533,7 +518,7 @@ async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_use
         cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE company_settings SET
-            company_logo = ?,
+            company_logo = %s,
             updated_at = CURRENT_TIMESTAMP
         ''', (logo_url,))
         conn.commit()
@@ -609,16 +594,16 @@ async def create_user(
     # Check if email already exists
     with get_db() as conn:
         cursor = get_cursor(conn)
-        cursor.execute(sql_query("SELECT id FROM users WHERE email = ?"), (email,))
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already exists")
 
         # Create user with hashed password
         hashed_password = hash_password(password)
-        cursor.execute(sql_query('''
+        cursor.execute('''
             INSERT INTO users (email, password, name, role)
-            VALUES (?, ?, ?, ?)
-        '''), (email, hashed_password, name, role))
+            VALUES (%s, %s, %s, %s)
+        ''', (email, hashed_password, name, role))
         conn.commit()
 
         print(f"[USER-CREATE] New user created: {email} with role: {role}")
@@ -646,34 +631,34 @@ async def update_user(
         cursor = get_cursor(conn)
 
         # Check if user exists
-        cursor.execute(sql_query("SELECT id FROM users WHERE id = ?"), (user_id,))
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
 
         # Check if email already exists for another user
-        cursor.execute(sql_query("SELECT id FROM users WHERE email = ? AND id != ?"), (email, user_id))
+        cursor.execute("SELECT id FROM users WHERE email = %s AND id != %s", (email, user_id))
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already exists")
 
         # Update user
         if password:
             hashed_password = hash_password(password)
-            cursor.execute(sql_query('''
+            cursor.execute('''
                 UPDATE users SET
-                email = ?,
-                password = ?,
-                name = ?,
-                role = ?
-                WHERE id = ?
-            '''), (email, hashed_password, name, role, user_id))
+                email = %s,
+                password = %s,
+                name = %s,
+                role = %s
+                WHERE id = %s
+            ''', (email, hashed_password, name, role, user_id))
         else:
-            cursor.execute(sql_query('''
+            cursor.execute('''
                 UPDATE users SET
-                email = ?,
-                name = ?,
-                role = ?
-                WHERE id = ?
-            '''), (email, name, role, user_id))
+                email = %s,
+                name = %s,
+                role = %s
+                WHERE id = %s
+            ''', (email, name, role, user_id))
 
         conn.commit()
 
@@ -693,12 +678,12 @@ async def delete_user(user_id: int, user=Depends(get_current_user)):
         cursor = get_cursor(conn)
 
         # Check if user exists
-        cursor.execute(sql_query("SELECT id FROM users WHERE id = ?"), (user_id,))
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
 
         # Delete user
-        cursor.execute(sql_query("DELETE FROM users WHERE id = ?"), (user_id,))
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
 
     return {"message": "User deleted successfully"}
@@ -741,7 +726,7 @@ async def update_submission(
         cursor = get_cursor(conn)
 
         # Check if submission exists
-        cursor.execute(sql_query("SELECT id FROM customer_submissions WHERE id = ?"), (submission_id,))
+        cursor.execute("SELECT id FROM customer_submissions WHERE id = %s", (submission_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Submission not found")
 
@@ -765,7 +750,7 @@ async def delete_submission(submission_id: int, user=Depends(get_current_user)):
         cursor = get_cursor(conn)
 
         # Get signature path before deleting
-        cursor.execute(sql_query("SELECT signature_path FROM customer_submissions WHERE id = ?"), (submission_id,))
+        cursor.execute("SELECT signature_path FROM customer_submissions WHERE id = %s", (submission_id,))
         result = cursor.fetchone()
 
         if not result:
@@ -779,7 +764,7 @@ async def delete_submission(submission_id: int, user=Depends(get_current_user)):
                 print(f"Error deleting signature file: {e}")
 
         # Delete submission
-        cursor.execute(sql_query("DELETE FROM customer_submissions WHERE id = ?"), (submission_id,))
+        cursor.execute("DELETE FROM customer_submissions WHERE id = %s", (submission_id,))
         conn.commit()
 
     return {"message": "Submission deleted successfully"}
@@ -799,7 +784,7 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
                 SELECT q.*, u.name as created_by_name, u.email as created_by_email
                 FROM quotes q
                 LEFT JOIN users u ON q.created_by = u.id
-                WHERE q.id = ?
+                WHERE q.id = %s
             ''', (quote_id,))
             quote = cursor.fetchone()
 
@@ -882,7 +867,7 @@ async def send_quote_email(quote_id: int, user=Depends(get_current_user)):
                 SELECT q.*, u.name as created_by_name, u.email as created_by_email
                 FROM quotes q
                 LEFT JOIN users u ON q.created_by = u.id
-                WHERE q.id = ?
+                WHERE q.id = %s
             ''', (quote_id,))
             quote = cursor.fetchone()
 
@@ -946,7 +931,7 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
             cursor = get_cursor(conn)
 
             # Get quote data
-            cursor.execute(sql_query("SELECT * FROM quotes WHERE id = ?"), (quote_id,))
+            cursor.execute("SELECT * FROM quotes WHERE id = %s", (quote_id,))
             quote = cursor.fetchone()
 
             if not quote:
@@ -968,7 +953,7 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
             cursor.execute('''
                 SELECT signature_token, status, expires_at
                 FROM quote_signatures
-                WHERE quote_id = ? AND status = 'pending'
+                WHERE quote_id = %s AND status = 'pending'
                 ORDER BY created_at DESC LIMIT 1
             ''', (quote_id,))
             existing = cursor.fetchone()
@@ -991,7 +976,7 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
             cursor.execute('''
                 INSERT INTO quote_signatures
                 (quote_id, signature_token, status, expires_at)
-                VALUES (?, ?, 'pending', ?)
+                VALUES (%s, %s, 'pending', %s)
             ''', (quote_id, signature_token, expires_at))
             conn.commit()
 
@@ -1024,7 +1009,7 @@ async def get_signature_status(quote_id: int, user=Depends(get_current_user)):
 
             cursor.execute('''
                 SELECT * FROM quote_signatures
-                WHERE quote_id = ?
+                WHERE quote_id = %s
                 ORDER BY created_at DESC LIMIT 1
             ''', (quote_id,))
             signature = cursor.fetchone()
@@ -1448,7 +1433,7 @@ async def submit_contact(
             cursor.execute('''
                 INSERT INTO customer_submissions
                 (customer_name, customer_phone, customer_email, customer_address, roof_area, signature_path, submission_date, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 customer_name,
                 customer_phone,
@@ -1502,7 +1487,7 @@ async def signature_portal(token: str, request: Request):
                 SELECT qs.*, q.*
                 FROM quote_signatures qs
                 JOIN quotes q ON qs.quote_id = q.id
-                WHERE qs.signature_token = ?
+                WHERE qs.signature_token = %s
             ''', (token,))
             result = cursor.fetchone()
 
@@ -1530,8 +1515,8 @@ async def signature_portal(token: str, request: Request):
             if not sig_data['viewed_at']:
                 cursor.execute('''
                     UPDATE quote_signatures
-                    SET viewed_at = ?, status = 'viewed'
-                    WHERE signature_token = ?
+                    SET viewed_at = %s, status = 'viewed'
+                    WHERE signature_token = %s
                 ''', (datetime.now(), token))
                 conn.commit()
 
@@ -1579,7 +1564,7 @@ async def preview_quote_pdf(token: str):
                 SELECT qs.*, q.*
                 FROM quote_signatures qs
                 JOIN quotes q ON qs.quote_id = q.id
-                WHERE qs.signature_token = ?
+                WHERE qs.signature_token = %s
             ''', (token,))
             result = cursor.fetchone()
 
@@ -1632,7 +1617,7 @@ async def view_signed_pdf(token: str):
             cursor.execute('''
                 SELECT signed_pdf_path, status
                 FROM quote_signatures
-                WHERE signature_token = ?
+                WHERE signature_token = %s
             ''', (token,))
             result = cursor.fetchone()
 
@@ -1680,7 +1665,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
                 SELECT qs.*, q.*
                 FROM quote_signatures qs
                 JOIN quotes q ON qs.quote_id = q.id
-                WHERE qs.signature_token = ?
+                WHERE qs.signature_token = %s
             ''', (token,))
             result = cursor.fetchone()
 
@@ -1717,12 +1702,12 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             # Update signature record
             cursor.execute('''
                 UPDATE quote_signatures
-                SET signature_path = ?,
+                SET signature_path = %s,
                     status = 'signed',
-                    signed_at = ?,
-                    customer_ip = ?,
-                    customer_user_agent = ?
-                WHERE signature_token = ?
+                    signed_at = %s,
+                    customer_ip = %s,
+                    customer_user_agent = %s
+                WHERE signature_token = %s
             ''', (signature_path, datetime.now(), client_ip, user_agent, token))
             conn.commit()
 
@@ -1755,8 +1740,8 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             cursor = get_cursor(conn)
             cursor.execute('''
                 UPDATE quote_signatures
-                SET signed_pdf_path = ?
-                WHERE signature_token = ?
+                SET signed_pdf_path = %s
+                WHERE signature_token = %s
             ''', (signed_pdf_path, token))
             conn.commit()
 
@@ -1992,7 +1977,7 @@ async def upload_roof_image_endpoint(
                 INSERT INTO roof_designs (
                     customer_name, customer_address, original_image_path,
                     created_by
-                ) VALUES (?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s)
             ''', (
                 customer_name,
                 customer_address,
@@ -2080,7 +2065,7 @@ async def auto_detect_roof_endpoint(
             cursor.execute('''
                 SELECT original_image_path, created_by
                 FROM roof_designs
-                WHERE id = ?
+                WHERE id = %s
             ''', (design_id,))
             result = cursor.fetchone()
 
@@ -2218,21 +2203,21 @@ async def calculate_layout_endpoint(
             cursor = get_cursor(conn)
             cursor.execute('''
                 UPDATE roof_designs SET
-                    roof_polygon_json = ?,
-                    obstacles_json = ?,
-                    panels_json = ?,
-                    panel_count = ?,
-                    system_power_kw = ?,
-                    roof_area_m2 = ?,
-                    coverage_percent = ?,
-                    pixels_per_meter = ?,
-                    panel_width_m = ?,
-                    panel_height_m = ?,
-                    panel_power_w = ?,
-                    spacing_m = ?,
-                    orientation = ?,
+                    roof_polygon_json = %s,
+                    obstacles_json = %s,
+                    panels_json = %s,
+                    panel_count = %s,
+                    system_power_kw = %s,
+                    roof_area_m2 = %s,
+                    coverage_percent = %s,
+                    pixels_per_meter = %s,
+                    panel_width_m = %s,
+                    panel_height_m = %s,
+                    panel_power_w = %s,
+                    spacing_m = %s,
+                    orientation = %s,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                WHERE id = %s
             ''', (
                 roof_polygon,
                 obstacles,
@@ -2278,7 +2263,7 @@ async def get_roof_design(design_id: int, user=Depends(get_current_user)):
     try:
         with get_db() as conn:
             cursor = get_cursor(conn)
-            cursor.execute(sql_query("SELECT * FROM roof_designs WHERE id = ?"), (design_id,))
+            cursor.execute("SELECT * FROM roof_designs WHERE id = %s", (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2316,7 +2301,7 @@ async def save_visualization_endpoint(
         # Verify design exists and user has access
         with get_db() as conn:
             cursor = get_cursor(conn)
-            cursor.execute(sql_query("SELECT created_by FROM roof_designs WHERE id = ?"), (design_id,))
+            cursor.execute("SELECT created_by FROM roof_designs WHERE id = %s", (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2346,7 +2331,7 @@ async def save_visualization_endpoint(
         with get_db() as conn:
             cursor = get_cursor(conn)
             cursor.execute('''
-                UPDATE roof_designs SET processed_image_path = ? WHERE id = ?
+                UPDATE roof_designs SET processed_image_path = %s WHERE id = %s
             ''', (vis_path, design_id))
             conn.commit()
 
@@ -2415,7 +2400,7 @@ async def update_roof_design_metadata(
             cursor = get_cursor(conn)
 
             # Verify ownership (admin can edit all, users can only edit their own)
-            cursor.execute(sql_query('SELECT created_by FROM roof_designs WHERE id = ?'), (design_id,))
+            cursor.execute('SELECT created_by FROM roof_designs WHERE id = %s', (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2424,8 +2409,8 @@ async def update_roof_design_metadata(
             # Update metadata
             cursor.execute('''
                 UPDATE roof_designs
-                SET customer_name = ?, customer_address = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                SET customer_name = %s, customer_address = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
             ''', (customer_name, customer_address, design_id))
 
             conn.commit()
@@ -2455,7 +2440,7 @@ async def delete_roof_design(
             # Get design details and verify ownership
             cursor.execute('''
                 SELECT created_by, original_image_path, processed_image_path
-                FROM roof_designs WHERE id = ?
+                FROM roof_designs WHERE id = %s
             ''', (design_id,))
             design = cursor.fetchone()
 
@@ -2480,7 +2465,7 @@ async def delete_roof_design(
                     print(f"[WARNING] Failed to delete visualization image: {e}")
 
             # Delete database record
-            cursor.execute(sql_query('DELETE FROM roof_designs WHERE id = ?'), (design_id,))
+            cursor.execute('DELETE FROM roof_designs WHERE id = %s', (design_id,))
             conn.commit()
 
             return {"success": True, "message": "Design deleted successfully"}
@@ -2509,7 +2494,7 @@ async def download_roof_visualization(
             # Get design details and verify ownership
             cursor.execute('''
                 SELECT created_by, processed_image_path, customer_name
-                FROM roof_designs WHERE id = ?
+                FROM roof_designs WHERE id = %s
             ''', (design_id,))
             design = cursor.fetchone()
 
