@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 import secrets
 from database import get_db, get_cursor, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db
 from datetime import datetime
+from decimal import Decimal
 import json
 import os
 import shutil
@@ -42,6 +43,16 @@ detection_jobs = {}
 
 # Thread pool for CPU-intensive SAM detection
 detection_executor = ThreadPoolExecutor(max_workers=2)
+
+def decimal_to_float(value):
+    """Convert Decimal to float, or return value as-is if not Decimal"""
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
+
+def convert_decimals_in_dict(data: dict) -> dict:
+    """Convert all Decimal values in a dictionary to floats"""
+    return {key: decimal_to_float(val) for key, val in data.items()}
 
 def sanitize_filename(filename: str) -> str:
     """
@@ -274,7 +285,7 @@ async def get_pricing():
         cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
         pricing = cursor.fetchone()
-        return dict(pricing) if pricing else {}
+        return convert_decimals_in_dict(dict(pricing)) if pricing else {}
 
 @app.post("/api/pricing")
 async def update_pricing(
@@ -334,7 +345,7 @@ async def calculate_quote(
     with get_db() as conn:
         cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
-        params = dict(cursor.fetchone())
+        params = convert_decimals_in_dict(dict(cursor.fetchone()))
 
     total_price = system_size * params["price_per_kwp"]
     annual_production = system_size * params["production_per_kwp"]
@@ -411,7 +422,7 @@ async def list_quotes(user=Depends(get_current_user)):
             LEFT JOIN users u ON q.created_by = u.id
             ORDER BY q.created_at DESC
         ''')
-        quotes = [dict(row) for row in cursor.fetchall()]
+        quotes = [convert_decimals_in_dict(dict(row)) for row in cursor.fetchall()]
 
     return {"quotes": quotes}
 
@@ -434,7 +445,7 @@ async def get_quote(quote_id: int, user=Depends(get_current_user)):
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    return dict(quote)
+    return convert_decimals_in_dict(dict(quote))
 
 @app.delete("/api/quotes/{quote_id}")
 async def delete_quote(quote_id: int, user=Depends(get_current_user)):
@@ -456,7 +467,7 @@ async def get_company():
         cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
         company = cursor.fetchone()
-        return dict(company) if company else {}
+        return convert_decimals_in_dict(dict(company)) if company else {}
 
 @app.post("/api/company")
 async def update_company(
@@ -704,7 +715,7 @@ async def get_submissions(user=Depends(get_current_user)):
             ORDER BY submission_date DESC
         """)
         submissions = cursor.fetchall()
-        return [dict(s) for s in submissions]
+        return [convert_decimals_in_dict(dict(s)) for s in submissions]
 
 @app.put("/api/submissions/{submission_id}")
 async def update_submission(
@@ -2269,7 +2280,7 @@ async def get_roof_design(design_id: int, user=Depends(get_current_user)):
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            design_data = dict(design)
+            design_data = convert_decimals_in_dict(dict(design))
 
             # Parse JSON fields
             if design_data.get('roof_polygon_json'):
@@ -2376,7 +2387,7 @@ async def list_roof_designs(user=Depends(get_current_user)):
                 ORDER BY created_at DESC
             ''')
 
-            designs = [dict(row) for row in cursor.fetchall()]
+            designs = [convert_decimals_in_dict(dict(row)) for row in cursor.fetchall()]
             return {"designs": designs}
 
     except Exception as e:
