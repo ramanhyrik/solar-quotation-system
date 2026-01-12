@@ -54,6 +54,15 @@ def convert_decimals_in_dict(data: dict) -> dict:
     """Convert all Decimal values in a dictionary to floats"""
     return {key: decimal_to_float(val) for key, val in data.items()}
 
+def ensure_datetime(value):
+    """Convert string to datetime if needed, or return datetime as-is"""
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    elif isinstance(value, datetime):
+        return value
+    else:
+        raise ValueError(f"Expected datetime or str, got {type(value)}")
+
 def sanitize_filename(filename: str) -> str:
     """
     Sanitize filename by removing or replacing non-ASCII characters.
@@ -382,6 +391,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 inverter_type, direction, tilt_angle, warranty_years,
                 total_price, annual_revenue, payback_period, model_type, created_by
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         ''', (
             generate_quote_number(),
             data.get("customer_name"),
@@ -403,8 +413,8 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("model_type", "purchase"),
             user["user_id"]
         ))
+        quote_id = cursor.fetchone()['id']
         conn.commit()
-        quote_id = cursor.lastrowid
 
     return {"message": "Quote created successfully", "quote_id": quote_id}
 
@@ -971,7 +981,7 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
 
             if existing:
                 # Check if existing token is still valid
-                existing_expires = datetime.fromisoformat(existing['expires_at'])
+                existing_expires = ensure_datetime(existing['expires_at'])
                 if existing_expires > datetime.now():
                     # Return existing valid token
                     return JSONResponse(content={
@@ -1445,6 +1455,7 @@ async def submit_contact(
                 INSERT INTO customer_submissions
                 (customer_name, customer_phone, customer_email, customer_address, roof_area, signature_path, submission_date, status)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
             ''', (
                 customer_name,
                 customer_phone,
@@ -1455,8 +1466,8 @@ async def submit_contact(
                 datetime.now(),
                 'new'
             ))
+            submission_id = cursor.fetchone()['id']
             conn.commit()
-            submission_id = cursor.lastrowid
 
         # Prepare email data
         customer_data = {
@@ -1508,7 +1519,7 @@ async def signature_portal(token: str, request: Request):
             sig_data = dict(result)
 
             # Check if expired
-            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            expires_at = ensure_datetime(sig_data['expires_at'])
             if expires_at < datetime.now():
                 return templates.TemplateResponse("sign_quote.html", {
                     "request": request,
@@ -1585,7 +1596,7 @@ async def preview_quote_pdf(token: str):
             sig_data = dict(result)
 
             # Check if expired
-            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            expires_at = ensure_datetime(sig_data['expires_at'])
             if expires_at < datetime.now():
                 raise HTTPException(status_code=400, detail="Signature link has expired")
 
@@ -1686,7 +1697,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             sig_data = dict(result)
 
             # Check if expired
-            expires_at = datetime.fromisoformat(sig_data['expires_at'])
+            expires_at = ensure_datetime(sig_data['expires_at'])
             if expires_at < datetime.now():
                 raise HTTPException(status_code=400, detail="Signature link has expired")
 
@@ -1989,14 +2000,15 @@ async def upload_roof_image_endpoint(
                     customer_name, customer_address, original_image_path,
                     created_by
                 ) VALUES (%s, %s, %s, %s)
+                RETURNING id
             ''', (
                 customer_name,
                 customer_address,
                 file_path,
                 user['user_id']
             ))
+            design_id = cursor.fetchone()['id']
             conn.commit()
-            design_id = cursor.lastrowid
 
         print(f"[ROOF DESIGNER] Created design #{design_id}")
 
