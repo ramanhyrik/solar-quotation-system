@@ -203,7 +203,7 @@ def init_database():
 
         # Insert default data
         cursor.execute("SELECT COUNT(*) FROM pricing_parameters")
-        if cursor.fetchone()['count'] == 0:
+        if cursor.fetchone()[0] == 0:
             cursor.execute('''
                 INSERT INTO pricing_parameters
                 (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate)
@@ -213,7 +213,7 @@ def init_database():
             print("[OK] Default pricing parameters created")
 
         cursor.execute("SELECT COUNT(*) FROM company_settings")
-        if cursor.fetchone()['count'] == 0:
+        if cursor.fetchone()[0] == 0:
             cursor.execute('''
                 INSERT INTO company_settings
                 (company_name, company_email, primary_color, secondary_color)
@@ -223,7 +223,7 @@ def init_database():
             print("[OK] Default company settings created")
 
         cursor.execute("SELECT COUNT(*) FROM users WHERE role=%s", ('ADMIN',))
-        if cursor.fetchone()['count'] == 0:
+        if cursor.fetchone()[0] == 0:
             hashed_password = hashlib.sha256("admin123".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (email, password, name, role)
