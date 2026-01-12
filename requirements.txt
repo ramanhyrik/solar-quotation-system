@@ -13,5 +13,6 @@ sendgrid==6.11.0
 numpy==1.26.4
 shapely==2.0.2
 matplotlib==3.8.2
+psycopg2-binary==2.9.9
 # SAM 3 API - Uses HuggingFace Space instead of local model
 # No need for torch/transformers locally - we call the API via requests
