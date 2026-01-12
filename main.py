@@ -2095,10 +2095,11 @@ async def auto_detect_roof_endpoint(
             if not result:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            image_path, created_by = result
+            image_path = result["original_image_path"]
+            created_by = result["created_by"]
 
             # Security: Check ownership
-            if created_by != user['user_id']:
+            if created_by is not None and created_by != user['user_id']:
                 raise HTTPException(status_code=403, detail="Access denied")
 
         # Create unique job ID
