@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from contextlib import asynccontextmanager
 import secrets
-from database import get_db, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db
+from database import get_db, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db, USE_POSTGRES
 from datetime import datetime
 import json
 import os
@@ -57,6 +57,20 @@ def sanitize_filename(filename: str) -> str:
     if not sanitized or sanitized == '.pdf':
         sanitized = 'Quote.pdf'
     return sanitized
+
+def sql_query(query: str) -> str:
+    """Convert SQL query from SQLite syntax (?) to PostgreSQL syntax (%s) if needed"""
+    if USE_POSTGRES:
+        return query.replace('?', '%s')
+    return query
+
+def get_cursor(conn):
+    """Get the appropriate cursor for the database type"""
+    if USE_POSTGRES:
+        from psycopg2.extras import RealDictCursor
+        return conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        return conn.cursor()
 
 def find_customer_signature(customer_phone: str = None, customer_email: str = None):
     """
@@ -192,8 +206,8 @@ async def login_page(request: Request):
 async def login(email: str = Form(...), password: str = Form(...)):
     """Handle login"""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        cursor = get_cursor(conn)
+        cursor.execute(sql_query("SELECT * FROM users WHERE email = ?"), (email,))
         user = cursor.fetchone()
 
         if not user or not verify_password(password, user["password"]):
@@ -593,17 +607,17 @@ async def create_user(
 
     # Check if email already exists
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        cursor = get_cursor(conn)
+        cursor.execute(sql_query("SELECT id FROM users WHERE email = ?"), (email,))
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already exists")
 
         # Create user with hashed password
         hashed_password = hash_password(password)
-        cursor.execute('''
+        cursor.execute(sql_query('''
             INSERT INTO users (email, password, name, role)
             VALUES (?, ?, ?, ?)
-        ''', (email, hashed_password, name, role))
+        '''), (email, hashed_password, name, role))
         conn.commit()
 
         print(f"[USER-CREATE] New user created: {email} with role: {role}")
