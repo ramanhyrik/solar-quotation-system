@@ -13,14 +13,34 @@ def get_persistent_dir():
         # On Render, ALWAYS use the persistent disk mount point
         persistent_path = "/opt/render/project/src"
 
-        # Verify the persistent disk is mounted and writable
-        if os.path.exists(persistent_path) and os.access(persistent_path, os.W_OK):
-            print(f"[DB] Using Render persistent disk: {persistent_path}")
+        print(f"[DB] Render environment detected, checking persistent disk...")
+        print(f"[DB] Target path: {persistent_path}")
+        print(f"[DB] Path exists: {os.path.exists(persistent_path)}")
+
+        # Try to create the directory if it doesn't exist
+        if not os.path.exists(persistent_path):
+            try:
+                print(f"[DB] Creating persistent disk directory: {persistent_path}")
+                os.makedirs(persistent_path, exist_ok=True)
+                print(f"[DB] Successfully created directory")
+            except Exception as e:
+                print(f"[DB ERROR] Failed to create directory: {e}")
+                # Try parent directories to find where we can write
+                test_paths = ["/opt/render/project", "/opt/render", "/opt", "/"]
+                for test_path in test_paths:
+                    exists = os.path.exists(test_path)
+                    writable = os.access(test_path, os.W_OK) if exists else False
+                    print(f"[DB DEBUG] {test_path} - exists: {exists}, writable: {writable}")
+                raise RuntimeError(f"[DB ERROR] Cannot create persistent disk directory at {persistent_path}: {e}")
+
+        # Verify the path is now writable
+        if os.access(persistent_path, os.W_OK):
+            print(f"[DB] ✓ Using Render persistent disk: {persistent_path}")
             return persistent_path
         else:
-            # CRITICAL: If persistent disk isn't available, log error and fail fast
-            error_msg = f"[DB ERROR] Persistent disk not found or not writable at {persistent_path}!"
+            error_msg = f"[DB ERROR] Persistent disk exists but is not writable at {persistent_path}!"
             print(error_msg)
+            print(f"[DB ERROR] Directory permissions: {oct(os.stat(persistent_path).st_mode)}")
             raise RuntimeError(error_msg)
     else:
         # Local development
