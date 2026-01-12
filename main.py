@@ -125,6 +125,7 @@ async def lifespan(app: FastAPI):
     print("[*] No API keys required - completely FREE!")
 
     print("[*] Solar Quotation System started with SAM 3 AI roof detection!")
+    print("[*] Database persistence: ENABLED (Render persistent disk)")
     print("[*] Visit: http://localhost:8000")
     yield
     # Shutdown (if needed)
