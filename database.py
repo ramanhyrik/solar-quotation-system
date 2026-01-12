@@ -4,9 +4,30 @@ import bcrypt
 import os
 from datetime import datetime
 from contextlib import contextmanager
+from typing import Optional
 
 # Use persistent disk on Render, local file for development
-PERSISTENT_DIR = os.getenv("RENDER") and "/opt/render/project/src" or "."
+def get_persistent_dir():
+    """Get the persistent directory with validation"""
+    if os.getenv("RENDER"):
+        # On Render, ALWAYS use the persistent disk mount point
+        persistent_path = "/opt/render/project/src"
+
+        # Verify the persistent disk is mounted and writable
+        if os.path.exists(persistent_path) and os.access(persistent_path, os.W_OK):
+            print(f"[DB] Using Render persistent disk: {persistent_path}")
+            return persistent_path
+        else:
+            # CRITICAL: If persistent disk isn't available, log error and fail fast
+            error_msg = f"[DB ERROR] Persistent disk not found or not writable at {persistent_path}!"
+            print(error_msg)
+            raise RuntimeError(error_msg)
+    else:
+        # Local development
+        print("[DB] Using local directory for development")
+        return "."
+
+PERSISTENT_DIR = get_persistent_dir()
 DATABASE_FILE = os.path.join(PERSISTENT_DIR, "data", "solar_quotes.db")
 
 @contextmanager
@@ -25,7 +46,15 @@ def init_database():
     db_dir = os.path.dirname(DATABASE_FILE)
     if db_dir and not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
-        print(f"[OK] Created database directory: {db_dir}")
+        print(f"[DB] Created database directory: {db_dir}")
+
+    # Log the absolute database file path for verification
+    abs_db_path = os.path.abspath(DATABASE_FILE)
+    print(f"[DB] Database file location: {abs_db_path}")
+
+    # Verify database directory is writable
+    if not os.access(db_dir, os.W_OK):
+        raise RuntimeError(f"[DB ERROR] Database directory is not writable: {db_dir}")
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -40,6 +69,25 @@ def init_database():
                 role TEXT DEFAULT 'SALES_REP',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        ''')
+
+        # Sessions table (persistent session storage)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                role TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+
+        # Create index on expires_at for faster cleanup
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
+            ON sessions(expires_at)
         ''')
 
         # Quotes table
@@ -259,6 +307,63 @@ def generate_quote_number() -> str:
     date_part = datetime.now().strftime("%Y%m")
     random_part = f"{random.randint(1000, 9999):04d}"
     return f"SQ-{date_part}-{random_part}"
+
+# Session management functions (persistent session storage)
+def create_session_db(user_id: int, email: str, role: str, session_id: str, expires_hours: int = 24) -> None:
+    """Create a new session in the database"""
+    from datetime import timedelta
+    expires_at = datetime.now() + timedelta(hours=expires_hours)
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO sessions (session_id, user_id, email, role, expires_at)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (session_id, user_id, email, role, expires_at))
+        conn.commit()
+        print(f"[SESSION] Created session for user {email} (expires in {expires_hours}h)")
+
+def get_session_db(session_id: str) -> Optional[dict]:
+    """Get session from database if valid and not expired"""
+    if not session_id:
+        return None
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT user_id, email, role, created_at, expires_at
+            FROM sessions
+            WHERE session_id = ? AND expires_at > datetime('now')
+        ''', (session_id,))
+        session = cursor.fetchone()
+
+        if session:
+            return {
+                "user_id": session["user_id"],
+                "email": session["email"],
+                "role": session["role"],
+                "created_at": session["created_at"]
+            }
+        return None
+
+def delete_session_db(session_id: str) -> None:
+    """Delete a session from the database"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
+        conn.commit()
+        print(f"[SESSION] Deleted session: {session_id[:16]}...")
+
+def cleanup_expired_sessions_db() -> int:
+    """Remove expired sessions from the database"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+        deleted_count = cursor.rowcount
+        conn.commit()
+        if deleted_count > 0:
+            print(f"[SESSION] Cleaned up {deleted_count} expired session(s)")
+        return deleted_count
 
 if __name__ == "__main__":
     init_database()

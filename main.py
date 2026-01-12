@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from contextlib import asynccontextmanager
 import secrets
-from database import get_db, init_database, hash_password, verify_password, generate_quote_number
+from database import get_db, init_database, hash_password, verify_password, generate_quote_number, create_session_db, get_session_db, delete_session_db, cleanup_expired_sessions_db
 from datetime import datetime
 import json
 import os
@@ -35,9 +35,6 @@ ROOF_IMAGES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_images")
 ROOF_VISUALIZATIONS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_visualizations")
 SIGNATURES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "quote_signatures")
 SIGNED_PDFS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "signed_pdfs")
-
-# Session store (in-memory for simplicity)
-sessions = {}
 
 # Detection job store for async SAM processing
 # Format: {job_id: {"status": "pending|running|completed|failed", "result": {...}, "error": str}}
@@ -118,6 +115,9 @@ async def lifespan(app: FastAPI):
 
     init_database()
 
+    # Cleanup expired sessions on startup
+    cleanup_expired_sessions_db()
+
     # AI detection via HuggingFace Space (100% FREE)
     print("[*] AI roof detection: SAM 3 (Hiera-Small) on HuggingFace Spaces")
     print("[*] HF Space: https://huggingface.co/spaces/ramankamran/mobilesam-roof-api")
@@ -163,21 +163,14 @@ async def health_check():
     return {"status": "ok", "service": "solar-quotation-system"}
 
 def create_session(user_id: int, email: str, role: str) -> str:
-    """Create a new session"""
+    """Create a new session in the database"""
     session_id = secrets.token_urlsafe(32)
-    sessions[session_id] = {
-        "user_id": user_id,
-        "email": email,
-        "role": role,
-        "created_at": datetime.now()
-    }
+    create_session_db(user_id, email, role, session_id, expires_hours=24)
     return session_id
 
 def get_current_user(session_id: Optional[str] = Cookie(None)):
-    """Get current user from session"""
-    if not session_id or session_id not in sessions:
-        return None
-    return sessions[session_id]
+    """Get current user from session (database-backed)"""
+    return get_session_db(session_id)
 
 @app.get("/")
 async def home():
@@ -221,8 +214,8 @@ async def login(email: str = Form(...), password: str = Form(...)):
 @app.get("/logout")
 async def logout(session_id: Optional[str] = Cookie(None)):
     """Handle logout"""
-    if session_id and session_id in sessions:
-        del sessions[session_id]
+    if session_id:
+        delete_session_db(session_id)
     response = RedirectResponse(url="/", status_code=303)
     # Delete cookie with same settings as when it was set
     response.delete_cookie(
