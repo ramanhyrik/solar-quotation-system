@@ -816,9 +816,9 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
 
-            # Convert to dict
-            quote_data = dict(quote)
-            company_info = dict(company) if company else None
+            # Convert to dict and handle Decimals
+            quote_data = convert_decimals_in_dict(dict(quote))
+            company_info = convert_decimals_in_dict(dict(company)) if company else None
 
         print(f"[PDF] Generating PDF for quote #{quote_data.get('quote_number')}")
         print(f"[PDF] Customer: {quote_data.get('customer_name')}")
@@ -899,9 +899,9 @@ async def send_quote_email(quote_id: int, user=Depends(get_current_user)):
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
 
-            # Convert to dict
-            quote_data = dict(quote)
-            company_info = dict(company) if company else {}
+            # Convert to dict and handle Decimals
+            quote_data = convert_decimals_in_dict(dict(quote))
+            company_info = convert_decimals_in_dict(dict(company)) if company else {}
 
         # Check if customer email exists
         if not quote_data.get('customer_email'):
@@ -1593,7 +1593,7 @@ async def preview_quote_pdf(token: str):
             if not result:
                 raise HTTPException(status_code=404, detail="Signature request not found")
 
-            sig_data = dict(result)
+            sig_data = convert_decimals_in_dict(dict(result))
 
             # Check if expired
             expires_at = ensure_datetime(sig_data['expires_at'])
@@ -1603,7 +1603,7 @@ async def preview_quote_pdf(token: str):
             # Get company settings
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
-            company_info = dict(company) if company else None
+            company_info = convert_decimals_in_dict(dict(company)) if company else None
 
         # Generate PDF (without customer signature since they haven't signed yet)
         model_type = sig_data.get('model_type', 'purchase')
@@ -1694,7 +1694,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             if not result:
                 raise HTTPException(status_code=404, detail="Signature request not found")
 
-            sig_data = dict(result)
+            sig_data = convert_decimals_in_dict(dict(result))
 
             # Check if expired
             expires_at = ensure_datetime(sig_data['expires_at'])
@@ -1738,7 +1738,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             # Get company info for PDF generation
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
-            company_info = dict(company) if company else {}
+            company_info = convert_decimals_in_dict(dict(company)) if company else {}
 
         # Generate signed PDF with customer signature
         model_type = sig_data.get('model_type', 'purchase')
