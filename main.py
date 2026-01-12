@@ -82,16 +82,16 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Try to find by phone first (most reliable)
             if customer_phone:
-                cursor.execute('''
+                cursor.execute(sql_query('''
                     SELECT signature_path FROM customer_submissions
                     WHERE customer_phone = ?
                     ORDER BY submission_date DESC
                     LIMIT 1
-                ''', (customer_phone,))
+                '''), (customer_phone,))
                 result = cursor.fetchone()
                 if result and result['signature_path']:
                     signature_path = result['signature_path']
@@ -101,12 +101,12 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
 
             # Try to find by email if phone didn't work
             if customer_email:
-                cursor.execute('''
+                cursor.execute(sql_query('''
                     SELECT signature_path FROM customer_submissions
                     WHERE customer_email = ?
                     ORDER BY submission_date DESC
                     LIMIT 1
-                ''', (customer_email,))
+                '''), (customer_email,))
                 result = cursor.fetchone()
                 if result and result['signature_path']:
                     signature_path = result['signature_path']
@@ -286,7 +286,7 @@ async def submissions_page(request: Request, user=Depends(get_current_user)):
 async def get_pricing():
     """Get current pricing parameters"""
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
         pricing = cursor.fetchone()
         return dict(pricing) if pricing else {}
@@ -315,7 +315,7 @@ async def update_pricing(
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE pricing_parameters SET
             price_per_kwp = ?,
@@ -347,7 +347,7 @@ async def calculate_quote(
 ):
     """Calculate quote based on system size"""
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
         params = dict(cursor.fetchone())
 
@@ -378,7 +378,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
     data = await request.json()
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             INSERT INTO quotes (
                 quote_number, customer_name, customer_phone, customer_email, customer_address,
@@ -419,7 +419,7 @@ async def list_quotes(user=Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             SELECT q.*, u.name as created_by_name
             FROM quotes q
@@ -437,7 +437,7 @@ async def get_quote(quote_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             SELECT q.*, u.name as created_by_name, u.email as created_by_email
             FROM quotes q
@@ -458,8 +458,8 @@ async def delete_quote(quote_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM quotes WHERE id = ?", (quote_id,))
+        cursor = get_cursor(conn)
+        cursor.execute(sql_query("DELETE FROM quotes WHERE id = ?"), (quote_id,))
         conn.commit()
 
     return {"message": "Quote deleted successfully"}
@@ -468,7 +468,7 @@ async def delete_quote(quote_id: int, user=Depends(get_current_user)):
 async def get_company():
     """Get company settings"""
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
         company = cursor.fetchone()
         return dict(company) if company else {}
@@ -486,7 +486,7 @@ async def update_company(
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE company_settings SET
             company_name = ?,
@@ -530,7 +530,7 @@ async def upload_logo(logo: UploadFile = File(...), user=Depends(get_current_use
     # Update database with logo path
     logo_url = f"/uploads/uploads/{filename}" if os.getenv("RENDER") else f"/static/uploads/{filename}"
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute('''
             UPDATE company_settings SET
             company_logo = ?,
@@ -547,7 +547,7 @@ async def delete_logo(user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
 
         # Get current logo path
         cursor.execute("SELECT company_logo FROM company_settings ORDER BY id DESC LIMIT 1")
@@ -582,7 +582,7 @@ async def get_users(user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute("SELECT id, email, name, role, created_at FROM users ORDER BY created_at DESC")
         users_list = cursor.fetchall()
         return [dict(u) for u in users_list]
@@ -643,37 +643,37 @@ async def update_user(
         raise HTTPException(status_code=400, detail="Name, email, and role are required")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
 
         # Check if user exists
-        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        cursor.execute(sql_query("SELECT id FROM users WHERE id = ?"), (user_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
 
         # Check if email already exists for another user
-        cursor.execute("SELECT id FROM users WHERE email = ? AND id != ?", (email, user_id))
+        cursor.execute(sql_query("SELECT id FROM users WHERE email = ? AND id != ?"), (email, user_id))
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already exists")
 
         # Update user
         if password:
             hashed_password = hash_password(password)
-            cursor.execute('''
+            cursor.execute(sql_query('''
                 UPDATE users SET
                 email = ?,
                 password = ?,
                 name = ?,
                 role = ?
                 WHERE id = ?
-            ''', (email, hashed_password, name, role, user_id))
+            '''), (email, hashed_password, name, role, user_id))
         else:
-            cursor.execute('''
+            cursor.execute(sql_query('''
                 UPDATE users SET
                 email = ?,
                 name = ?,
                 role = ?
                 WHERE id = ?
-            ''', (email, name, role, user_id))
+            '''), (email, name, role, user_id))
 
         conn.commit()
 
@@ -690,15 +690,15 @@ async def delete_user(user_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
 
         # Check if user exists
-        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        cursor.execute(sql_query("SELECT id FROM users WHERE id = ?"), (user_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
 
         # Delete user
-        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        cursor.execute(sql_query("DELETE FROM users WHERE id = ?"), (user_id,))
         conn.commit()
 
     return {"message": "User deleted successfully"}
@@ -710,7 +710,7 @@ async def get_submissions(user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
         cursor.execute("""
             SELECT id, customer_name, customer_phone, customer_email,
                    customer_address, roof_area, signature_path,
@@ -738,10 +738,10 @@ async def update_submission(
         raise HTTPException(status_code=400, detail="Invalid status")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
 
         # Check if submission exists
-        cursor.execute("SELECT id FROM customer_submissions WHERE id = ?", (submission_id,))
+        cursor.execute(sql_query("SELECT id FROM customer_submissions WHERE id = ?"), (submission_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Submission not found")
 
@@ -762,10 +762,10 @@ async def delete_submission(submission_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     with get_db() as conn:
-        cursor = conn.cursor()
+        cursor = get_cursor(conn)
 
         # Get signature path before deleting
-        cursor.execute("SELECT signature_path FROM customer_submissions WHERE id = ?", (submission_id,))
+        cursor.execute(sql_query("SELECT signature_path FROM customer_submissions WHERE id = ?"), (submission_id,))
         result = cursor.fetchone()
 
         if not result:
@@ -779,7 +779,7 @@ async def delete_submission(submission_id: int, user=Depends(get_current_user)):
                 print(f"Error deleting signature file: {e}")
 
         # Delete submission
-        cursor.execute("DELETE FROM customer_submissions WHERE id = ?", (submission_id,))
+        cursor.execute(sql_query("DELETE FROM customer_submissions WHERE id = ?"), (submission_id,))
         conn.commit()
 
     return {"message": "Submission deleted successfully"}
@@ -792,7 +792,7 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get quote data
             cursor.execute('''
@@ -875,7 +875,7 @@ async def send_quote_email(quote_id: int, user=Depends(get_current_user)):
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get quote data
             cursor.execute('''
@@ -943,10 +943,10 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get quote data
-            cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
+            cursor.execute(sql_query("SELECT * FROM quotes WHERE id = ?"), (quote_id,))
             quote = cursor.fetchone()
 
             if not quote:
@@ -1020,7 +1020,7 @@ async def get_signature_status(quote_id: int, user=Depends(get_current_user)):
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             cursor.execute('''
                 SELECT * FROM quote_signatures
@@ -1444,7 +1444,7 @@ async def submit_contact(
     try:
         # Save to database (no signature)
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 INSERT INTO customer_submissions
                 (customer_name, customer_phone, customer_email, customer_address, roof_area, signature_path, submission_date, status)
@@ -1495,7 +1495,7 @@ async def signature_portal(token: str, request: Request):
     """Display signature portal page for customer"""
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get signature request details
             cursor.execute('''
@@ -1572,7 +1572,7 @@ async def preview_quote_pdf(token: str):
     """Allow customer to view PDF quote using signature token (no authentication required)"""
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get signature request and quote details
             cursor.execute('''
@@ -1626,7 +1626,7 @@ async def view_signed_pdf(token: str):
     """Allow customer to view signed PDF after signing"""
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get signature request and signed PDF path
             cursor.execute('''
@@ -1673,7 +1673,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
     """Handle customer signature submission"""
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get signature request details
             cursor.execute('''
@@ -1752,7 +1752,7 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
 
         # Update signature record with signed PDF path
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 UPDATE quote_signatures
                 SET signed_pdf_path = ?
@@ -1987,7 +1987,7 @@ async def upload_roof_image_endpoint(
 
         # Save to database (without polygons - user will draw them)
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 INSERT INTO roof_designs (
                     customer_name, customer_address, original_image_path,
@@ -2076,7 +2076,7 @@ async def auto_detect_roof_endpoint(
     try:
         # Get design from database
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 SELECT original_image_path, created_by
                 FROM roof_designs
@@ -2215,7 +2215,7 @@ async def calculate_layout_endpoint(
 
         # Update database with results
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 UPDATE roof_designs SET
                     roof_polygon_json = ?,
@@ -2277,8 +2277,8 @@ async def get_roof_design(design_id: int, user=Depends(get_current_user)):
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM roof_designs WHERE id = ?", (design_id,))
+            cursor = get_cursor(conn)
+            cursor.execute(sql_query("SELECT * FROM roof_designs WHERE id = ?"), (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2315,8 +2315,8 @@ async def save_visualization_endpoint(
     try:
         # Verify design exists and user has access
         with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT created_by FROM roof_designs WHERE id = ?", (design_id,))
+            cursor = get_cursor(conn)
+            cursor.execute(sql_query("SELECT created_by FROM roof_designs WHERE id = ?"), (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2344,7 +2344,7 @@ async def save_visualization_endpoint(
 
         # Update database
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             cursor.execute('''
                 UPDATE roof_designs SET processed_image_path = ? WHERE id = ?
             ''', (vis_path, design_id))
@@ -2381,7 +2381,7 @@ async def list_roof_designs(user=Depends(get_current_user)):
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # All users can see all designs
             cursor.execute('''
@@ -2412,10 +2412,10 @@ async def update_roof_design_metadata(
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Verify ownership (admin can edit all, users can only edit their own)
-            cursor.execute('SELECT created_by FROM roof_designs WHERE id = ?', (design_id,))
+            cursor.execute(sql_query('SELECT created_by FROM roof_designs WHERE id = ?'), (design_id,))
             design = cursor.fetchone()
 
             if not design:
@@ -2450,7 +2450,7 @@ async def delete_roof_design(
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get design details and verify ownership
             cursor.execute('''
@@ -2480,7 +2480,7 @@ async def delete_roof_design(
                     print(f"[WARNING] Failed to delete visualization image: {e}")
 
             # Delete database record
-            cursor.execute('DELETE FROM roof_designs WHERE id = ?', (design_id,))
+            cursor.execute(sql_query('DELETE FROM roof_designs WHERE id = ?'), (design_id,))
             conn.commit()
 
             return {"success": True, "message": "Design deleted successfully"}
@@ -2504,7 +2504,7 @@ async def download_roof_visualization(
 
     try:
         with get_db() as conn:
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
 
             # Get design details and verify ownership
             cursor.execute('''
