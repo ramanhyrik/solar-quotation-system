@@ -394,12 +394,23 @@
             align-items: center;
         }
 
-        .form-group input {
-            direction: ltr;
+        #addressSearchSection .section-title,
+        #addressSearchSection label,
+        #addressSearchSection small {
+            direction: rtl;
+            text-align: right;
         }
 
+        .form-group label,
         .form-group small {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .form-group input[type="number"],
+        .ltr-input {
             direction: ltr;
+            text-align: left;
         }
 
         .tool-grid-3 {
@@ -1135,41 +1146,41 @@
             <div class="sidebar-section" id="addressSearchSection">
                 <div class="section-title">
                     <i data-lucide="map-pin"></i>
-                    <span>Address &amp; coordinates</span>
+                    <span>כתובת וקואורדינטות</span>
                 </div>
 
                 <!-- Address Search Input -->
                 <div class="form-group">
-                    <label>Address</label>
+                    <label>כתובת</label>
                     <div class="input-row compact">
-                        <button class="icon-action" id="searchAddressBtn" onclick="searchAddress()" disabled aria-label="Search address">
+                        <button class="icon-action" id="searchAddressBtn" onclick="searchAddress()" disabled aria-label="חפש כתובת">
                             <i data-lucide="search"></i>
                         </button>
-                        <button class="icon-circle" id="useMyLocationBtn" onclick="useMyLocation()" title="Use browser location" disabled aria-label="Use my location">
+                        <button class="icon-circle" id="useMyLocationBtn" onclick="useMyLocation()" title="השתמש במיקום הנוכחי" disabled aria-label="המיקום שלי">
                             <i data-lucide="navigation"></i>
                         </button>
                         <div class="input-with-icon">
-                            <input type="text" id="addressSearchInput" placeholder="e.g., Rothschild Blvd 1, Tel Aviv">
+                            <input type="text" id="addressSearchInput" placeholder="לדוגמה: שדרות רוטשילד 1, תל אביב" dir="auto">
                         </div>
                     </div>
-                    <small>Enter an address and click the search icon.</small>
+                    <small>הזן כתובת ולחץ על אייקון החיפוש</small>
                 </div>
 
                 <!-- Coordinate Input -->
                 <div class="form-group">
-                    <label>Coordinates (latitude, longitude)</label>
+                    <label>קואורדינטות (latitude, longitude)</label>
                     <div class="input-row compact">
-                        <button class="icon-action" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled aria-label="Search by coordinates">
+                        <button class="icon-action" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled aria-label="חפש לפי קואורדינטות">
                             <i data-lucide="search"></i>
                         </button>
                         <div class="input-with-icon" style="flex: 1;">
-                            <input type="text" id="latitudeInput" placeholder="32.063123">
+                            <input type="text" id="latitudeInput" class="ltr-input" placeholder="32.063123">
                         </div>
                         <div class="input-with-icon" style="flex: 1;">
-                            <input type="text" id="longitudeInput" placeholder="34.768903">
+                            <input type="text" id="longitudeInput" class="ltr-input" placeholder="34.768903">
                         </div>
                     </div>
-                    <small>Use decimal degrees for exact location.</small>
+                    <small>השתמש במעלות עשרוניות למיקום מדויק</small>
                 </div>
 
                 <!-- Address Search Results (Autocomplete dropdown) -->
@@ -1328,11 +1339,11 @@
 
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
-                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן">
+                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="auto">
                 </div>
                 <div class="form-group" style="margin-top: -4px;">
                     <label>כתובת (אופציונלי)</label>
-                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב">
+                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב" dir="auto">
                 </div>
 
                 <button class="tool-btn success" onclick="saveDesign()" id="saveBtn" style="margin-top: 12px;" disabled>
@@ -1637,7 +1648,7 @@
                     } catch (err) {
                         console.error('Satellite image load error:', err);
                         hideLoading();
-                        showNotification('error', 'Unable to load satellite image. Please try again.');
+                        showNotification('error', 'לא ניתן לטעון תמונת לוויין. נסה שוב.');
                         reject(err);
                     }
                 }, { crossOrigin: 'anonymous' });
@@ -1645,7 +1656,7 @@
         }
 
         async function createDesignFromAddress(address, latitude, longitude) {
-            showLoading('Downloading satellite image...');
+            showLoading('מוריד תמונת לוויין...');
 
             try {
                 const formData = new FormData();
@@ -1663,7 +1674,7 @@
 
                 if (!response.ok || !result.success) {
                     hideLoading();
-                    showNotification('error', result.error || 'Failed to create design from address.');
+                    showNotification('error', result.error || 'יצירת עיצוב מכתובת נכשלה.');
                     return;
                 }
 
@@ -1672,7 +1683,7 @@
             } catch (error) {
                 hideLoading();
                 console.error('Create design from address error:', error);
-                showNotification('error', 'Create design from address failed.');
+                showNotification('error', 'יצירת עיצוב מכתובת נכשלה.');
             }
         }
 
@@ -1684,16 +1695,16 @@
             const longitude = parseFloat(lonInput?.value);
 
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-                showNotification('error', 'Please enter valid latitude and longitude.');
+                showNotification('error', 'אנא הזן קואורדינטות תקינות (latitude ו-longitude).');
                 return;
             }
 
             if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-                showNotification('error', 'Coordinates must be within valid ranges (-90 to 90, -180 to 180).');
+                showNotification('error', 'הקואורדינטות חייבות להיות בטווח תקין (latitude: -90 עד 90, longitude: -180 עד 180).');
                 return;
             }
 
-            showLoading('Downloading satellite image...');
+            showLoading('מוריד תמונת לוויין...');
 
             try {
                 const formData = new FormData();
@@ -1716,7 +1727,7 @@
 
                 if (!response.ok || !result.success) {
                     hideLoading();
-                    showNotification('error', result.error || 'Failed to create design from coordinates.');
+                    showNotification('error', result.error || 'יצירת עיצוב מקואורדינטות נכשלה.');
                     return;
                 }
 
@@ -1724,7 +1735,7 @@
             } catch (error) {
                 hideLoading();
                 console.error('Create design from coordinates error:', error);
-                showNotification('error', 'Create design from coordinates failed.');
+                showNotification('error', 'יצירת עיצוב מקואורדינטות נכשלה.');
             }
         }
 
