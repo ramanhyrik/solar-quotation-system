@@ -1296,6 +1296,36 @@
                     </div>
                 </div>
 
+                <!-- PHASE 2: Roof Measurements Display -->
+                <div class="results-panel" id="measurementsPanel" style="padding: 12px; margin-top: 12px; display: none;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">מידות גג (אוטומטי)</h3>
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
+                        <div class="result-item">
+                            <div class="result-label">אורך</div>
+                            <div class="result-value" id="measurementLength">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">רוחב</div>
+                            <div class="result-value" id="measurementWidth">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">כיוון</div>
+                            <div class="result-value" id="measurementOrientation">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">ביטחון</div>
+                            <div class="result-value" id="measurementConfidence">-</div>
+                        </div>
+                    </div>
+                    <div id="measurementWarnings" style="margin-top: 8px; display: none;">
+                        <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px; border-radius: 4px; font-size: 11px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">⚠️ אזהרות:</div>
+                            <ul id="measurementWarningsList" style="margin: 0; padding-right: 20px; list-style: disc;">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
                     <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן">
@@ -2505,6 +2535,59 @@
             document.getElementById('resultPower').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
             document.getElementById('resultCoverage').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
             document.getElementById('resultArea').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
+
+            // PHASE 2: Display automatic measurements if available
+            if (result.measurements) {
+                const m = result.measurements;
+                const measurementsPanel = document.getElementById('measurementsPanel');
+
+                if (measurementsPanel) {
+                    measurementsPanel.style.display = 'block';
+
+                    // Update measurement values
+                    document.getElementById('measurementLength').textContent = m.length_m ? m.length_m.toFixed(1) + ' m' : '-';
+                    document.getElementById('measurementWidth').textContent = m.width_m ? m.width_m.toFixed(1) + ' m' : '-';
+                    document.getElementById('measurementOrientation').textContent = m.orientation_name || '-';
+
+                    // Display confidence with color coding
+                    const confidence = m.confidence || 0;
+                    const confidenceEl = document.getElementById('measurementConfidence');
+                    confidenceEl.textContent = confidence + '%';
+
+                    if (confidence >= 80) {
+                        confidenceEl.style.color = '#3AE478'; // Green
+                    } else if (confidence >= 60) {
+                        confidenceEl.style.color = '#ffc107'; // Yellow
+                    } else {
+                        confidenceEl.style.color = '#ff5252'; // Red
+                    }
+
+                    // Display warnings if any
+                    const warningsDiv = document.getElementById('measurementWarnings');
+                    const warningsList = document.getElementById('measurementWarningsList');
+
+                    if (m.warnings && m.warnings.length > 0) {
+                        warningsList.innerHTML = '';
+                        m.warnings.forEach(warning => {
+                            const li = document.createElement('li');
+                            li.textContent = warning;
+                            li.style.marginBottom = '4px';
+                            warningsList.appendChild(li);
+                        });
+                        warningsDiv.style.display = 'block';
+                    } else {
+                        warningsDiv.style.display = 'none';
+                    }
+
+                    console.log('[PHASE 2] Measurements displayed:', m.summary);
+                }
+            } else {
+                // Hide measurements panel if no data
+                const measurementsPanel = document.getElementById('measurementsPanel');
+                if (measurementsPanel) {
+                    measurementsPanel.style.display = 'none';
+                }
+            }
         }
 
         function toggleResultsCollapse() {

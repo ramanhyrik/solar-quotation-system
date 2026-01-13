@@ -2204,6 +2204,31 @@ async def calculate_layout_endpoint(
         print(f"[ROOF DESIGNER] Calculating layout for design #{design_id}")
         print(f"[ROOF DESIGNER] Panel: {panel_width_m}x{panel_height_m}m, {panel_power_w}W")
 
+        # PHASE 2: Get location data for automatic measurements
+        measurements_data = {}
+        with get_db() as conn:
+            cursor = get_cursor(conn)
+            cursor.execute('''
+                SELECT latitude, longitude, zoom_level
+                FROM roof_designs WHERE id = %s
+            ''', (design_id,))
+            location = cursor.fetchone()
+
+        # PHASE 2: Calculate automatic roof measurements if location available
+        if location and location['latitude'] and location['longitude']:
+            from roof_measurements import calculate_comprehensive_measurements
+
+            print("[ROOF DESIGNER] Calculating automatic measurements...")
+            measurements_data = calculate_comprehensive_measurements(
+                polygon_points=roof_poly_points,
+                latitude=location['latitude'],
+                longitude=location['longitude'],
+                zoom_level=location['zoom_level'] or 19,
+                pixels_per_meter=pixels_per_meter,
+                building_type="residential"
+            )
+            print(f"[ROOF DESIGNER] Measurements: {measurements_data.get('summary', 'N/A')}")
+
         # Calculate panel layout
         layout_result = calculate_panel_layout_from_data(
             roof_polygon=roof_poly_points,
@@ -2222,7 +2247,7 @@ async def calculate_layout_endpoint(
                 content={"error": layout_result.get('error', 'Calculation failed')}
             )
 
-        # Update database with results
+        # Update database with results (including Phase 2 measurements)
         with get_db() as conn:
             cursor = get_cursor(conn)
             cursor.execute('''
@@ -2240,6 +2265,14 @@ async def calculate_layout_endpoint(
                     panel_power_w = %s,
                     spacing_m = %s,
                     orientation = %s,
+                    roof_length_m = %s,
+                    roof_width_m = %s,
+                    roof_perimeter_m = %s,
+                    roof_azimuth = %s,
+                    roof_type = %s,
+                    measurement_confidence = %s,
+                    usable_area_m2 = %s,
+                    estimated_panel_count = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             ''', (
@@ -2256,20 +2289,50 @@ async def calculate_layout_endpoint(
                 panel_power_w,
                 spacing_m,
                 orientation,
+                # Phase 2 measurements
+                measurements_data.get('length_m'),
+                measurements_data.get('width_m'),
+                measurements_data.get('perimeter_m'),
+                measurements_data.get('azimuth'),
+                'complex' if len(roof_poly_points) > 6 else 'simple',
+                measurements_data.get('validation', {}).get('confidence'),
+                measurements_data.get('usable_area_m2'),
+                measurements_data.get('panel_estimate', {}).get('estimated_panels'),
                 design_id
             ))
             conn.commit()
 
         print(f"[ROOF DESIGNER] Layout calculated: {layout_result['total_panels']} panels, {layout_result['total_power_kw']} kW")
 
-        return JSONResponse(content={
+        # Build response with Phase 2 measurements
+        response_data = {
             "success": True,
             "panels": layout_result['panels'],
             "total_panels": layout_result['total_panels'],
             "total_power_kw": layout_result['total_power_kw'],
             "coverage_percent": layout_result['coverage_percent'],
             "roof_area_m2": layout_result['roof_area_m2']
-        })
+        }
+
+        # Add Phase 2 measurements if available
+        if measurements_data:
+            response_data["measurements"] = {
+                "length_m": measurements_data.get('length_m'),
+                "width_m": measurements_data.get('width_m'),
+                "area_m2": measurements_data.get('area_m2'),
+                "usable_area_m2": measurements_data.get('usable_area_m2'),
+                "perimeter_m": measurements_data.get('perimeter_m'),
+                "azimuth": measurements_data.get('azimuth'),
+                "orientation_name": measurements_data.get('orientation_name'),
+                "is_suitable_south": measurements_data.get('is_suitable_south'),
+                "confidence": measurements_data.get('validation', {}).get('confidence', 0),
+                "warnings": measurements_data.get('validation', {}).get('warnings', []),
+                "suggestions": measurements_data.get('validation', {}).get('suggestions', []),
+                "estimated_panels": measurements_data.get('panel_estimate', {}).get('estimated_panels', 0),
+                "summary": measurements_data.get('summary', '')
+            }
+
+        return JSONResponse(content=response_data)
 
     except HTTPException:
         raise
