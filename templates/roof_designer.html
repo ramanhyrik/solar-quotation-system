@@ -1500,7 +1500,9 @@
                     originalImageHeight = imgHeight;
 
                     // Enable tools
-                    enableTools();
+                    enableDrawingTools();
+                    setZoomButtonsEnabled(true);
+                    updateZoomDisplay();
                     toggleUploadOverlay(false);
 
                     hideLoading();
