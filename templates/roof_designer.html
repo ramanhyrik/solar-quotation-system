@@ -320,7 +320,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            flex-direction: row-reverse; /* render the search button on the left */
         }
 
         .input-with-icon input {
@@ -351,6 +350,11 @@
             border-color: var(--primary-blue);
             color: white;
             background: var(--primary-blue);
+        }
+
+        .input-row .icon-action,
+        .input-row .icon-circle {
+            flex-shrink: 0;
         }
 
         .icon-circle {
@@ -1131,15 +1135,15 @@
                 <div class="form-group">
                     <label>Address</label>
                     <div class="input-row compact">
-                        <div class="input-with-icon">
-                            <input type="text" id="addressSearchInput" placeholder="e.g., Rothschild Blvd 1, Tel Aviv">
-                            <button class="icon-action" id="searchAddressBtn" onclick="searchAddress()" disabled aria-label="Search address">
-                                <i data-lucide="search"></i>
-                            </button>
-                        </div>
+                        <button class="icon-action" id="searchAddressBtn" onclick="searchAddress()" disabled aria-label="Search address">
+                            <i data-lucide="search"></i>
+                        </button>
                         <button class="icon-circle" id="useMyLocationBtn" onclick="useMyLocation()" title="Use browser location" disabled aria-label="Use my location">
                             <i data-lucide="navigation"></i>
                         </button>
+                        <div class="input-with-icon">
+                            <input type="text" id="addressSearchInput" placeholder="e.g., Rothschild Blvd 1, Tel Aviv">
+                        </div>
                     </div>
                     <small>Enter an address and click the search icon.</small>
                 </div>
@@ -1148,14 +1152,14 @@
                 <div class="form-group">
                     <label>Coordinates (latitude, longitude)</label>
                     <div class="input-row compact">
+                        <button class="icon-action" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled aria-label="Search by coordinates">
+                            <i data-lucide="search"></i>
+                        </button>
                         <div class="input-with-icon" style="flex: 1;">
                             <input type="text" id="latitudeInput" placeholder="32.063123">
                         </div>
                         <div class="input-with-icon" style="flex: 1;">
                             <input type="text" id="longitudeInput" placeholder="34.768903">
-                            <button class="icon-action" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled aria-label="Search by coordinates">
-                                <i data-lucide="search"></i>
-                            </button>
                         </div>
                     </div>
                     <small>Use decimal degrees for exact location.</small>
