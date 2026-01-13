@@ -316,15 +316,17 @@
         .input-with-icon {
             position: relative;
             flex: 1;
+            direction: ltr; /* keep icon and padding anchored to the right even in RTL layouts */
         }
 
         .input-with-icon input {
-            padding-inline-end: 44px;
+            padding-right: 44px;
         }
 
         .icon-action {
             position: absolute;
-            inset-inline-end: 8px;
+            right: 8px;
+            left: auto;
             top: 50%;
             transform: translateY(-50%);
             width: 34px;
