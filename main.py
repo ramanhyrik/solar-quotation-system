@@ -2686,21 +2686,11 @@ async def get_satellite_image_endpoint(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        from satellite_imagery import fetch_satellite_image, is_mapbox_configured
+        from satellite_imagery import fetch_satellite_image
 
-        # Check if Mapbox is configured
-        if not is_mapbox_configured():
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "error": "Satellite imagery service not configured",
-                    "message": "Please configure MAPBOX_ACCESS_TOKEN environment variable"
-                }
-            )
-
-        # Fetch satellite image
+        # Fetch satellite image (uses FREE OpenStreetMap tiles by default, no API key required)
         image_data = fetch_satellite_image(
-            latitude, longitude, zoom, width, height, use_cache=True
+            latitude, longitude, zoom, width, height, use_cache=True, prefer_free=True
         )
 
         if not image_data:
@@ -2749,7 +2739,7 @@ async def create_design_from_address_endpoint(
 
     try:
         from geocoding_service import geocode_address
-        from satellite_imagery import fetch_satellite_image, get_meters_per_pixel, is_mapbox_configured
+        from satellite_imagery import fetch_satellite_image, get_meters_per_pixel
 
         # Step 1: Geocode address
         print(f"[FROM ADDRESS] Geocoding: {address}")
@@ -2767,20 +2757,10 @@ async def create_design_from_address_endpoint(
 
         print(f"[FROM ADDRESS] Found: {display_name} at ({latitude:.6f}, {longitude:.6f})")
 
-        # Step 2: Check if satellite imagery is configured
-        if not is_mapbox_configured():
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "error": "Satellite imagery service not configured",
-                    "message": "Please configure MAPBOX_ACCESS_TOKEN environment variable"
-                }
-            )
-
-        # Step 3: Fetch satellite image
+        # Step 2: Fetch satellite image (uses FREE OpenStreetMap tiles, no API key required)
         print(f"[FROM ADDRESS] Fetching satellite image at zoom {zoom}")
         image_data = fetch_satellite_image(
-            latitude, longitude, zoom, 1200, 800, use_cache=True
+            latitude, longitude, zoom, 1200, 800, use_cache=True, prefer_free=True
         )
 
         if not image_data:
@@ -2876,14 +2856,15 @@ async def get_map_configuration(user=Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        from satellite_imagery import is_mapbox_configured
+        mapbox_token = bool(os.getenv("MAPBOX_ACCESS_TOKEN"))
 
         return JSONResponse(content={
-            "mapbox_available": is_mapbox_configured(),
+            "osm_available": True,  # Always available (FREE, no API key)
+            "mapbox_available": mapbox_token,
             "google_maps_available": bool(os.getenv("GOOGLE_MAPS_API_KEY")),
             "nominatim_available": True,  # Always available (free)
-            "default_zoom": 20,
-            "default_map_source": "mapbox" if is_mapbox_configured() else "osm"
+            "default_zoom": 19,  # OSM max zoom
+            "default_map_source": "osm"  # OpenStreetMap by default (FREE)
         })
 
     except Exception as e:

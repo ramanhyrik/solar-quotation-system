@@ -1,10 +1,13 @@
 """
-Satellite Imagery Service using Mapbox Static API
+Satellite Imagery Service with Multiple Providers
 
-FREE TIER: 100,000 requests per month
-Documentation: https://docs.mapbox.com/api/maps/static-images/
+PRIMARY (NO CARD REQUIRED):
+- OpenStreetMap Tiles - 100% FREE, no API key, no card details
+- Quality: Good for most use cases
 
-Alternative: Google Maps Static API ($200 free credit/month)
+ALTERNATIVE (Requires card on file):
+- Mapbox Static API - 100k requests/month FREE (requires MAPBOX_ACCESS_TOKEN)
+- Google Maps Static API - $200 free credit/month (requires GOOGLE_MAPS_API_KEY)
 """
 
 import requests
@@ -36,21 +39,26 @@ def _get_cache_path(latitude: float, longitude: float, zoom: int, width: int, he
     return os.path.join(CACHE_DIR, filename)
 
 
-def fetch_satellite_image(
+def fetch_satellite_image_osm(
     latitude: float,
     longitude: float,
-    zoom: int = DEFAULT_ZOOM,
+    zoom: int = 19,  # OSM max zoom is 19
     width: int = DEFAULT_WIDTH,
     height: int = DEFAULT_HEIGHT,
     use_cache: bool = True
 ) -> Optional[bytes]:
     """
-    Fetch satellite imagery for given coordinates using Mapbox Static API
+    Fetch satellite imagery using OpenStreetMap tiles (100% FREE, no API key)
+
+    Uses tile servers that provide satellite/aerial imagery:
+    - Esri WorldImagery (free, no registration)
+    - Quality: Good enough for roof detection
+    - No rate limits for reasonable use
 
     Args:
         latitude: Latitude coordinate
         longitude: Longitude coordinate
-        zoom: Map zoom level (1-22, default: 20 for building detail)
+        zoom: Map zoom level (1-19, default: 19 for building detail)
         width: Image width in pixels (max: 1280)
         height: Image height in pixels (max: 1280)
         use_cache: Whether to use cached images (default: True)
@@ -59,79 +67,211 @@ def fetch_satellite_image(
         Image data as bytes, or None if fetch fails
 
     Note:
-        - Zoom 20 provides ~0.15 meters per pixel at equator
-        - Higher zoom = more detail but larger file size
-        - Mapbox free tier: 100,000 requests/month
-
-    Example:
-        >>> image_data = fetch_satellite_image(32.0644, 34.7755, zoom=20)
-        >>> if image_data:
-        ...     with open("roof.jpg", "wb") as f:
-        ...         f.write(image_data)
+        - Zoom 19 provides ~0.3 meters per pixel
+        - Completely FREE, no API key required
+        - No card details needed
     """
+    from PIL import Image, ImageDraw
+    import math
+
     # Check cache first
     cache_path = _get_cache_path(latitude, longitude, zoom, width, height)
     if use_cache and os.path.exists(cache_path):
-        print(f"[SATELLITE] Cache hit: {cache_path}")
+        print(f"[OSM] Cache hit: {cache_path}")
         with open(cache_path, "rb") as f:
             return f.read()
 
-    # Check if API token is configured
-    if not MAPBOX_ACCESS_TOKEN:
-        print("[SATELLITE] ERROR: MAPBOX_ACCESS_TOKEN not configured")
-        print("[SATELLITE] Set environment variable: MAPBOX_ACCESS_TOKEN=your_token")
-        print("[SATELLITE] Get free token at: https://account.mapbox.com/")
-        return None
-
     try:
-        # Build Mapbox Static API URL
-        # Format: /styles/v1/{username}/{style_id}/static/{lon},{lat},{zoom}/{width}x{height}
-        url = (
-            f"{MAPBOX_STATIC_API}/{DEFAULT_STYLE}/static/"
-            f"{longitude},{latitude},{zoom}/{width}x{height}"
-        )
+        print(f"[OSM] Fetching tiles: lat={latitude:.6f}, lon={longitude:.6f}, zoom={zoom}")
 
-        print(f"[SATELLITE] Fetching: lat={latitude:.6f}, lon={longitude:.6f}, zoom={zoom}")
-        print(f"[SATELLITE] Size: {width}x{height}px")
+        # Calculate tile coordinates
+        # Convert lat/lon to tile numbers
+        def deg2num(lat_deg, lon_deg, zoom):
+            lat_rad = math.radians(lat_deg)
+            n = 2.0 ** zoom
+            xtile = int((lon_deg + 180.0) / 360.0 * n)
+            ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+            return (xtile, ytile)
 
-        # Make API request
-        response = requests.get(
-            url,
-            params={
-                'access_token': MAPBOX_ACCESS_TOKEN
-            },
-            timeout=30
-        )
+        # Calculate how many tiles we need
+        tiles_x = math.ceil(width / 256)
+        tiles_y = math.ceil(height / 256)
 
-        response.raise_for_status()
+        # Get center tile
+        center_x, center_y = deg2num(latitude, longitude, zoom)
 
-        # Get image data
-        image_data = response.content
+        # Calculate tile range
+        start_x = center_x - tiles_x // 2
+        start_y = center_y - tiles_y // 2
 
-        # Validate it's a valid image
-        try:
-            img = Image.open(BytesIO(image_data))
-            img.verify()
-            print(f"[SATELLITE] SUCCESS: {img.format} image, {img.size[0]}x{img.size[1]}px")
-        except Exception as e:
-            print(f"[SATELLITE] ERROR: Invalid image data: {e}")
-            return None
+        # Create composite image
+        composite = Image.new('RGB', (tiles_x * 256, tiles_y * 256))
+
+        # Esri WorldImagery tile server (FREE, no API key)
+        tile_url_template = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+        print(f"[OSM] Fetching {tiles_x}x{tiles_y} tiles...")
+
+        # Fetch tiles
+        for i in range(tiles_x):
+            for j in range(tiles_y):
+                tile_x = start_x + i
+                tile_y = start_y + j
+
+                # Build tile URL
+                tile_url = tile_url_template.format(z=zoom, x=tile_x, y=tile_y)
+
+                try:
+                    response = requests.get(tile_url, timeout=10)
+                    response.raise_for_status()
+
+                    tile_img = Image.open(BytesIO(response.content))
+                    composite.paste(tile_img, (i * 256, j * 256))
+
+                except Exception as e:
+                    print(f"[OSM] Warning: Failed to fetch tile ({tile_x}, {tile_y}): {e}")
+                    # Continue with other tiles
+
+        # Crop to desired size
+        composite = composite.crop((0, 0, width, height))
+
+        # Convert to bytes
+        output = BytesIO()
+        composite.save(output, format='JPEG', quality=85)
+        image_data = output.getvalue()
+
+        print(f"[OSM] SUCCESS: {len(image_data)} bytes")
 
         # Save to cache
         if use_cache:
             with open(cache_path, "wb") as f:
                 f.write(image_data)
-            print(f"[SATELLITE] Cached: {cache_path}")
+            print(f"[OSM] Cached: {cache_path}")
 
         return image_data
 
-    except requests.exceptions.RequestException as e:
-        print(f"[SATELLITE] API request failed: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"[SATELLITE] Response: {e.response.text}")
-        return None
     except Exception as e:
-        print(f"[SATELLITE] Error: {e}")
+        print(f"[OSM] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def fetch_satellite_image(
+    latitude: float,
+    longitude: float,
+    zoom: int = DEFAULT_ZOOM,
+    width: int = DEFAULT_WIDTH,
+    height: int = DEFAULT_HEIGHT,
+    use_cache: bool = True,
+    prefer_free: bool = True
+) -> Optional[bytes]:
+    """
+    Fetch satellite imagery for given coordinates
+
+    Automatically chooses provider:
+    1. OpenStreetMap tiles (FREE, no API key) - if prefer_free=True
+    2. Mapbox Static API - if MAPBOX_ACCESS_TOKEN configured
+    3. Fallback to OSM if Mapbox fails
+
+    Args:
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+        zoom: Map zoom level (1-22, default: 20 for building detail)
+        width: Image width in pixels (max: 1280)
+        height: Image height in pixels (max: 1280)
+        use_cache: Whether to use cached images (default: True)
+        prefer_free: Prefer FREE option (OSM) over Mapbox (default: True)
+
+    Returns:
+        Image data as bytes, or None if fetch fails
+
+    Example:
+        >>> image_data = fetch_satellite_image(32.0644, 34.7755, zoom=19)
+        >>> if image_data:
+        ...     with open("roof.jpg", "wb") as f:
+        ...         f.write(image_data)
+    """
+    # If prefer_free or Mapbox not configured, use OpenStreetMap
+    if prefer_free or not MAPBOX_ACCESS_TOKEN:
+        print("[SATELLITE] Using OpenStreetMap tiles (FREE, no API key)")
+        # OSM max zoom is 19, adjust if needed
+        osm_zoom = min(zoom, 19)
+        result = fetch_satellite_image_osm(latitude, longitude, osm_zoom, width, height, use_cache)
+
+        if result:
+            return result
+
+        # If OSM fails and Mapbox available, try Mapbox as fallback
+        if MAPBOX_ACCESS_TOKEN:
+            print("[SATELLITE] OSM failed, trying Mapbox fallback...")
+        else:
+            return None
+
+    # Try Mapbox if configured
+    if MAPBOX_ACCESS_TOKEN:
+        return fetch_satellite_image_mapbox(latitude, longitude, zoom, width, height, use_cache)
+
+    return None
+
+
+def fetch_satellite_image_mapbox(
+    latitude: float,
+    longitude: float,
+    zoom: int = DEFAULT_ZOOM,
+    width: int = DEFAULT_WIDTH,
+    height: int = DEFAULT_HEIGHT,
+    use_cache: bool = True
+) -> Optional[bytes]:
+    """
+    Fetch satellite imagery using Mapbox Static API
+
+    NOTE: Requires MAPBOX_ACCESS_TOKEN and card on file
+    FREE tier: 100,000 requests/month
+    """
+    # Check cache first
+    cache_path = _get_cache_path(latitude, longitude, zoom, width, height)
+    if use_cache and os.path.exists(cache_path):
+        print(f"[MAPBOX] Cache hit: {cache_path}")
+        with open(cache_path, "rb") as f:
+            return f.read()
+
+    if not MAPBOX_ACCESS_TOKEN:
+        print("[MAPBOX] ERROR: MAPBOX_ACCESS_TOKEN not configured")
+        return None
+
+    try:
+        url = (
+            f"{MAPBOX_STATIC_API}/{DEFAULT_STYLE}/static/"
+            f"{longitude},{latitude},{zoom}/{width}x{height}"
+        )
+
+        print(f"[MAPBOX] Fetching: lat={latitude:.6f}, lon={longitude:.6f}, zoom={zoom}")
+
+        response = requests.get(
+            url,
+            params={'access_token': MAPBOX_ACCESS_TOKEN},
+            timeout=30
+        )
+
+        response.raise_for_status()
+        image_data = response.content
+
+        # Validate image
+        img = Image.open(BytesIO(image_data))
+        img.verify()
+        print(f"[MAPBOX] SUCCESS: {img.format} image, {img.size[0]}x{img.size[1]}px")
+
+        # Save to cache
+        if use_cache:
+            with open(cache_path, "wb") as f:
+                f.write(image_data)
+            print(f"[MAPBOX] Cached: {cache_path}")
+
+        return image_data
+
+    except Exception as e:
+        print(f"[MAPBOX] Error: {e}")
         import traceback
         traceback.print_exc()
         return None
