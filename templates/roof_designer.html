@@ -296,6 +296,12 @@
             gap: 6px;
         }
 
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
         .tool-grid-3 {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -1029,19 +1035,14 @@
             <div class="sidebar-section" id="addressSearchSection">
                 <div class="section-title">
                     <i data-lucide="map-pin"></i>
-                    <span>חיפוש כתובת</span>
-                </div>
-
-                <div class="info-box" style="margin-bottom: 12px;">
-                    <strong>שלב 1: מצא את הגג</strong>
-                    <p>הזן כתובת או העלה תמונה ישירות</p>
+                    <span>x-xTxxxc x>x�xx`x�</span>
                 </div>
 
                 <!-- Address Search Input -->
                 <div class="form-group">
-                    <label>כתובת</label>
-                    <input type="text" id="addressSearchInput" placeholder="לדוגמה: שדרות רוטשילד 1, תל אביב">
-                    <small>הזן כתובת ולחץ על חיפוש</small>
+                    <label>x>x�xx`x�</label>
+                    <input type="text" id="addressSearchInput" placeholder="xox"xx'xzx": xcx"x"xx� x"xx~xcxTxox" 1, x�xo x?x`xTx`">
+                    <small>x"x-xY x>x�xx`x� xxox-x½ x‹xo x-xTxxxc</small>
                 </div>
 
                 <!-- Coordinate Input -->
@@ -1057,43 +1058,25 @@
                 <!-- Address Search Results (Autocomplete dropdown) -->
                 <div id="addressResults" class="address-results hidden"></div>
 
-                <div class="tool-grid" style="margin-bottom: 12px;">
+                <div class="action-buttons" style="margin-bottom: 12px;">
                     <button class="tool-btn primary" id="searchAddressBtn" onclick="searchAddress()" disabled>
                         <i data-lucide="search"></i>
-                        <span>חפש כתובת</span>
+                        <span>x-xxc x>x�xx`x�</span>
                     </button>
-                    <button class="tool-btn" id="useMyLocationBtn" onclick="useMyLocation()" title="השתמש במיקום הנוכחי שלי" disabled>
+                    <button class="tool-btn" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled>
+                        <i data-lucide="crosshair"></i>
+                        <span>Use exact coordinates</span>
+                    </button>
+                    <button class="tool-btn" id="useMyLocationBtn" onclick="useMyLocation()" title="x"xcx�xzxc x`xzxTxxx? x"x�xx>x-xT xcxoxT" disabled>
                         <i data-lucide="navigation"></i>
-                        <span>המיקום שלי</span>
+                        <span>x"xzxTxxx? xcxoxT</span>
                     </button>
                 </div>
-
-                <button class="tool-btn" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled style="margin-bottom: 12px;">
-                    <i data-lucide="crosshair"></i>
-                    <span>Use exact coordinates</span>
-                </button>
 
                 <div class="toolbar-divider" style="margin: 16px 0;"></div>
-
-                <div class="info-box">
-                    <p style="text-align: center;">או</p>
-                </div>
-
-                <!-- Manual Upload (existing) -->
-                <div style="margin-top: 12px;">
-                    <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 12px;">העלה תמונה ידנית</label>
-                    <div class="upload-zone" id="sidebarUploadZone">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <h3>לחץ להעלאה</h3>
-                        <p>JPG, PNG - עד 10MB</p>
-                    </div>
-                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                </div>
             </div>
 
-            <!-- Tools Section -->
+<!-- Tools Section -->
             <div class="sidebar-section" id="toolsSection">
                 <div class="section-title">
                     <i data-lucide="wrench"></i>
