@@ -15,6 +15,7 @@ import shutil
 import traceback
 import re
 import io
+import glob
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from sendgrid import SendGridAPIClient
@@ -111,6 +112,47 @@ def resolve_visualization_path(stored_path: str) -> Optional[str]:
             return candidate
 
     return None
+
+
+def find_visualization_for_design(design_id: int) -> Optional[str]:
+    """
+    Scan common visualization directories for a file matching the design_id.
+    Returns the most recently modified match or None.
+    """
+    if not design_id:
+        return None
+
+    candidates: list[str] = []
+    search_roots = [
+        ROOF_VISUALIZATIONS_DIR,
+        os.path.join(PERSISTENT_UPLOADS_DIR, "roof_visualizations"),
+        os.path.join("static", "roof_visualizations"),
+        PERSISTENT_UPLOADS_DIR,
+        "static",
+    ]
+    patterns = [
+        f"vis_{design_id}_*.png",
+        f"vis_{design_id}_*.jpg",
+        f"vis_{design_id}_*.jpeg",
+        f"roof_design_{design_id}*.png",
+        f"roof_design_{design_id}*.jpg",
+        f"roof_design_{design_id}*.jpeg",
+    ]
+
+    for root in search_roots:
+        if not os.path.isdir(root):
+            continue
+        for pattern in patterns:
+            for path in glob.glob(os.path.join(root, pattern)):
+                if os.path.isfile(path):
+                    candidates.append(path)
+
+    if not candidates:
+        return None
+
+    # Return most recently modified candidate
+    candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return candidates[0]
 
 def find_customer_signature(customer_phone: str = None, customer_email: str = None):
     """
@@ -2614,7 +2656,7 @@ async def download_roof_visualization(
 
             # Get design details and verify ownership
             cursor.execute('''
-                SELECT created_by, processed_image_path, customer_name
+                SELECT created_by, processed_image_path, customer_name, original_image_path
                 FROM roof_designs WHERE id = %s
             ''', (design_id,))
             design = cursor.fetchone()
@@ -2622,10 +2664,18 @@ async def download_roof_visualization(
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            created_by, processed_image_path, customer_name = design
+            created_by, processed_image_path, customer_name, original_image_path = design
 
             # Check if visualization exists
             resolved_path = resolve_visualization_path(processed_image_path)
+            if not resolved_path:
+                # Try to locate a visualization by design_id on disk
+                resolved_path = find_visualization_for_design(design_id)
+
+            # If still missing, attempt to fall back to the original image
+            if not resolved_path and original_image_path and os.path.exists(original_image_path):
+                resolved_path = original_image_path
+
             if not resolved_path:
                 raise HTTPException(status_code=404, detail="Visualization not found. Please save the design first.")
 
