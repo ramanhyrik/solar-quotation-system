@@ -302,6 +302,65 @@
             gap: 8px;
         }
 
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-with-icon {
+            position: relative;
+            flex: 1;
+        }
+
+        .input-with-icon input {
+            padding-inline-end: 44px;
+        }
+
+        .icon-action {
+            position: absolute;
+            inset-inline-end: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-alt);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dark);
+            transition: all 0.15s;
+        }
+
+        .icon-action:hover:enabled {
+            border-color: var(--primary-blue);
+            color: white;
+            background: var(--primary-blue);
+        }
+
+        .icon-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--panel-alt);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dark);
+            transition: all 0.15s;
+        }
+
+        .icon-circle:hover:enabled {
+            border-color: var(--primary-blue);
+            color: white;
+            background: var(--primary-blue);
+        }
+
         .tool-grid-3 {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -1041,37 +1100,39 @@
                 <!-- Address Search Input -->
                 <div class="form-group">
                     <label>Address</label>
-                    <input type="text" id="addressSearchInput" placeholder="e.g., Rothschild Blvd 1, Tel Aviv">
-                    <small>Press Enter or click search.</small>
+                    <div class="input-row">
+                        <div class="input-with-icon">
+                            <input type="text" id="addressSearchInput" placeholder="e.g., Rothschild Blvd 1, Tel Aviv">
+                            <button class="icon-action" id="searchAddressBtn" onclick="searchAddress()" disabled aria-label="Search address">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+                        <button class="icon-circle" id="useMyLocationBtn" onclick="useMyLocation()" title="Use browser location" disabled aria-label="Use my location">
+                            <i data-lucide="navigation"></i>
+                        </button>
+                    </div>
+                    <small>Enter an address and click the search icon.</small>
                 </div>
 
                 <!-- Coordinate Input -->
                 <div class="form-group">
                     <label>Coordinates (latitude, longitude)</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="input-row">
+                    <div class="input-with-icon">
                         <input type="text" id="latitudeInput" placeholder="32.063123">
+                        <button class="icon-action" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled aria-label="Search by coordinates">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                    <div class="input-with-icon">
                         <input type="text" id="longitudeInput" placeholder="34.768903">
+                    </div>
                     </div>
                     <small>Use decimal degrees for exact location.</small>
                 </div>
 
                 <!-- Address Search Results (Autocomplete dropdown) -->
                 <div id="addressResults" class="address-results hidden"></div>
-
-                <div class="action-buttons" style="margin-bottom: 12px;">
-                    <button class="tool-btn primary" id="searchAddressBtn" onclick="searchAddress()" disabled>
-                        <i data-lucide="search"></i>
-                        <span>Search address</span>
-                    </button>
-                    <button class="tool-btn" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled>
-                        <i data-lucide="crosshair"></i>
-                        <span>Use exact coordinates</span>
-                    </button>
-                    <button class="tool-btn" id="useMyLocationBtn" onclick="useMyLocation()" title="Use browser location" disabled>
-                        <i data-lucide="navigation"></i>
-                        <span>Use my location</span>
-                    </button>
-                </div>
 
                 <div class="toolbar-divider" style="margin: 16px 0;"></div>
             </div>
