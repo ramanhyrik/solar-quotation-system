@@ -369,12 +369,19 @@
             cursor: pointer;
             color: var(--text-dark);
             transition: all 0.15s;
+            padding: 4px; /* inset the icon so it doesn't touch the border */
         }
 
         .icon-circle:hover:enabled {
             border-color: var(--primary-blue);
             color: white;
             background: var(--primary-blue);
+        }
+
+        .icon-circle i,
+        .icon-circle svg {
+            width: 18px;
+            height: 18px;
         }
 
         /* Address & coordinates cluster */
