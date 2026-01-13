@@ -78,6 +78,40 @@ def sanitize_filename(filename: str) -> str:
         sanitized = 'Quote.pdf'
     return sanitized
 
+
+def resolve_visualization_path(stored_path: str) -> Optional[str]:
+    """
+    Try to resolve a visualization path that might be stored as:
+    - an absolute path (new behaviour)
+    - a URL (/static/... or /uploads/...)
+    - just a filename
+    Returns the first existing path, or None if not found.
+    """
+    if not stored_path:
+        return None
+
+    # Direct path exists
+    if os.path.exists(stored_path):
+        return stored_path
+
+    filename = os.path.basename(stored_path)
+    if not filename:
+        return None
+
+    candidates = [
+        os.path.join(ROOF_VISUALIZATIONS_DIR, filename),
+        os.path.join(PERSISTENT_UPLOADS_DIR, filename),
+        os.path.join(PERSISTENT_UPLOADS_DIR, "roof_visualizations", filename),
+        os.path.join("static", "roof_visualizations", filename),
+        os.path.join("static", filename),
+    ]
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+
+    return None
+
 def find_customer_signature(customer_phone: str = None, customer_email: str = None):
     """
     Find customer signature from submissions table based on phone or email.
@@ -2591,21 +2625,35 @@ async def download_roof_visualization(
             created_by, processed_image_path, customer_name = design
 
             # Check if visualization exists
-            if not processed_image_path or not os.path.exists(processed_image_path):
+            resolved_path = resolve_visualization_path(processed_image_path)
+            if not resolved_path:
                 raise HTTPException(status_code=404, detail="Visualization not found. Please save the design first.")
 
+            # Backfill normalized path to database for future requests
+            if resolved_path != processed_image_path:
+                try:
+                    cursor.execute(
+                        "UPDATE roof_designs SET processed_image_path = %s WHERE id = %s",
+                        (resolved_path, design_id)
+                    )
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    # Non-fatal: continue serving the file even if the update fails
+
             # Read the image file
-            with open(processed_image_path, 'rb') as img_file:
+            with open(resolved_path, 'rb') as img_file:
                 image_data = img_file.read()
 
             # Create safe filename
             safe_customer_name = sanitize_filename(customer_name) if customer_name else "design"
-            filename = f"roof_design_{safe_customer_name}_{design_id}.jpg"
+            ext = os.path.splitext(resolved_path)[1] or ".jpg"
+            filename = f"roof_design_{safe_customer_name}_{design_id}{ext}"
 
             # Return image as downloadable attachment
             return StreamingResponse(
                 io.BytesIO(image_data),
-                media_type="image/jpeg",
+                media_type=f"image/{ext.lstrip('.').lower()}" if ext else "image/jpeg",
                 headers={
                     "Content-Disposition": f"attachment; filename={filename}"
                 }
