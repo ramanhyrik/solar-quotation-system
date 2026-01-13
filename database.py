@@ -234,6 +234,15 @@ def init_database():
 
     print("[OK] Database initialized successfully!")
 
+    # Run Phase 1 migration (Map Integration)
+    try:
+        from database_migration_phase1 import migrate_phase1_map_integration
+        migrate_phase1_map_integration()
+    except ImportError:
+        print("[WARNING] database_migration_phase1.py not found - skipping Phase 1 migration")
+    except Exception as e:
+        print(f"[WARNING] Phase 1 migration failed: {e}")
+
 def hash_password(password: str) -> str:
     """Hash password using bcrypt with SHA-256 pre-hash (handles any length)"""
     password_hash = hashlib.sha256(password.encode()).hexdigest()

@@ -7,6 +7,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Leaflet.js for Maps (Phase 1: Map Integration) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
     <style>
         :root {
             --primary-blue: #2B7EB4;
@@ -925,6 +933,56 @@
             display: none !important;
         }
 
+        /* Phase 1: Address Search Results */
+        .address-results {
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-top: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .address-result-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.15s;
+        }
+
+        .address-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .address-result-item:hover {
+            background: var(--panel-bg);
+        }
+
+        .address-result-item.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .address-result-name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+            color: var(--text-dark);
+        }
+
+        .address-result-item.selected .address-result-name {
+            color: white;
+        }
+
+        .address-result-details {
+            font-size: 11px;
+            color: var(--text-medium);
+        }
+
+        .address-result-item.selected .address-result-details {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
         /* Customer info section */
         .customer-info {
             background: var(--panel-bg);
@@ -967,6 +1025,59 @@
     <div class="main-container">
         <!-- Right Sidebar -->
         <div class="sidebar">
+            <!-- PHASE 1: Address Search Section -->
+            <div class="sidebar-section" id="addressSearchSection">
+                <div class="section-title">
+                    <i data-lucide="map-pin"></i>
+                    <span>חיפוש כתובת</span>
+                </div>
+
+                <div class="info-box" style="margin-bottom: 12px;">
+                    <strong>שלב 1: מצא את הגג</strong>
+                    <p>הזן כתובת או העלה תמונה ישירות</p>
+                </div>
+
+                <!-- Address Search Input -->
+                <div class="form-group">
+                    <label>כתובת</label>
+                    <input type="text" id="addressSearchInput" placeholder="לדוגמה: שדרות רוטשילד 1, תל אביב">
+                    <small>הזן כתובת ולחץ על חיפוש</small>
+                </div>
+
+                <!-- Address Search Results (Autocomplete dropdown) -->
+                <div id="addressResults" class="address-results hidden"></div>
+
+                <div class="tool-grid" style="margin-bottom: 12px;">
+                    <button class="tool-btn primary" id="searchAddressBtn" onclick="searchAddress()" disabled>
+                        <i data-lucide="search"></i>
+                        <span>חפש כתובת</span>
+                    </button>
+                    <button class="tool-btn" id="useMyLocationBtn" onclick="useMyLocation()" title="השתמש במיקום הנוכחי שלי" disabled>
+                        <i data-lucide="navigation"></i>
+                        <span>המיקום שלי</span>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider" style="margin: 16px 0;"></div>
+
+                <div class="info-box">
+                    <p style="text-align: center;">או</p>
+                </div>
+
+                <!-- Manual Upload (existing) -->
+                <div style="margin-top: 12px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 12px;">העלה תמונה ידנית</label>
+                    <div class="upload-zone" id="sidebarUploadZone">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h3>לחץ להעלאה</h3>
+                        <p>JPG, PNG - עד 10MB</p>
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
+            </div>
+
             <!-- Tools Section -->
             <div class="sidebar-section" id="toolsSection">
                 <div class="section-title">
@@ -1264,6 +1375,253 @@
         let drawingRedoStack = [];
         const closePolygonBtn = document.getElementById('closePolygonBtn');
         const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'Close Polygon' : 'Close Polygon';
+
+        // PHASE 1: Map Integration variables
+        let currentLatitude = null;
+        let currentLongitude = null;
+        let currentZoomLevel = 20;
+        let metersPerPixel = null;
+        let addressSearchResults = [];
+
+        // ============================================================================
+        // PHASE 1: ADDRESS SEARCH & GEOCODING FUNCTIONS
+        // ============================================================================
+
+        async function searchAddress() {
+            const addressInput = document.getElementById('addressSearchInput');
+            const address = addressInput.value.trim();
+
+            if (!address) {
+                showNotification('error', 'אנא הזן כתובת');
+                return;
+            }
+
+            showLoading('מחפש כתובת...');
+
+            try {
+                const formData = new FormData();
+                formData.append('address', address);
+                formData.append('country', 'Israel');
+
+                const response = await fetch('/api/geocode', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    hideLoading();
+                    showNotification('error', result.error || 'לא נמצאה כתובת');
+                    return;
+                }
+
+                // Address found - now create design from address
+                await createDesignFromAddress(address, result.latitude, result.longitude);
+
+            } catch (error) {
+                hideLoading();
+                console.error('Address search error:', error);
+                showNotification('error', 'שגיאה בחיפוש כתובת');
+            }
+        }
+
+        async function createDesignFromAddress(address, latitude, longitude) {
+            showLoading('מוריד תמונת לוויין...');
+
+            try {
+                const formData = new FormData();
+                formData.append('address', address);
+                formData.append('customer_name', '');
+                formData.append('country', 'Israel');
+                formData.append('zoom', currentZoomLevel);
+
+                const response = await fetch('/api/roof-designer/from-address', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    hideLoading();
+                    showNotification('error', result.error || 'שגיאה בהורדת תמונת לוויין');
+                    return;
+                }
+
+                // Success! Load the satellite image
+                designId = result.design_id;
+                currentLatitude = result.latitude;
+                currentLongitude = result.longitude;
+                metersPerPixel = result.meters_per_pixel;
+
+                // Update pixels per meter in UI
+                document.getElementById('pixelsPerMeter').value = result.pixels_per_meter;
+
+                // Load satellite image onto canvas
+                const imageUrl = `/api/satellite-image?latitude=${latitude}&longitude=${longitude}&zoom=${currentZoomLevel}&width=1200&height=800&t=${Date.now()}`;
+
+                fabric.Image.fromURL(imageUrl, function(img) {
+                    if (!canvas) {
+                        canvas = new fabric.Canvas('roofCanvas', {
+                            selection: false,
+                            backgroundColor: '#1a1d22'
+                        });
+                        setupCanvasEvents();
+                    }
+
+                    // Clear existing objects
+                    canvas.clear();
+
+                    // Scale and add image
+                    const canvasWidth = canvas.width;
+                    const canvasHeight = canvas.height;
+                    const imgWidth = img.width;
+                    const imgHeight = img.height;
+
+                    const scaleX = canvasWidth / imgWidth;
+                    const scaleY = canvasHeight / imgHeight;
+                    imageScaleFactor = Math.min(scaleX, scaleY);
+
+                    img.scale(imageScaleFactor);
+                    img.set({
+                        left: (canvasWidth - img.width * imageScaleFactor) / 2,
+                        top: (canvasHeight - img.height * imageScaleFactor) / 2,
+                        selectable: false,
+                        evented: false
+                    });
+
+                    canvas.add(img);
+                    canvas.sendToBack(img);
+                    canvas.renderAll();
+
+                    uploadedImage = img;
+                    originalImageWidth = imgWidth;
+                    originalImageHeight = imgHeight;
+
+                    // Enable tools
+                    enableTools();
+                    toggleUploadOverlay(false);
+
+                    hideLoading();
+                    showNotification('success', `נטען בהצלחה! סקלה: ${result.pixels_per_meter.toFixed(2)} px/m`);
+
+                    console.log('[PHASE 1] Design created:', result);
+                }, { crossOrigin: 'anonymous' });
+
+            } catch (error) {
+                hideLoading();
+                console.error('Create design from address error:', error);
+                showNotification('error', 'שגיאה ביצירת עיצוב מכתובת');
+            }
+        }
+
+        async function useMyLocation() {
+            if (!navigator.geolocation) {
+                showNotification('error', 'הדפדפן אינו תומך בגיאולוקציה');
+                return;
+            }
+
+            showLoading('מאתר מיקום...');
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    // Reverse geocode to get address
+                    try {
+                        const formData = new FormData();
+                        formData.append('latitude', lat);
+                        formData.append('longitude', lon);
+
+                        const response = await fetch('/api/reverse-geocode', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            document.getElementById('addressSearchInput').value = result.display_name;
+                            await createDesignFromAddress(result.display_name, lat, lon);
+                        } else {
+                            hideLoading();
+                            showNotification('error', 'לא נמצאה כתובת למיקום זה');
+                        }
+                    } catch (error) {
+                        hideLoading();
+                        console.error('Reverse geocode error:', error);
+                        showNotification('error', 'שגיאה באיתור כתובת');
+                    }
+                },
+                (error) => {
+                    hideLoading();
+                    console.error('Geolocation error:', error);
+                    showNotification('error', 'לא ניתן לאתר מיקום: ' + error.message);
+                }
+            );
+        }
+
+        // Initialize Phase 1 features on page load
+        function initializePhase1Features() {
+            const addressInput = document.getElementById('addressSearchInput');
+            const searchBtn = document.getElementById('searchAddressBtn');
+            const myLocationBtn = document.getElementById('useMyLocationBtn');
+            const sidebarUpload = document.getElementById('sidebarUploadZone');
+
+            // Enable address search input
+            if (addressInput) {
+                addressInput.addEventListener('input', () => {
+                    if (searchBtn) {
+                        searchBtn.disabled = !addressInput.value.trim();
+                    }
+                });
+
+                // Allow Enter key to search
+                addressInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && addressInput.value.trim()) {
+                        searchAddress();
+                    }
+                });
+            }
+
+            // Enable buttons
+            if (searchBtn) searchBtn.disabled = true; // Enabled when user types
+            if (myLocationBtn) myLocationBtn.disabled = false;
+
+            // Setup sidebar upload zone
+            if (sidebarUpload) {
+                sidebarUpload.addEventListener('click', () => {
+                    document.getElementById('imageInput').click();
+                });
+
+                sidebarUpload.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    sidebarUpload.style.borderColor = 'var(--primary-blue)';
+                });
+
+                sidebarUpload.addEventListener('dragleave', () => {
+                    sidebarUpload.style.borderColor = 'var(--border-color)';
+                });
+
+                sidebarUpload.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    sidebarUpload.style.borderColor = 'var(--border-color)';
+
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        await handleImageUpload(files[0]);
+                    }
+                });
+            }
+
+            console.log('[PHASE 1] Address search features initialized');
+        }
+
+        // ============================================================================
+        // END PHASE 1 FUNCTIONS
+        // ============================================================================
 
         function toggleUploadOverlay(show) {
             const overlay = document.getElementById('canvasUploadOverlay');
@@ -2676,6 +3034,9 @@
         // Initialize Lucide icons
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+
+            // Initialize Phase 1 features
+            initializePhase1Features();
         });
     </script>
 </body>

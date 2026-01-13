@@ -2556,6 +2556,347 @@ async def download_roof_visualization(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# PHASE 1: MAP INTEGRATION & GEOCODING API ENDPOINTS
+# ============================================================================
+
+@app.post("/api/geocode")
+async def geocode_address_endpoint(
+    address: str = Form(...),
+    country: str = Form("Israel"),
+    user=Depends(get_current_user)
+):
+    """
+    Geocode an address to coordinates
+
+    Converts street address to latitude/longitude using Nominatim API (OpenStreetMap)
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from geocoding_service import geocode_address
+
+        result = geocode_address(address, country)
+
+        if not result:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Address not found. Please check the address and try again."}
+            )
+
+        return JSONResponse(content={
+            "success": True,
+            "latitude": result['latitude'],
+            "longitude": result['longitude'],
+            "display_name": result['display_name'],
+            "address_details": result.get('address_details', {})
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Geocoding failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/reverse-geocode")
+async def reverse_geocode_endpoint(
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    user=Depends(get_current_user)
+):
+    """
+    Reverse geocode coordinates to address
+
+    Converts latitude/longitude to street address
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from geocoding_service import reverse_geocode
+
+        result = reverse_geocode(latitude, longitude)
+
+        if not result:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Address not found for these coordinates."}
+            )
+
+        return JSONResponse(content={
+            "success": True,
+            "display_name": result['display_name'],
+            "address": result.get('address', {})
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Reverse geocoding failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/search-addresses")
+async def search_addresses_endpoint(
+    query: str,
+    country: str = "Israel",
+    limit: int = 5,
+    user=Depends(get_current_user)
+):
+    """
+    Search for addresses (autocomplete)
+
+    Returns list of matching addresses for autocomplete functionality
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from geocoding_service import search_addresses
+
+        results = search_addresses(query, country, limit)
+
+        return JSONResponse(content={
+            "success": True,
+            "results": results,
+            "count": len(results)
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Address search failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/satellite-image")
+async def get_satellite_image_endpoint(
+    latitude: float,
+    longitude: float,
+    zoom: int = 20,
+    width: int = 1200,
+    height: int = 800,
+    user=Depends(get_current_user)
+):
+    """
+    Fetch satellite imagery for given coordinates
+
+    Uses Mapbox Static API (100k requests/month free tier)
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from satellite_imagery import fetch_satellite_image, is_mapbox_configured
+
+        # Check if Mapbox is configured
+        if not is_mapbox_configured():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "Satellite imagery service not configured",
+                    "message": "Please configure MAPBOX_ACCESS_TOKEN environment variable"
+                }
+            )
+
+        # Fetch satellite image
+        image_data = fetch_satellite_image(
+            latitude, longitude, zoom, width, height, use_cache=True
+        )
+
+        if not image_data:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to fetch satellite imagery"}
+            )
+
+        # Return image
+        return StreamingResponse(
+            io.BytesIO(image_data),
+            media_type="image/jpeg",
+            headers={
+                "Cache-Control": "public, max-age=86400"  # Cache for 24 hours
+            }
+        )
+
+    except Exception as e:
+        print(f"[ERROR] Satellite image fetch failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/roof-designer/from-address")
+async def create_design_from_address_endpoint(
+    address: str = Form(...),
+    customer_name: str = Form(None),
+    country: str = Form("Israel"),
+    zoom: int = Form(20),
+    user=Depends(get_current_user)
+):
+    """
+    Create new roof design from address
+
+    Workflow:
+    1. Geocode address to coordinates
+    2. Fetch satellite imagery
+    3. Calculate meters per pixel
+    4. Create design entry in database
+    5. Return design ID and image
+
+    This combines geocoding + satellite fetch into single operation
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from geocoding_service import geocode_address
+        from satellite_imagery import fetch_satellite_image, get_meters_per_pixel, is_mapbox_configured
+
+        # Step 1: Geocode address
+        print(f"[FROM ADDRESS] Geocoding: {address}")
+        geocode_result = geocode_address(address, country)
+
+        if not geocode_result:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Address not found. Please check the address and try again."}
+            )
+
+        latitude = geocode_result['latitude']
+        longitude = geocode_result['longitude']
+        display_name = geocode_result['display_name']
+
+        print(f"[FROM ADDRESS] Found: {display_name} at ({latitude:.6f}, {longitude:.6f})")
+
+        # Step 2: Check if satellite imagery is configured
+        if not is_mapbox_configured():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "Satellite imagery service not configured",
+                    "message": "Please configure MAPBOX_ACCESS_TOKEN environment variable"
+                }
+            )
+
+        # Step 3: Fetch satellite image
+        print(f"[FROM ADDRESS] Fetching satellite image at zoom {zoom}")
+        image_data = fetch_satellite_image(
+            latitude, longitude, zoom, 1200, 800, use_cache=True
+        )
+
+        if not image_data:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to fetch satellite imagery"}
+            )
+
+        # Step 4: Save image to uploads directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_address = re.sub(r'[^\w\s-]', '', address)[:50].strip().replace(' ', '_')
+        image_filename = f"roof_from_address_{safe_address}_{timestamp}.jpg"
+        image_path = os.path.join(ROOF_IMAGES_DIR, image_filename)
+
+        with open(image_path, "wb") as f:
+            f.write(image_data)
+
+        print(f"[FROM ADDRESS] Saved image: {image_path}")
+
+        # Step 5: Calculate meters per pixel
+        meters_per_pixel = get_meters_per_pixel(latitude, zoom)
+        print(f"[FROM ADDRESS] Scale: {meters_per_pixel:.4f} m/px")
+
+        # Step 6: Create design entry in database
+        with get_db() as conn:
+            cursor = get_cursor(conn)
+
+            cursor.execute('''
+                INSERT INTO roof_designs (
+                    customer_name,
+                    customer_address,
+                    original_image_path,
+                    latitude,
+                    longitude,
+                    zoom_level,
+                    map_source,
+                    geocoded_address,
+                    meters_per_pixel,
+                    pixels_per_meter,
+                    created_by,
+                    created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                RETURNING id
+            ''', (
+                customer_name or "Unknown",
+                address,
+                image_path,
+                latitude,
+                longitude,
+                zoom,
+                'mapbox',
+                display_name,
+                meters_per_pixel,
+                1.0 / meters_per_pixel if meters_per_pixel > 0 else 100.0,
+                user['user_id']
+            ))
+
+            design_id = cursor.fetchone()['id']
+            conn.commit()
+
+        print(f"[FROM ADDRESS] Created design #{design_id}")
+
+        # Step 7: Return success with design data
+        return JSONResponse(content={
+            "success": True,
+            "design_id": design_id,
+            "latitude": latitude,
+            "longitude": longitude,
+            "geocoded_address": display_name,
+            "zoom_level": zoom,
+            "meters_per_pixel": round(meters_per_pixel, 4),
+            "pixels_per_meter": round(1.0 / meters_per_pixel if meters_per_pixel > 0 else 100.0, 2),
+            "image_path": image_path,
+            "message": "Design created successfully from address"
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Create design from address failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/map-config")
+async def get_map_configuration(user=Depends(get_current_user)):
+    """
+    Get map service configuration status
+
+    Returns information about which map services are available
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from satellite_imagery import is_mapbox_configured
+
+        return JSONResponse(content={
+            "mapbox_available": is_mapbox_configured(),
+            "google_maps_available": bool(os.getenv("GOOGLE_MAPS_API_KEY")),
+            "nominatim_available": True,  # Always available (free)
+            "default_zoom": 20,
+            "default_map_source": "mapbox" if is_mapbox_configured() else "osm"
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Get map config failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# END PHASE 1 API ENDPOINTS
+# ============================================================================
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

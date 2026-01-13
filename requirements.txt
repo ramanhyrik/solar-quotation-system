@@ -16,3 +16,7 @@ matplotlib==3.8.2
 psycopg2-binary==2.9.9
 # SAM 3 API - Uses HuggingFace Space instead of local model
 # No need for torch/transformers locally - we call the API via requests
+
+# PHASE 1: Map Integration & Geocoding (FREE tier)
+# - Nominatim API (OpenStreetMap) for geocoding - FREE, no API key required
+# - Mapbox Static API for satellite imagery - 100k requests/month FREE (requires MAPBOX_ACCESS_TOKEN)
