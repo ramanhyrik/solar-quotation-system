@@ -1044,6 +1044,16 @@
                     <small>הזן כתובת ולחץ על חיפוש</small>
                 </div>
 
+                <!-- Coordinate Input -->
+                <div class="form-group">
+                    <label>Coordinates (latitude, longitude)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <input type="text" id="latitudeInput" placeholder="32.063123">
+                        <input type="text" id="longitudeInput" placeholder="34.768903">
+                    </div>
+                    <small>Use decimal degrees for exact location.</small>
+                </div>
+
                 <!-- Address Search Results (Autocomplete dropdown) -->
                 <div id="addressResults" class="address-results hidden"></div>
 
@@ -1057,6 +1067,11 @@
                         <span>המיקום שלי</span>
                     </button>
                 </div>
+
+                <button class="tool-btn" id="useCoordinatesBtn" onclick="createDesignFromCoordinates()" disabled style="margin-bottom: 12px;">
+                    <i data-lucide="crosshair"></i>
+                    <span>Use exact coordinates</span>
+                </button>
 
                 <div class="toolbar-divider" style="margin: 16px 0;"></div>
 
@@ -1426,8 +1441,96 @@
             }
         }
 
+        async function loadDesignFromResult(result) {
+            const addressInput = document.getElementById('addressSearchInput');
+
+            if (result.geocoded_address && addressInput) {
+                addressInput.value = result.geocoded_address;
+            }
+
+            // Persist coordinates and scale
+            designId = result.design_id;
+            currentLatitude = result.latitude;
+            currentLongitude = result.longitude;
+            metersPerPixel = result.meters_per_pixel;
+
+            const ppmInput = document.getElementById('pixelsPerMeter');
+            if (ppmInput && typeof result.pixels_per_meter !== 'undefined') {
+                ppmInput.value = result.pixels_per_meter;
+            }
+
+            // Load satellite image onto canvas
+            const imageUrl = `/api/satellite-image?latitude=${result.latitude}&longitude=${result.longitude}&zoom=${currentZoomLevel}&width=1200&height=800&t=${Date.now()}`;
+
+            return new Promise((resolve, reject) => {
+                fabric.Image.fromURL(imageUrl, function(img) {
+                    try {
+                        if (!img || !img.width || !img.height) {
+                            throw new Error('Satellite image failed to load');
+                        }
+
+                        if (!canvas) {
+                            canvas = new fabric.Canvas('roofCanvas', {
+                                selection: false,
+                                backgroundColor: '#1a1d22'
+                            });
+                            setupCanvasEvents();
+                        }
+
+                        // Clear existing objects
+                        canvas.clear();
+
+                        // Scale and add image
+                        const canvasWidth = canvas.width;
+                        const canvasHeight = canvas.height;
+                        const imgWidth = img.width;
+                        const imgHeight = img.height;
+
+                        const scaleX = canvasWidth / imgWidth;
+                        const scaleY = canvasHeight / imgHeight;
+                        imageScaleFactor = Math.min(scaleX, scaleY);
+
+                        img.scale(imageScaleFactor);
+                        img.set({
+                            left: (canvasWidth - img.width * imageScaleFactor) / 2,
+                            top: (canvasHeight - img.height * imageScaleFactor) / 2,
+                            selectable: false,
+                            evented: false
+                        });
+
+                        canvas.add(img);
+                        canvas.sendToBack(img);
+                        canvas.renderAll();
+
+                        uploadedImage = img;
+                        originalImageWidth = imgWidth;
+                        originalImageHeight = imgHeight;
+
+                        // Enable tools
+                        enableDrawingTools();
+                        setZoomButtonsEnabled(true);
+                        updateZoomDisplay();
+                        toggleUploadOverlay(false);
+
+                        hideLoading();
+                        if (typeof result.pixels_per_meter !== 'undefined') {
+                            showNotification('success', `Scale set: ${result.pixels_per_meter.toFixed(2)} px/m`);
+                        }
+
+                        console.log('[PHASE 1] Design created:', result);
+                        resolve();
+                    } catch (err) {
+                        console.error('Satellite image load error:', err);
+                        hideLoading();
+                        showNotification('error', 'Unable to load satellite image. Please try again.');
+                        reject(err);
+                    }
+                }, { crossOrigin: 'anonymous' });
+            });
+        }
+
         async function createDesignFromAddress(address, latitude, longitude) {
-            showLoading('מוריד תמונת לוויין...');
+            showLoading('Downloading satellite image...');
 
             try {
                 const formData = new FormData();
@@ -1445,76 +1548,68 @@
 
                 if (!response.ok || !result.success) {
                     hideLoading();
-                    showNotification('error', result.error || 'שגיאה בהורדת תמונת לוויין');
+                    showNotification('error', result.error || 'Failed to create design from address.');
                     return;
                 }
 
-                // Success! Load the satellite image
-                designId = result.design_id;
-                currentLatitude = result.latitude;
-                currentLongitude = result.longitude;
-                metersPerPixel = result.meters_per_pixel;
-
-                // Update pixels per meter in UI
-                document.getElementById('pixelsPerMeter').value = result.pixels_per_meter;
-
-                // Load satellite image onto canvas
-                const imageUrl = `/api/satellite-image?latitude=${latitude}&longitude=${longitude}&zoom=${currentZoomLevel}&width=1200&height=800&t=${Date.now()}`;
-
-                fabric.Image.fromURL(imageUrl, function(img) {
-                    if (!canvas) {
-                        canvas = new fabric.Canvas('roofCanvas', {
-                            selection: false,
-                            backgroundColor: '#1a1d22'
-                        });
-                        setupCanvasEvents();
-                    }
-
-                    // Clear existing objects
-                    canvas.clear();
-
-                    // Scale and add image
-                    const canvasWidth = canvas.width;
-                    const canvasHeight = canvas.height;
-                    const imgWidth = img.width;
-                    const imgHeight = img.height;
-
-                    const scaleX = canvasWidth / imgWidth;
-                    const scaleY = canvasHeight / imgHeight;
-                    imageScaleFactor = Math.min(scaleX, scaleY);
-
-                    img.scale(imageScaleFactor);
-                    img.set({
-                        left: (canvasWidth - img.width * imageScaleFactor) / 2,
-                        top: (canvasHeight - img.height * imageScaleFactor) / 2,
-                        selectable: false,
-                        evented: false
-                    });
-
-                    canvas.add(img);
-                    canvas.sendToBack(img);
-                    canvas.renderAll();
-
-                    uploadedImage = img;
-                    originalImageWidth = imgWidth;
-                    originalImageHeight = imgHeight;
-
-                    // Enable tools
-                    enableDrawingTools();
-                    setZoomButtonsEnabled(true);
-                    updateZoomDisplay();
-                    toggleUploadOverlay(false);
-
-                    hideLoading();
-                    showNotification('success', `נטען בהצלחה! סקלה: ${result.pixels_per_meter.toFixed(2)} px/m`);
-
-                    console.log('[PHASE 1] Design created:', result);
-                }, { crossOrigin: 'anonymous' });
+                await loadDesignFromResult(result);
 
             } catch (error) {
                 hideLoading();
                 console.error('Create design from address error:', error);
-                showNotification('error', 'שגיאה ביצירת עיצוב מכתובת');
+                showNotification('error', 'Create design from address failed.');
+            }
+        }
+
+        async function createDesignFromCoordinates() {
+            const latInput = document.getElementById('latitudeInput');
+            const lonInput = document.getElementById('longitudeInput');
+
+            const latitude = parseFloat(latInput?.value);
+            const longitude = parseFloat(lonInput?.value);
+
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                showNotification('error', 'Please enter valid latitude and longitude.');
+                return;
+            }
+
+            if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                showNotification('error', 'Coordinates must be within valid ranges (-90 to 90, -180 to 180).');
+                return;
+            }
+
+            showLoading('Downloading satellite image...');
+
+            try {
+                const formData = new FormData();
+                formData.append('latitude', latitude);
+                formData.append('longitude', longitude);
+                formData.append('zoom', currentZoomLevel);
+                formData.append('customer_name', '');
+
+                const addressValue = document.getElementById('addressSearchInput')?.value?.trim();
+                if (addressValue) {
+                    formData.append('address', addressValue);
+                }
+
+                const response = await fetch('/api/roof-designer/from-coordinates', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    hideLoading();
+                    showNotification('error', result.error || 'Failed to create design from coordinates.');
+                    return;
+                }
+
+                await loadDesignFromResult(result);
+            } catch (error) {
+                hideLoading();
+                console.error('Create design from coordinates error:', error);
+                showNotification('error', 'Create design from coordinates failed.');
             }
         }
 
@@ -1570,6 +1665,9 @@
             const addressInput = document.getElementById('addressSearchInput');
             const searchBtn = document.getElementById('searchAddressBtn');
             const myLocationBtn = document.getElementById('useMyLocationBtn');
+            const coordsBtn = document.getElementById('useCoordinatesBtn');
+            const latitudeInput = document.getElementById('latitudeInput');
+            const longitudeInput = document.getElementById('longitudeInput');
             const sidebarUpload = document.getElementById('sidebarUploadZone');
 
             // Enable address search input
@@ -1591,6 +1689,25 @@
             // Enable buttons
             if (searchBtn) searchBtn.disabled = true; // Enabled when user types
             if (myLocationBtn) myLocationBtn.disabled = false;
+
+            // Enable coordinate search when both fields are valid
+            const updateCoordinateButton = () => {
+                if (!coordsBtn) return;
+                const lat = parseFloat(latitudeInput?.value);
+                const lon = parseFloat(longitudeInput?.value);
+                const valid =
+                    Number.isFinite(lat) &&
+                    Number.isFinite(lon) &&
+                    lat >= -90 && lat <= 90 &&
+                    lon >= -180 && lon <= 180;
+                coordsBtn.disabled = !valid;
+            };
+
+            if (latitudeInput && longitudeInput) {
+                latitudeInput.addEventListener('input', updateCoordinateButton);
+                longitudeInput.addEventListener('input', updateCoordinateButton);
+                updateCoordinateButton();
+            }
 
             // Setup sidebar upload zone
             if (sidebarUpload) {

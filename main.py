@@ -2845,6 +2845,131 @@ async def create_design_from_address_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/roof-designer/from-coordinates")
+async def create_design_from_coordinates_endpoint(
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    zoom: int = Form(20),
+    address: str = Form(None),
+    customer_name: str = Form(None),
+    user=Depends(get_current_user)
+):
+    """
+    Create new roof design directly from latitude/longitude coordinates.
+
+    Workflow:
+    1. (Optional) Reverse geocode to human-friendly address
+    2. Fetch satellite imagery
+    3. Calculate meters per pixel
+    4. Create design entry in database
+    5. Return design ID and image metadata
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from geocoding_service import reverse_geocode
+        from satellite_imagery import fetch_satellite_image, get_meters_per_pixel
+
+        # Step 1: Reverse geocode (best-effort, falls back to coordinates string)
+        display_name = address or f"Coordinates ({latitude:.6f}, {longitude:.6f})"
+        try:
+            reverse_result = reverse_geocode(latitude, longitude)
+            if reverse_result and reverse_result.get('display_name'):
+                display_name = reverse_result['display_name']
+        except Exception as ge:
+            print(f"[WARN] Reverse geocoding failed for coordinates: {ge}")
+
+        print(f"[FROM COORDS] Using: {display_name} at ({latitude:.6f}, {longitude:.6f})")
+
+        # Step 2: Fetch satellite image (prefer free OSM tiles)
+        print(f"[FROM COORDS] Fetching satellite image at zoom {zoom}")
+        image_data = fetch_satellite_image(
+            latitude, longitude, zoom, 1200, 800, use_cache=True, prefer_free=True
+        )
+
+        if not image_data:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to fetch satellite imagery"}
+            )
+
+        # Step 3: Save image to uploads directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_label = re.sub(r'[^\w\s-]', '', display_name)[:50].strip().replace(' ', '_') or "coords"
+        image_filename = f"roof_from_coords_{safe_label}_{timestamp}.jpg"
+        image_path = os.path.join(ROOF_IMAGES_DIR, image_filename)
+
+        with open(image_path, "wb") as f:
+            f.write(image_data)
+
+        print(f"[FROM COORDS] Saved image: {image_path}")
+
+        # Step 4: Calculate meters per pixel
+        meters_per_pixel = get_meters_per_pixel(latitude, zoom)
+        print(f"[FROM COORDS] Scale: {meters_per_pixel:.4f} m/px")
+
+        # Step 5: Create design entry in database
+        with get_db() as conn:
+            cursor = get_cursor(conn)
+
+            cursor.execute('''
+                INSERT INTO roof_designs (
+                    customer_name,
+                    customer_address,
+                    original_image_path,
+                    latitude,
+                    longitude,
+                    zoom_level,
+                    map_source,
+                    geocoded_address,
+                    meters_per_pixel,
+                    pixels_per_meter,
+                    created_by,
+                    created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                RETURNING id
+            ''', (
+                customer_name or "Unknown",
+                display_name,
+                image_path,
+                latitude,
+                longitude,
+                zoom,
+                'osm',  # Prefer free OSM tiles by default
+                display_name,
+                meters_per_pixel,
+                1.0 / meters_per_pixel if meters_per_pixel > 0 else 100.0,
+                user['user_id']
+            ))
+
+            design_id = cursor.fetchone()['id']
+            conn.commit()
+
+        print(f"[FROM COORDS] Created design #{design_id}")
+
+        # Step 6: Return success with design data
+        return JSONResponse(content={
+            "success": True,
+            "design_id": design_id,
+            "latitude": latitude,
+            "longitude": longitude,
+            "geocoded_address": display_name,
+            "zoom_level": zoom,
+            "meters_per_pixel": round(meters_per_pixel, 4),
+            "pixels_per_meter": round(1.0 / meters_per_pixel if meters_per_pixel > 0 else 100.0, 2),
+            "image_path": image_path,
+            "message": "Design created successfully from coordinates"
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Create design from coordinates failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/map-config")
 async def get_map_configuration(user=Depends(get_current_user)):
     """
