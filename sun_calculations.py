@@ -25,6 +25,13 @@ logger = logging.getLogger(__name__)
 # Constants
 EARTH_AXIAL_TILT = 23.44  # degrees
 
+def _to_float(value) -> float:
+    """Coerce numeric inputs (including Decimal) to float for math operations."""
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Expected numeric value, got {value!r}") from exc
+
 
 def calculate_julian_day(dt: datetime) -> float:
     """
@@ -70,6 +77,10 @@ def calculate_sun_position(latitude: float, longitude: float,
     """
     if dt is None:
         dt = datetime.now()
+
+    latitude = _to_float(latitude)
+    longitude = _to_float(longitude)
+    timezone_offset = _to_float(timezone_offset)
 
     # Convert to UTC for calculations
     utc_dt = dt - timedelta(hours=timezone_offset)
@@ -240,6 +251,11 @@ def analyze_daily_shadows(latitude: float, longitude: float,
     Returns:
         Dictionary with hourly shadow analysis and summary statistics
     """
+    latitude = _to_float(latitude)
+    longitude = _to_float(longitude)
+    obstruction_height = _to_float(obstruction_height) if obstruction_height is not None else 0.0
+    timezone_offset = _to_float(timezone_offset)
+
     if date is None:
         date = datetime.now().replace(hour=0, minute=0, second=0)
 
@@ -308,6 +324,12 @@ def calculate_solar_potential(latitude: float, longitude: float,
     Returns:
         Dictionary with solar potential analysis
     """
+    latitude = _to_float(latitude)
+    longitude = _to_float(longitude)
+    roof_azimuth = _to_float(roof_azimuth)
+    roof_tilt = _to_float(roof_tilt) if roof_tilt is not None else 0.0
+    timezone_offset = _to_float(timezone_offset)
+
     # Optimal azimuth (south in northern hemisphere, north in southern)
     optimal_azimuth = 180 if latitude >= 0 else 0
 
@@ -456,6 +478,10 @@ def calculate_annual_irradiance_estimate(latitude: float, roof_azimuth: float,
 
     Returns estimated kWh/m²/year
     """
+    latitude = _to_float(latitude)
+    roof_azimuth = _to_float(roof_azimuth)
+    roof_tilt = _to_float(roof_tilt) if roof_tilt is not None else 0.0
+
     # Base irradiance by latitude (approximate values for clear sky)
     # Israel range: ~1800-2200 kWh/m²/year
     base_irradiance = 2000 - abs(latitude - 31) * 20  # Optimized for Israel (~31°N)
