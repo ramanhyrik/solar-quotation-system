@@ -1378,6 +1378,47 @@
                     </div>
                 </div>
 
+                <!-- PHASE 3: Sun Analysis Display -->
+                <div class="results-panel" id="sunAnalysisPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05));">
+                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">☀️ ניתוח שמש</h3>
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
+                        <div class="result-item">
+                            <div class="result-label">איכות כיוון</div>
+                            <div class="result-value" id="sunOrientationQuality">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">יעילות</div>
+                            <div class="result-value" id="sunEfficiency">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">שעות שמש/שנה</div>
+                            <div class="result-value" id="sunAnnualHours">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">kWh/m²/שנה</div>
+                            <div class="result-value" id="sunIrradiance">-</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 11px; color: var(--text-medium);">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <span>🌅 זריחה:</span>
+                            <span id="sunSunrise" style="font-weight: 600;">-</span>
+                            <span style="margin-right: 12px;">🌇 שקיעה:</span>
+                            <span id="sunSunset" style="font-weight: 600;">-</span>
+                        </div>
+                        <div id="sunCurrentPosition" style="color: var(--text-dark);">
+                            מיקום שמש נוכחי: <span id="sunAzimuth">-</span>° (אזימוט), <span id="sunElevation">-</span>° (גובה)
+                        </div>
+                    </div>
+                    <div id="sunRecommendations" style="margin-top: 8px; display: none;">
+                        <div style="background: rgba(76, 175, 80, 0.1); border-right: 3px solid #4caf50; padding: 8px; border-radius: 4px; font-size: 11px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">💡 המלצות:</div>
+                            <ul id="sunRecommendationsList" style="margin: 0; padding-right: 20px; list-style: disc;">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
                     <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
@@ -2638,6 +2679,77 @@
                 const measurementsPanel = document.getElementById('measurementsPanel');
                 if (measurementsPanel) {
                     measurementsPanel.style.display = 'none';
+                }
+            }
+
+            // PHASE 3: Display sun analysis if available
+            if (result.sun_analysis) {
+                const sun = result.sun_analysis;
+                const sunPanel = document.getElementById('sunAnalysisPanel');
+
+                if (sunPanel) {
+                    sunPanel.style.display = 'block';
+
+                    // Solar potential data
+                    if (sun.solar_potential) {
+                        const sp = sun.solar_potential;
+
+                        // Orientation quality with color
+                        const qualityEl = document.getElementById('sunOrientationQuality');
+                        qualityEl.textContent = sp.orientation_quality || '-';
+
+                        // Color based on efficiency
+                        const efficiency = sp.overall_efficiency || 0;
+                        if (efficiency >= 85) {
+                            qualityEl.style.color = '#3AE478'; // Green
+                        } else if (efficiency >= 65) {
+                            qualityEl.style.color = '#ffc107'; // Yellow
+                        } else {
+                            qualityEl.style.color = '#ff9800'; // Orange
+                        }
+
+                        document.getElementById('sunEfficiency').textContent = efficiency.toFixed(0) + '%';
+                        document.getElementById('sunAnnualHours').textContent = sp.annual_sun_hours || '-';
+
+                        // Recommendations
+                        const recsDiv = document.getElementById('sunRecommendations');
+                        const recsList = document.getElementById('sunRecommendationsList');
+
+                        if (sp.recommendations && sp.recommendations.length > 0) {
+                            recsList.innerHTML = '';
+                            sp.recommendations.forEach(rec => {
+                                const li = document.createElement('li');
+                                li.textContent = rec;
+                                li.style.marginBottom = '4px';
+                                recsList.appendChild(li);
+                            });
+                            recsDiv.style.display = 'block';
+                        } else {
+                            recsDiv.style.display = 'none';
+                        }
+                    }
+
+                    // Irradiance data
+                    if (sun.irradiance) {
+                        document.getElementById('sunIrradiance').textContent = sun.irradiance.annual_kwh_per_m2 || '-';
+                    }
+
+                    // Current sun position
+                    if (sun.current_sun) {
+                        const cs = sun.current_sun;
+                        document.getElementById('sunSunrise').textContent = cs.sunrise || '-';
+                        document.getElementById('sunSunset').textContent = cs.sunset || '-';
+                        document.getElementById('sunAzimuth').textContent = cs.azimuth?.toFixed(0) || '-';
+                        document.getElementById('sunElevation').textContent = cs.elevation?.toFixed(0) || '-';
+                    }
+
+                    console.log('[PHASE 3] Sun analysis displayed:', sun.solar_potential?.orientation_quality);
+                }
+            } else {
+                // Hide sun analysis panel if no data
+                const sunPanel = document.getElementById('sunAnalysisPanel');
+                if (sunPanel) {
+                    sunPanel.style.display = 'none';
                 }
             }
         }

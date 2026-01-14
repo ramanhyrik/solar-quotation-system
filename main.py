@@ -2408,6 +2408,64 @@ async def calculate_layout_endpoint(
                 "summary": measurements_data.get('summary', '')
             }
 
+        # PHASE 3: Add sun analysis if location available
+        if location and location['latitude'] and location['longitude']:
+            try:
+                from sun_calculations import (
+                    get_current_sun_position,
+                    calculate_solar_potential,
+                    calculate_annual_irradiance_estimate
+                )
+
+                roof_azimuth = measurements_data.get('azimuth', 180) if measurements_data else 180
+
+                # Current sun position
+                current_sun = get_current_sun_position(
+                    location['latitude'],
+                    location['longitude']
+                )
+
+                # Solar potential based on roof orientation
+                solar_potential = calculate_solar_potential(
+                    location['latitude'],
+                    location['longitude'],
+                    roof_azimuth
+                )
+
+                # Annual irradiance estimate
+                irradiance = calculate_annual_irradiance_estimate(
+                    location['latitude'],
+                    roof_azimuth
+                )
+
+                response_data["sun_analysis"] = {
+                    "current_sun": {
+                        "azimuth": current_sun['azimuth'],
+                        "elevation": current_sun['elevation'],
+                        "is_daytime": current_sun['is_daytime'],
+                        "sunrise": current_sun['sunrise'],
+                        "sunset": current_sun['sunset']
+                    },
+                    "solar_potential": {
+                        "orientation_quality": solar_potential['orientation_quality'],
+                        "overall_efficiency": solar_potential['overall_efficiency'],
+                        "azimuth_efficiency": solar_potential['azimuth_efficiency'],
+                        "annual_sun_hours": solar_potential['annual_sun_hours'],
+                        "roof_direction": solar_potential['roof_direction'],
+                        "recommendations": solar_potential['recommendations']
+                    },
+                    "irradiance": {
+                        "annual_kwh_per_m2": irradiance['annual_kwh_per_m2'],
+                        "efficiency_factor": irradiance['efficiency_factor']
+                    }
+                }
+
+                print(f"[PHASE 3] Sun analysis: {solar_potential['orientation_quality']} ({solar_potential['overall_efficiency']}% efficiency)")
+
+            except Exception as sun_error:
+                print(f"[PHASE 3] Sun analysis error (non-fatal): {str(sun_error)}")
+                # Don't fail the whole request if sun analysis fails
+
         return JSONResponse(content=response_data)
 
     except HTTPException:
@@ -3161,6 +3219,222 @@ async def get_map_configuration(user=Depends(get_current_user)):
 
 # ============================================================================
 # END PHASE 1 API ENDPOINTS
+# ============================================================================
+
+
+# ============================================================================
+# PHASE 3 API ENDPOINTS: SUN CALCULATIONS & SHADOW ANALYSIS
+# ============================================================================
+
+@app.get("/api/sun-position")
+async def get_sun_position(
+    latitude: float,
+    longitude: float,
+    timezone_offset: float = 2.0,
+    user=Depends(get_current_user)
+):
+    """
+    Get current sun position for a location.
+
+    Returns azimuth, elevation, sunrise, sunset times.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from sun_calculations import get_current_sun_position
+
+        result = get_current_sun_position(latitude, longitude, timezone_offset)
+
+        return JSONResponse(content={
+            "success": True,
+            **result
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Get sun position failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/daily-shadows")
+async def get_daily_shadows(
+    latitude: float,
+    longitude: float,
+    obstruction_height: float = 0,
+    date: str = None,
+    timezone_offset: float = 2.0,
+    user=Depends(get_current_user)
+):
+    """
+    Get shadow analysis throughout a day for a location.
+
+    Args:
+        latitude: Location latitude
+        longitude: Location longitude
+        obstruction_height: Height of nearby obstructions in meters
+        date: Date in YYYY-MM-DD format (default: today)
+        timezone_offset: Hours offset from UTC (default: 2 for Israel)
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from sun_calculations import analyze_daily_shadows
+        from datetime import datetime
+
+        analysis_date = None
+        if date:
+            analysis_date = datetime.strptime(date, '%Y-%m-%d')
+
+        result = analyze_daily_shadows(
+            latitude, longitude, analysis_date, obstruction_height, timezone_offset
+        )
+
+        return JSONResponse(content={
+            "success": True,
+            **result
+        })
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+    except Exception as e:
+        print(f"[ERROR] Get daily shadows failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/solar-potential")
+async def get_solar_potential(
+    latitude: float,
+    longitude: float,
+    roof_azimuth: float,
+    roof_tilt: float = 0,
+    timezone_offset: float = 2.0,
+    user=Depends(get_current_user)
+):
+    """
+    Calculate solar potential for a roof based on orientation.
+
+    Returns efficiency estimates, seasonal data, and recommendations.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from sun_calculations import calculate_solar_potential, calculate_annual_irradiance_estimate
+
+        potential = calculate_solar_potential(
+            latitude, longitude, roof_azimuth, roof_tilt, timezone_offset
+        )
+
+        irradiance = calculate_annual_irradiance_estimate(
+            latitude, roof_azimuth, roof_tilt
+        )
+
+        return JSONResponse(content={
+            "success": True,
+            **potential,
+            "irradiance": irradiance
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Get solar potential failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/roof-designer/sun-analysis")
+async def analyze_roof_sun(
+    design_id: int = Form(...),
+    user=Depends(get_current_user)
+):
+    """
+    Perform comprehensive sun analysis for a saved roof design.
+
+    Uses the design's location and roof orientation to calculate
+    solar potential, shadow patterns, and recommendations.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        from sun_calculations import (
+            get_current_sun_position,
+            calculate_solar_potential,
+            analyze_daily_shadows,
+            calculate_annual_irradiance_estimate
+        )
+
+        # Get design data from database
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT latitude, longitude, roof_azimuth, zoom_level
+                FROM roof_designs
+                WHERE id = %s AND user_id = %s
+            """, (design_id, user['user_id']))
+
+            design = cursor.fetchone()
+
+        if not design:
+            raise HTTPException(status_code=404, detail="Design not found")
+
+        latitude = design['latitude']
+        longitude = design['longitude']
+        roof_azimuth = design['roof_azimuth'] or 180  # Default to south
+
+        if not latitude or not longitude:
+            raise HTTPException(
+                status_code=400,
+                detail="Design does not have location data. Please search an address first."
+            )
+
+        # Calculate current sun position
+        current_sun = get_current_sun_position(latitude, longitude)
+
+        # Calculate solar potential
+        potential = calculate_solar_potential(latitude, longitude, roof_azimuth)
+
+        # Daily shadow analysis
+        shadows = analyze_daily_shadows(latitude, longitude, obstruction_height=0)
+
+        # Annual irradiance estimate
+        irradiance = calculate_annual_irradiance_estimate(latitude, roof_azimuth)
+
+        # Update design with solar analysis data
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE roof_designs
+                SET updated_at = NOW()
+                WHERE id = %s
+            """, (design_id,))
+            conn.commit()
+
+        return JSONResponse(content={
+            "success": True,
+            "design_id": design_id,
+            "location": {
+                "latitude": latitude,
+                "longitude": longitude
+            },
+            "current_sun": current_sun,
+            "solar_potential": potential,
+            "daily_shadows": shadows,
+            "irradiance": irradiance
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Sun analysis failed: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# END PHASE 3 API ENDPOINTS
 # ============================================================================
 
 
