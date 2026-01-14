@@ -2694,6 +2694,8 @@
             }
 
             // PHASE 3: Display sun analysis if available
+            console.log('[DEBUG] Full API result:', result);
+            console.log('[DEBUG] sun_analysis present:', !!result.sun_analysis);
             if (result.sun_analysis) {
                 const sun = result.sun_analysis;
                 const sunPanel = document.getElementById('sunAnalysisPanel');
