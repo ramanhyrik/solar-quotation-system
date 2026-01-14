@@ -2574,10 +2574,15 @@ async def roof_designer_page(request: Request, user=Depends(get_current_user)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    return templates.TemplateResponse("roof_designer.html", {
+    response = templates.TemplateResponse("roof_designer.html", {
         "request": request,
         "user": user
     })
+    # Prevent caching to ensure latest updates are served
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/api/roof-designer/list")
 async def list_roof_designs(user=Depends(get_current_user)):
