@@ -996,6 +996,17 @@
             }
         }
 
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
         /* Loading Overlay */
         .loading-overlay {
             display: none;
@@ -3121,6 +3132,56 @@
             `;
 
             showModal('קיצורי מקלדת', shortcuts, 'keyboard');
+        }
+
+        // Notification toast function
+        function showNotification(type, message, duration = 3000) {
+            // Remove existing notification if any
+            const existing = document.querySelector('.notification-toast');
+            if (existing) {
+                existing.remove();
+            }
+
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'notification-toast';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                z-index: 10001;
+                animation: slideDown 0.3s ease;
+                direction: rtl;
+                text-align: center;
+                max-width: 400px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+
+            // Style based on type
+            if (type === 'success') {
+                notification.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                notification.style.color = 'white';
+            } else if (type === 'error') {
+                notification.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                notification.style.color = 'white';
+            } else {
+                notification.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+                notification.style.color = 'white';
+            }
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Auto-remove after duration
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
         }
 
         // Modal functions
