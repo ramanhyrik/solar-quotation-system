@@ -384,14 +384,32 @@
             height: 18px;
         }
 
+        /* RTL Support for Hebrew UI */
+        .sidebar {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .sidebar-section {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .section-title {
+            direction: rtl;
+            text-align: right;
+            justify-content: flex-start;
+        }
+
         /* Address & coordinates cluster */
         #addressSearchSection {
-            direction: ltr;
+            direction: rtl;
             align-items: flex-start;
         }
 
         .input-row {
             align-items: center;
+            direction: rtl;
         }
 
         #addressSearchSection .section-title,
@@ -407,10 +425,33 @@
             text-align: right;
         }
 
+        /* Hebrew text inputs - RTL aligned */
+        .form-group input[type="text"]:not(.ltr-input),
+        .rtl-input {
+            direction: rtl;
+            text-align: right;
+        }
+
         .form-group input[type="number"],
         .ltr-input {
             direction: ltr;
             text-align: left;
+        }
+
+        /* Results panel RTL */
+        .results-panel {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .results-panel h3 {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .result-label {
+            direction: rtl;
+            text-align: center;
         }
 
         .tool-grid-3 {
@@ -1160,7 +1201,7 @@
                             <i data-lucide="navigation"></i>
                         </button>
                         <div class="input-with-icon">
-                            <input type="text" id="addressSearchInput" placeholder="לדוגמה: שדרות רוטשילד 1, תל אביב" dir="auto">
+                            <input type="text" id="addressSearchInput" placeholder="לדוגמה: שדרות רוטשילד 1, תל אביב" dir="rtl" class="rtl-input">
                         </div>
                     </div>
                     <small>הזן כתובת ולחץ על אייקון החיפוש</small>
@@ -1339,11 +1380,11 @@
 
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
-                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="auto">
+                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
                 </div>
                 <div class="form-group" style="margin-top: -4px;">
                     <label>כתובת (אופציונלי)</label>
-                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב" dir="auto">
+                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב" dir="rtl" class="rtl-input">
                 </div>
 
                 <button class="tool-btn success" onclick="saveDesign()" id="saveBtn" style="margin-top: 12px;" disabled>
@@ -1515,7 +1556,7 @@
         let drawingUndoStack = [];
         let drawingRedoStack = [];
         const closePolygonBtn = document.getElementById('closePolygonBtn');
-        const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'Close Polygon' : 'Close Polygon';
+        const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'סגור מצולע' : 'סגור מצולע';
 
         // PHASE 1: Map Integration variables
         let currentLatitude = null;
@@ -1640,7 +1681,7 @@
 
                         hideLoading();
                         if (typeof result.pixels_per_meter !== 'undefined') {
-                            showNotification('success', `Scale set: ${result.pixels_per_meter.toFixed(2)} px/m`);
+                            showNotification('success', `סקלה נקבעה: ${result.pixels_per_meter.toFixed(2)} px/m`);
                         }
 
                         console.log('[PHASE 1] Design created:', result);
@@ -2710,7 +2751,7 @@
 
                 if (!startResponse.ok) {
                     hideLoading();
-                    showModal('Error', `Failed to start detection (status ${startResponse.status}).`, 'alert-circle');
+                    showModal('שגיאה', `הפעלת זיהוי נכשלה (סטטוס ${startResponse.status}).`, 'alert-circle');
                     return;
                 }
 
@@ -2718,7 +2759,7 @@
 
                 if (!startResult.success || !startResult.job_id) {
                     hideLoading();
-                    showModal('Error', startResult.error || 'Failed to start detection', 'alert-circle');
+                    showModal('שגיאה', startResult.error || 'הפעלת זיהוי נכשלה', 'alert-circle');
                     return;
                 }
 
@@ -2736,7 +2777,7 @@
 
                     if (attempts > maxAttempts) {
                         hideLoading();
-                        showModal('Timeout', 'Detection took too long. Please try with a smaller image or draw manually.', 'alert-circle');
+                        showModal('תם הזמן', 'הזיהוי ארך יותר מדי זמן. נסה עם תמונה קטנה יותר או צייר ידנית.', 'alert-circle');
                         return;
                     }
 
@@ -2749,7 +2790,7 @@
                         const statusResponse = await fetch(`/api/roof-designer/auto-detect-status/${jobId}`);
                         if (!statusResponse.ok) {
                             hideLoading();
-                            showModal('Detection Error', `Status check failed (status ${statusResponse.status}).`, 'alert-circle');
+                            showModal('שגיאת זיהוי', `בדיקת סטטוס נכשלה (סטטוס ${statusResponse.status}).`, 'alert-circle');
                             return;
                         }
                         const statusResult = await statusResponse.json();
@@ -2767,18 +2808,18 @@
                                 // Don't show modal - instruction text is enough
                             } else {
                                 console.log('[AI-DETECT] No candidates found');
-                                showModal('No Roof Detected', 'AI could not detect a roof. Please draw manually.', 'alert-circle');
+                                showModal('לא זוהה גג', 'הבינה המלאכותית לא הצליחה לזהות גג. אנא צייר ידנית.', 'alert-circle');
                             }
                             return; // Stop polling - job is done
                         } else if (statusResult.status === 'failed') {
                             hideLoading();
                             console.error('[AI-DETECT] Job failed:', statusResult.error);
-                            showModal('Detection Failed', statusResult.error || 'Detection failed', 'alert-circle');
+                            showModal('הזיהוי נכשל', statusResult.error || 'הזיהוי נכשל', 'alert-circle');
                             return; // Stop polling - job failed
                         } else if (!statusResult.status) {
                             hideLoading();
                             console.error('[AI-DETECT] Malformed status response:', statusResult);
-                            showModal('Detection Error', 'Received malformed status response.', 'alert-circle');
+                            showModal('שגיאת זיהוי', 'התקבלה תגובה פגומה.', 'alert-circle');
                             return; // Stop polling - bad response
                         } else {
                             // Still pending or running - poll again
@@ -2789,7 +2830,7 @@
                         consecutiveErrors += 1;
                         if (consecutiveErrors >= 5) {
                             hideLoading();
-                            showModal('Detection Error', 'Status checks keep failing. Please try again.', 'alert-circle');
+                            showModal('שגיאת זיהוי', 'בדיקות הסטטוס נכשלות שוב ושוב. אנא נסה שנית.', 'alert-circle');
                             return;
                         }
                         setTimeout(pollJob, pollInterval);
@@ -2801,7 +2842,7 @@
 
             } catch (error) {
                 hideLoading();
-                showModal('Error', 'AI detection failed: ' + error.message, 'alert-circle');
+                showModal('שגיאה', 'זיהוי בינה מלאכותית נכשל: ' + error.message, 'alert-circle');
             }
         }
 
@@ -2814,7 +2855,7 @@
             exitEditMode();
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent = `${candidates.length} roof${candidates.length > 1 ? 's' : ''} detected - first candidate selected. Click another outline to change, then Confirm Selection.`;
+            document.getElementById('drawingInstruction').textContent = `${candidates.length} גג${candidates.length > 1 ? 'ות' : ''} זוהה - המועמד הראשון נבחר. לחץ על קווי מתאר אחרים לשינוי, לאחר מכן אשר בחירה.`;
 
             candidates.forEach((candidate, index) => {
                 // Convert API coordinates (original image coords) to canvas coordinates
@@ -2841,7 +2882,7 @@
             });
 
             showingCandidates = true;
-            updateClosePolygonButton(true, 'Confirm roof selection');
+            updateClosePolygonButton(true, 'אשר בחירת גג');
             canvas.renderAll();
 
             if (candidatePolygons.length > 0) {
@@ -2874,16 +2915,16 @@
             // Update instruction
             const candidate = detectedCandidates[index];
             const confidenceText = candidate.confidence
-                ? ` (${Math.round(candidate.confidence * 100)}% confidence)`
+                ? ` (${Math.round(candidate.confidence * 100)}% ביטחון)`
                 : '';
             document.getElementById('drawingInstruction').textContent =
-                `Roof selected${confidenceText} - Click "Confirm Selection" to apply`;
+                `גג נבחר${confidenceText} - לחץ "אשר בחירה" להחלה`;
         }
 
         function confirmCandidateSelection() {
             if (selectedCandidateIndex === null) {
                 // No candidate selected, can't confirm
-                showModal('Error', 'Please click on a detected roof area first.', 'alert-circle');
+                showModal('שגיאה', 'אנא לחץ על אזור גג שזוהה תחילה.', 'alert-circle');
                 return;
             }
 
