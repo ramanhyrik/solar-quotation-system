@@ -54,11 +54,14 @@
             color: white;
             padding: 0 24px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
             height: var(--header-height);
             position: relative;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header-left {
+            width: 120px;
         }
 
         .header h1 {
@@ -66,12 +69,16 @@
             font-weight: 500;
             margin: 0;
             letter-spacing: 0.3px;
+            flex: 1;
+            text-align: center;
         }
 
         .header-right {
+            width: 120px;
             font-size: 12px;
             display: flex;
             align-items: center;
+            justify-content: flex-end;
         }
 
         .header-right a {
@@ -90,14 +97,12 @@
             border-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Main Layout - Grid with bottom panel (RTL: sidebar on right) */
+        /* Main Layout - Grid (RTL: sidebar on right) */
         .main-container {
             display: grid;
             grid-template-columns: var(--sidebar-width) 1fr;
-            grid-template-rows: 1fr auto;
-            grid-template-areas:
-                "sidebar canvas"
-                "bottom bottom";
+            grid-template-rows: 1fr;
+            grid-template-areas: "sidebar canvas";
             height: calc(100vh - var(--header-height));
             overflow: hidden;
             direction: rtl;
@@ -641,109 +646,138 @@
             direction: ltr;
         }
 
-        /* Bottom Results Panel */
-        .bottom-panel {
-            grid-area: bottom;
-            background: var(--panel-bg);
-            border-top: 1px solid var(--border-color);
+        /* Results Popup Modal */
+        .results-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
             display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .results-modal-overlay.visible {
+            display: flex;
+        }
+
+        .results-modal {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            display: flex;
             flex-direction: column;
-            height: 180px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
             direction: rtl;
         }
 
-        .bottom-panel.visible {
-            display: flex;
-        }
-
-        .bottom-panel-header {
+        .results-modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 16px;
+            padding: 16px 20px;
             background: rgba(0,0,0,0.2);
             border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
+            border-radius: 12px 12px 0 0;
         }
 
-        .bottom-panel-tabs {
+        .results-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .results-modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .results-modal-close:hover {
+            color: var(--text-dark);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .results-modal-tabs {
             display: flex;
             gap: 4px;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.1);
+            border-bottom: 1px solid var(--border-color);
             flex-direction: row-reverse;
         }
 
-        .bottom-tab {
-            padding: 5px 12px;
-            font-size: 11px;
+        .results-tab {
+            padding: 8px 16px;
+            font-size: 12px;
             font-weight: 500;
             color: var(--text-muted);
             background: transparent;
             border: 1px solid transparent;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.12s ease;
+            transition: all 0.15s ease;
         }
 
-        .bottom-tab:hover {
+        .results-tab:hover {
             color: var(--text-dark);
             background: rgba(255,255,255,0.05);
         }
 
-        .bottom-tab.active {
+        .results-tab.active {
             color: var(--text-dark);
             background: var(--accent-blue);
             border-color: var(--accent-blue);
         }
 
-        .bottom-panel-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .bottom-panel-content {
+        .results-modal-content {
             flex: 1;
             overflow-y: auto;
-            overflow-x: hidden;
-            padding: 12px 16px;
-            height: 130px;
+            padding: 20px;
         }
 
-        .bottom-tab-content {
+        .results-tab-content {
             display: none;
-            height: 100%;
         }
 
-        .bottom-tab-content.active {
-            display: flex;
-            flex-direction: column;
+        .results-tab-content.active {
+            display: block;
         }
 
-        .results-row {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
         }
 
         .result-card {
             background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-            padding: 8px 12px;
-            min-width: 100px;
+            border-radius: 8px;
+            padding: 16px;
             text-align: center;
         }
 
         .result-card-label {
-            font-size: 9px;
+            font-size: 10px;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
 
         .result-card-value {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 600;
             color: var(--text-dark);
         }
@@ -757,16 +791,92 @@
         }
 
         .result-section {
-            margin-top: 8px;
-            font-size: 11px;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 6px;
+            font-size: 12px;
             color: var(--text-medium);
         }
 
         .result-section-title {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .results-modal-footer {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--border-color);
+            border-radius: 0 0 12px 12px;
+            justify-content: flex-start;
+        }
+
+        .results-modal-footer .form-group {
+            flex: 1;
+            margin: 0;
+        }
+
+        .results-modal-footer .form-group label {
+            font-size: 10px;
+            color: var(--text-muted);
             margin-bottom: 4px;
+            display: block;
+        }
+
+        .results-modal-footer .form-group input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 12px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-dark);
+        }
+
+        .results-modal-actions {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .results-btn {
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+        }
+
+        .results-btn-cancel {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-medium);
+        }
+
+        .results-btn-cancel:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-dark);
+        }
+
+        .results-btn-save {
+            background: var(--success-green);
+            color: white;
+        }
+
+        .results-btn-save:hover {
+            background: #1ea84d;
+        }
+
+        .results-btn-save:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
         }
 
         /* Canvas Upload Overlay */
@@ -1327,6 +1437,7 @@
 <body>
     <!-- Header -->
     <div class="header">
+        <div class="header-left"></div>
         <h1>מעצב גגות</h1>
         <div class="header-right">
             <a href="/dashboard">לוח בקרה</a>
@@ -1472,24 +1583,6 @@
                 <div class="toolbar-divider"></div>
                 <!-- Zoom controls moved to canvas overlay -->
             </div>
-
-            <!-- Save Section (Results are displayed in bottom panel) -->
-            <div class="sidebar-section" id="resultsSection" style="display: none; padding: 12px 14px;">
-                <div class="section-title" style="margin-bottom: 12px;">שמירת עיצוב</div>
-                <div class="form-group">
-                    <label>שם לקוח (אופציונלי)</label>
-                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
-                </div>
-                <div class="form-group" style="margin-top: -4px;">
-                    <label>כתובת (אופציונלי)</label>
-                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב" dir="rtl" class="rtl-input">
-                </div>
-
-                <button class="tool-btn success" onclick="saveDesign()" id="saveBtn" style="margin-top: 12px;" disabled>
-                    <i data-lucide="save"></i>
-                    <span>שמור עיצוב</span>
-                </button>
-            </div>
         </div>
 
         <!-- Canvas Area -->
@@ -1526,142 +1619,158 @@
             </div>
         </div>
 
-        <!-- Bottom Results Panel -->
-        <div class="bottom-panel" id="bottomPanel">
-            <div class="bottom-panel-header">
-                <div class="bottom-panel-tabs">
-                    <button class="bottom-tab active" data-tab="layout" onclick="switchBottomTab('layout')">פריסה</button>
-                    <button class="bottom-tab" data-tab="sun" onclick="switchBottomTab('sun')">שמש</button>
-                    <button class="bottom-tab" data-tab="energy" onclick="switchBottomTab('energy')">אנרגיה</button>
-                    <button class="bottom-tab" data-tab="electrical" onclick="switchBottomTab('electrical')">חשמל</button>
-                </div>
-                <div class="bottom-panel-actions">
-                    <button class="icon-btn" onclick="toggleBottomPanel()" title="מזער">
-                        <i data-lucide="chevron-down"></i>
-                    </button>
-                </div>
+    </div>
+
+    <!-- Results Popup Modal -->
+    <div class="results-modal-overlay" id="resultsModal">
+        <div class="results-modal">
+            <div class="results-modal-header">
+                <span class="results-modal-title">תוצאות חישוב</span>
+                <button class="results-modal-close" onclick="closeResultsModal()">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-            <div class="bottom-panel-content">
+            <div class="results-modal-tabs">
+                <button class="results-tab active" data-tab="layout" onclick="switchResultsTab('layout')">פריסה</button>
+                <button class="results-tab" data-tab="sun" onclick="switchResultsTab('sun')">שמש</button>
+                <button class="results-tab" data-tab="energy" onclick="switchResultsTab('energy')">אנרגיה</button>
+                <button class="results-tab" data-tab="electrical" onclick="switchResultsTab('electrical')">חשמל</button>
+            </div>
+            <div class="results-modal-content">
                 <!-- Layout Results Tab -->
-                <div class="bottom-tab-content active" id="tab-layout">
-                    <div class="results-row">
+                <div class="results-tab-content active" id="tab-layout">
+                    <div class="results-grid">
                         <div class="result-card">
                             <div class="result-card-label">פאנלים</div>
-                            <div class="result-card-value highlight" id="resultPanelsBottom">0</div>
+                            <div class="result-card-value highlight" id="resultPanelsModal">0</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">הספק מערכת</div>
-                            <div class="result-card-value" id="resultPowerBottom">0 kW</div>
+                            <div class="result-card-value" id="resultPowerModal">0 kW</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">כיסוי גג</div>
-                            <div class="result-card-value" id="resultCoverageBottom">0%</div>
+                            <div class="result-card-value" id="resultCoverageModal">0%</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">שטח גג</div>
-                            <div class="result-card-value" id="resultAreaBottom">0 m²</div>
+                            <div class="result-card-value" id="resultAreaModal">0 m²</div>
                         </div>
                         <div class="result-card" id="measurementLengthCard" style="display:none;">
                             <div class="result-card-label">אורך גג</div>
-                            <div class="result-card-value" id="measurementLengthBottom">-</div>
+                            <div class="result-card-value" id="measurementLengthModal">-</div>
                         </div>
                         <div class="result-card" id="measurementWidthCard" style="display:none;">
                             <div class="result-card-label">רוחב גג</div>
-                            <div class="result-card-value" id="measurementWidthBottom">-</div>
+                            <div class="result-card-value" id="measurementWidthModal">-</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Sun Analysis Tab -->
-                <div class="bottom-tab-content" id="tab-sun">
-                    <div class="results-row">
+                <div class="results-tab-content" id="tab-sun">
+                    <div class="results-grid">
                         <div class="result-card">
                             <div class="result-card-label">איכות כיוון</div>
-                            <div class="result-card-value" id="sunOrientationBottom">-</div>
+                            <div class="result-card-value" id="sunOrientationModal">-</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">יעילות</div>
-                            <div class="result-card-value highlight" id="sunEfficiencyBottom">-</div>
+                            <div class="result-card-value highlight" id="sunEfficiencyModal">-</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">שעות שמש/שנה</div>
-                            <div class="result-card-value" id="sunHoursBottom">-</div>
+                            <div class="result-card-value" id="sunHoursModal">-</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">kWh/m²/שנה</div>
-                            <div class="result-card-value" id="sunIrradianceBottom">-</div>
+                            <div class="result-card-value" id="sunIrradianceModal">-</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">זריחה</div>
-                            <div class="result-card-value" id="sunSunriseBottom">-</div>
+                            <div class="result-card-value" id="sunSunriseModal">-</div>
                         </div>
                         <div class="result-card">
                             <div class="result-card-label">שקיעה</div>
-                            <div class="result-card-value" id="sunSunsetBottom">-</div>
+                            <div class="result-card-value" id="sunSunsetModal">-</div>
                         </div>
                     </div>
-                    <div id="sunRecommendationsBottom" class="result-section" style="display: none;">
-                        <span class="result-section-title">המלצות: </span>
-                        <span id="sunRecommendationsListBottom"></span>
+                    <div id="sunRecommendationsModal" class="result-section" style="display: none;">
+                        <div class="result-section-title">המלצות</div>
+                        <span id="sunRecommendationsListModal"></span>
                     </div>
                 </div>
 
                 <!-- Energy & Financial Tab -->
-                <div class="bottom-tab-content" id="tab-energy">
-                    <div class="results-row">
+                <div class="results-tab-content" id="tab-energy">
+                    <div class="results-grid">
                         <div class="result-card">
                             <div class="result-card-label">ייצור שנתי</div>
-                            <div class="result-card-value highlight" id="energyAnnualBottom">- kWh</div>
+                            <div class="result-card-value highlight" id="energyAnnualModal">- kWh</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">יומי</div>
-                            <div class="result-card-value" id="energyDailyBottom">- kWh</div>
+                            <div class="result-card-label">ממוצע יומי</div>
+                            <div class="result-card-value" id="energyDailyModal">- kWh</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">עלות</div>
-                            <div class="result-card-value" id="energyCostBottom">₪-</div>
+                            <div class="result-card-label">עלות מערכת</div>
+                            <div class="result-card-value" id="energyCostModal">₪-</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">חיסכון</div>
-                            <div class="result-card-value highlight" id="energySavingsBottom">₪-</div>
+                            <div class="result-card-label">חיסכון שנתי</div>
+                            <div class="result-card-value highlight" id="energySavingsModal">₪-</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">החזר</div>
-                            <div class="result-card-value accent" id="energyPaybackBottom">- שנים</div>
+                            <div class="result-card-label">החזר השקעה</div>
+                            <div class="result-card-value accent" id="energyPaybackModal">- שנים</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">ROI</div>
-                            <div class="result-card-value" id="energyRoiBottom">-%</div>
+                            <div class="result-card-label">ROI 25 שנה</div>
+                            <div class="result-card-value" id="energyRoiModal">-%</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">CO₂</div>
-                            <div class="result-card-value" id="energyCo2Bottom">-</div>
+                            <div class="result-card-label">CO₂ נחסך</div>
+                            <div class="result-card-value" id="energyCo2Modal">- ק"ג</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Electrical Tab -->
-                <div class="bottom-tab-content" id="tab-electrical">
-                    <div class="results-row">
+                <div class="results-tab-content" id="tab-electrical">
+                    <div class="results-grid">
                         <div class="result-card">
-                            <div class="result-card-label">סטרינגים</div>
-                            <div class="result-card-value" id="elecStringsBottom">-</div>
+                            <div class="result-card-label">מספר סטרינגים</div>
+                            <div class="result-card-value" id="elecStringsModal">-</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">מתח מקס</div>
-                            <div class="result-card-value" id="elecVoltageBottom">-</div>
+                            <div class="result-card-label">מתח מקסימלי</div>
+                            <div class="result-card-value" id="elecVoltageModal">- V</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">DC</div>
-                            <div class="result-card-value" id="elecDcPowerBottom">-</div>
+                            <div class="result-card-label">הספק DC</div>
+                            <div class="result-card-value" id="elecDcPowerModal">- kW</div>
                         </div>
                         <div class="result-card">
-                            <div class="result-card-label">ממיר</div>
-                            <div class="result-card-value accent" id="elecInverterBottom">-</div>
+                            <div class="result-card-label">ממיר מומלץ</div>
+                            <div class="result-card-value accent" id="elecInverterModal">- kW</div>
                         </div>
                     </div>
-                    <div id="elecDetailsBottom" class="result-section" style="display: none;"></div>
-                    <div id="elecWarningsBottom" class="result-section" style="display: none; color: #ff5722;"></div>
+                    <div id="elecDetailsModal" class="result-section" style="display: none;"></div>
+                    <div id="elecWarningsModal" class="result-section" style="display: none; color: #ff5722;"></div>
+                </div>
+            </div>
+            <div class="results-modal-footer">
+                <div class="form-group">
+                    <label>שם לקוח (אופציונלי)</label>
+                    <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl">
+                </div>
+                <div class="form-group">
+                    <label>כתובת (אופציונלי)</label>
+                    <input type="text" id="customerAddressInput" placeholder="לדוגמה: הרצל 10, תל אביב" dir="rtl">
+                </div>
+                <div class="results-modal-actions">
+                    <button class="results-btn results-btn-cancel" onclick="closeResultsModal()">ביטול</button>
+                    <button class="results-btn results-btn-save" id="saveBtn" onclick="saveDesign()" disabled>שמור</button>
                 </div>
             </div>
         </div>
@@ -2595,7 +2704,6 @@
         function disablePanelConfig() {
             document.getElementById('panelConfigBtn').disabled = true;
             document.getElementById('calculateBtn').disabled = true;
-            document.getElementById('resultsSection').style.display = 'none';
         }
 
         function enableDrawingTools() {
@@ -2674,9 +2782,7 @@
                     panels = result.panels;
                     displayPanels(panels);
                     displayResults(result);
-                    document.getElementById('resultsSection').style.display = 'block';
                     document.getElementById('saveBtn').disabled = false;
-                    showModal('הצלחה', `הוצבו ${result.total_panels || result.num_panels} פאנלים בהצלחה!`, 'check-circle');
                 } else {
                     showModal('שגיאה', result.error || 'חישוב הפריסה נכשל.', 'alert-circle');
                 }
@@ -2921,149 +3027,144 @@
             console.log(`[SUN] Displayed sun indicator: azimuth=${azimuth}°, elevation=${elevation}°`);
         }
 
-        // Bottom panel tab switching
-        function switchBottomTab(tabName) {
+        // Results modal tab switching
+        function switchResultsTab(tabName) {
             // Update tab buttons
-            document.querySelectorAll('.bottom-tab').forEach(btn => {
+            document.querySelectorAll('.results-tab').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabName);
             });
 
             // Update tab content
-            document.querySelectorAll('.bottom-tab-content').forEach(content => {
+            document.querySelectorAll('.results-tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === 'tab-' + tabName);
             });
         }
 
-        // Toggle bottom panel visibility
-        function toggleBottomPanel() {
-            const panel = document.getElementById('bottomPanel');
-            const icon = panel.querySelector('.bottom-panel-actions i');
-
-            if (panel.classList.contains('visible')) {
-                panel.classList.remove('visible');
-            } else {
-                panel.classList.add('visible');
-            }
-        }
-
-        // Show bottom panel
-        function showBottomPanel() {
-            const panel = document.getElementById('bottomPanel');
-            panel.classList.add('visible');
+        // Show results modal
+        function showResultsModal() {
+            const modal = document.getElementById('resultsModal');
+            modal.classList.add('visible');
             lucide.createIcons();
         }
 
+        // Close results modal
+        function closeResultsModal() {
+            const modal = document.getElementById('resultsModal');
+            modal.classList.remove('visible');
+        }
+
         function displayResults(result) {
-            // Populate bottom panel - Layout tab
-            document.getElementById('resultPanelsBottom').textContent = result.total_panels || result.num_panels || 0;
-            document.getElementById('resultPowerBottom').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
-            document.getElementById('resultCoverageBottom').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
-            document.getElementById('resultAreaBottom').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
+            // Populate results modal - Layout tab
+            document.getElementById('resultPanelsModal').textContent = result.total_panels || result.num_panels || 0;
+            document.getElementById('resultPowerModal').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
+            document.getElementById('resultCoverageModal').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
+            document.getElementById('resultAreaModal').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
 
-            // Show bottom panel
-            showBottomPanel();
+            // Show results modal
+            showResultsModal();
 
-            // PHASE 2: Display automatic measurements in bottom panel
+            // PHASE 2: Display automatic measurements in modal
             if (result.measurements) {
                 const m = result.measurements;
 
-                // Show measurement cards in bottom panel
+                // Show measurement cards in modal
                 const lengthCard = document.getElementById('measurementLengthCard');
                 const widthCard = document.getElementById('measurementWidthCard');
 
                 if (lengthCard && widthCard) {
                     lengthCard.style.display = 'block';
                     widthCard.style.display = 'block';
-                    document.getElementById('measurementLengthBottom').textContent = m.length_m ? m.length_m.toFixed(1) + ' m' : '-';
-                    document.getElementById('measurementWidthBottom').textContent = m.width_m ? m.width_m.toFixed(1) + ' m' : '-';
+                    document.getElementById('measurementLengthModal').textContent = m.length_m ? m.length_m.toFixed(1) + ' m' : '-';
+                    document.getElementById('measurementWidthModal').textContent = m.width_m ? m.width_m.toFixed(1) + ' m' : '-';
                 }
 
                 console.log('[PHASE 2] Measurements displayed:', m.summary);
             }
 
-            // PHASE 3: Display sun analysis in bottom panel
+            // PHASE 3: Display sun analysis in modal
             if (result.sun_analysis) {
                 const sun = result.sun_analysis;
 
                 if (sun.solar_potential) {
                     const sp = sun.solar_potential;
-                    document.getElementById('sunOrientationBottom').textContent = sp.orientation_quality || '-';
-                    document.getElementById('sunEfficiencyBottom').textContent = (sp.overall_efficiency || 0).toFixed(0) + '%';
-                    document.getElementById('sunHoursBottom').textContent = sp.annual_sun_hours || '-';
+                    document.getElementById('sunOrientationModal').textContent = sp.orientation_quality || '-';
+                    document.getElementById('sunEfficiencyModal').textContent = (sp.overall_efficiency || 0).toFixed(0) + '%';
+                    document.getElementById('sunHoursModal').textContent = sp.annual_sun_hours || '-';
 
-                    // Recommendations in bottom panel (inline text)
+                    // Recommendations in modal
                     if (sp.recommendations && sp.recommendations.length > 0) {
-                        const recsDiv = document.getElementById('sunRecommendationsBottom');
-                        const recsList = document.getElementById('sunRecommendationsListBottom');
+                        const recsDiv = document.getElementById('sunRecommendationsModal');
+                        const recsList = document.getElementById('sunRecommendationsListModal');
                         recsList.textContent = sp.recommendations.join(' | ');
                         recsDiv.style.display = 'block';
                     }
                 }
 
                 if (sun.irradiance) {
-                    document.getElementById('sunIrradianceBottom').textContent = sun.irradiance.annual_kwh_per_m2 || '-';
+                    document.getElementById('sunIrradianceModal').textContent = sun.irradiance.annual_kwh_per_m2 || '-';
                 }
 
                 if (sun.current_sun) {
                     const cs = sun.current_sun;
-                    document.getElementById('sunSunriseBottom').textContent = cs.sunrise || '-';
-                    document.getElementById('sunSunsetBottom').textContent = cs.sunset || '-';
+                    document.getElementById('sunSunriseModal').textContent = cs.sunrise || '-';
+                    document.getElementById('sunSunsetModal').textContent = cs.sunset || '-';
                     displaySunDirection(cs.azimuth, cs.elevation, cs.is_daytime);
                 }
 
-                console.log('[PHASE 3] Sun analysis displayed in bottom panel');
+                console.log('[PHASE 3] Sun analysis displayed in modal');
             }
 
-            // PHASE 4: Display energy and financial estimates in bottom panel
+            // PHASE 4: Display energy and financial estimates in modal
             if (result.energy_estimate) {
                 const energy = result.energy_estimate;
 
                 if (energy.production) {
-                    document.getElementById('energyAnnualBottom').textContent =
+                    document.getElementById('energyAnnualModal').textContent =
                         (energy.production.annual_kwh?.toLocaleString() || '-') + ' kWh';
-                    document.getElementById('energyDailyBottom').textContent =
+                    document.getElementById('energyDailyModal').textContent =
                         (energy.production.daily_avg_kwh || '-') + ' kWh';
                 }
 
                 if (energy.financial) {
-                    document.getElementById('energyCostBottom').textContent =
+                    document.getElementById('energyCostModal').textContent =
                         '₪' + (energy.financial.system_cost_nis?.toLocaleString() || '-');
-                    document.getElementById('energySavingsBottom').textContent =
+                    document.getElementById('energySavingsModal').textContent =
                         '₪' + (energy.financial.annual_savings_nis?.toLocaleString() || '-');
-                    document.getElementById('energyPaybackBottom').textContent =
+                    document.getElementById('energyPaybackModal').textContent =
                         (energy.financial.payback_years || '-') + ' שנים';
-                    document.getElementById('energyRoiBottom').textContent =
+                    document.getElementById('energyRoiModal').textContent =
                         (energy.financial.roi_25_years || '-') + '%';
                 }
 
                 if (energy.environmental) {
-                    document.getElementById('energyCo2Bottom').textContent =
+                    document.getElementById('energyCo2Modal').textContent =
                         (energy.environmental.annual_co2_offset_kg?.toLocaleString() || '-') + ' ק"ג';
                 }
 
-                console.log('[PHASE 4] Energy estimate displayed in bottom panel');
+                console.log('[PHASE 4] Energy estimate displayed in modal');
             }
 
-            // Display electrical stringing data in bottom panel
+            // Display electrical stringing data in modal
             if (result.electrical_stringing) {
                 const stringing = result.electrical_stringing;
 
-                document.getElementById('elecStringsBottom').textContent = stringing.string_count || '-';
-                document.getElementById('elecVoltageBottom').textContent = (stringing.max_string_voltage || '-') + ' V';
-                document.getElementById('elecDcPowerBottom').textContent = (stringing.total_dc_power_kw || '-') + ' kW';
-                document.getElementById('elecInverterBottom').textContent = (stringing.recommended_inverter_kw || '-') + ' kW';
+                document.getElementById('elecStringsModal').textContent = stringing.string_count || '-';
+                document.getElementById('elecVoltageModal').textContent = (stringing.max_string_voltage || '-') + ' V';
+                document.getElementById('elecDcPowerModal').textContent = (stringing.total_dc_power_kw || '-') + ' kW';
+                document.getElementById('elecInverterModal').textContent = (stringing.recommended_inverter_kw || '-') + ' kW';
 
-                // Build string details for bottom panel
-                const detailsDiv = document.getElementById('elecDetailsBottom');
+                // Build string details for modal
+                const detailsDiv = document.getElementById('elecDetailsModal');
                 if (detailsDiv && stringing.strings && stringing.strings.length > 0) {
                     let detailsHtml = stringing.strings.map(s =>
                         `סטרינג ${s.string_id}: ${s.panel_count} פאנלים, ${s.voltage_vmp}V (MPPT ${s.mppt})`
                     ).join(' | ');
                     detailsDiv.textContent = detailsHtml;
+                    detailsDiv.style.display = 'block';
                 }
 
                 // Show warnings
-                const warningsDiv = document.getElementById('elecWarningsBottom');
+                const warningsDiv = document.getElementById('elecWarningsModal');
                 if (warningsDiv && stringing.warnings && stringing.warnings.length > 0) {
                     warningsDiv.style.display = 'block';
                     warningsDiv.textContent = stringing.warnings.join(' | ');
@@ -3071,7 +3172,7 @@
                     warningsDiv.style.display = 'none';
                 }
 
-                console.log('[PHASE 4] Stringing displayed in bottom panel');
+                console.log('[PHASE 4] Stringing displayed in modal');
             }
         }
 
@@ -3116,8 +3217,10 @@
                         if (customerName || customerAddress) {
                             await updateDesignMetadata(customerName, customerAddress);
                         }
+                        closeResultsModal();
                         showModal('הצלחה', 'העיצוב נשמר בהצלחה!', 'check-circle');
                     } catch (metaError) {
+                        closeResultsModal();
                         showModal('הצלחה חלקית', 'העיצוב נשמר, אך לא הצלחנו לשמור את פרטי הלקוח: ' + metaError.message, 'alert-circle');
                     }
                 } else {
