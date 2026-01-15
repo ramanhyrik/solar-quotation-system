@@ -90,17 +90,22 @@
             border-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Main Layout */
+        /* Main Layout - Grid with bottom panel */
         .main-container {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr var(--sidebar-width);
+            grid-template-rows: 1fr auto;
+            grid-template-areas:
+                "canvas sidebar"
+                "bottom bottom";
             height: calc(100vh - var(--header-height));
             overflow: hidden;
-            flex-direction: row;
             direction: rtl;
         }
 
         /* Right Sidebar (RTL) */
         .sidebar {
+            grid-area: sidebar;
             width: var(--sidebar-width);
             background: var(--panel-bg);
             border-left: 1px solid var(--border-color);
@@ -627,15 +632,142 @@
 
         /* Canvas Area */
         .canvas-area {
-            flex: 1;
+            grid-area: canvas;
             background: var(--panel-alt);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             overflow: hidden;
-            order: 2; /* Second item in RTL (appears on left) */
-            direction: ltr; /* Canvas content should be LTR */
+            direction: ltr;
+        }
+
+        /* Bottom Results Panel */
+        .bottom-panel {
+            grid-area: bottom;
+            background: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            display: none;
+            flex-direction: column;
+            max-height: 280px;
+            min-height: 0;
+            direction: rtl;
+        }
+
+        .bottom-panel.visible {
+            display: flex;
+        }
+
+        .bottom-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .bottom-panel-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .bottom-tab {
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bottom-tab:hover {
+            color: var(--text-dark);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .bottom-tab.active {
+            color: var(--text-dark);
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .bottom-panel-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .bottom-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .bottom-tab-content {
+            display: none;
+        }
+
+        .bottom-tab-content.active {
+            display: block;
+        }
+
+        .results-row {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .result-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 12px 16px;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .result-card-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .result-card-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .result-card-value.highlight {
+            color: var(--success-green);
+        }
+
+        .result-card-value.accent {
+            color: var(--accent-blue);
+        }
+
+        .result-section {
+            margin-bottom: 16px;
+        }
+
+        .result-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         /* Canvas Upload Overlay */
@@ -1342,195 +1474,10 @@
                 <!-- Zoom controls moved to canvas overlay -->
             </div>
 
-            <!-- Results Section -->
+            <!-- Save Section (Results are displayed in bottom panel) -->
             <div class="sidebar-section" id="resultsSection" style="display: none; padding: 12px 14px;">
-                <div class="results-panel" style="padding: 12px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <h3 style="margin: 0; font-size: 13px; letter-spacing: 0.3px;">תוצאות פריסה</h3>
-                        <button class="icon-btn" id="collapseResultsBtn" style="width:36px; height:36px;" onclick="toggleResultsCollapse()">
-                            <i data-lucide="chevron-up"></i>
-                        </button>
-                    </div>
-                    <div class="result-grid" id="resultsGrid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
-                        <div class="result-item">
-                            <div class="result-label">פאנלים</div>
-                            <div class="result-value" id="resultPanels">0</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">הספק</div>
-                            <div class="result-value" id="resultPower">0 kW</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">כיסוי</div>
-                            <div class="result-value" id="resultCoverage">0%</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">שטח</div>
-                            <div class="result-value" id="resultArea">0 m²</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PHASE 2: Roof Measurements Display -->
-                <div class="results-panel" id="measurementsPanel" style="padding: 12px; margin-top: 12px; display: none;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">מידות גג (אוטומטי)</h3>
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
-                        <div class="result-item">
-                            <div class="result-label">אורך</div>
-                            <div class="result-value" id="measurementLength">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">רוחב</div>
-                            <div class="result-value" id="measurementWidth">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">כיוון</div>
-                            <div class="result-value" id="measurementOrientation">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">ביטחון</div>
-                            <div class="result-value" id="measurementConfidence">-</div>
-                        </div>
-                    </div>
-                    <div id="measurementWarnings" style="margin-top: 8px; display: none;">
-                        <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px; border-radius: 4px; font-size: 11px;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">⚠️ אזהרות:</div>
-                            <ul id="measurementWarningsList" style="margin: 0; padding-right: 20px; list-style: disc;">
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PHASE 3: Sun Analysis Display -->
-                <div class="results-panel" id="sunAnalysisPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 152, 0, 0.03)); border-right: 3px solid #ffc107;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
-                        <i data-lucide="sun" style="width: 14px; height: 14px;"></i>
-                        ניתוח שמש
-                    </h3>
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
-                        <div class="result-item">
-                            <div class="result-label">איכות כיוון</div>
-                            <div class="result-value" id="sunOrientationQuality">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">יעילות</div>
-                            <div class="result-value" id="sunEfficiency">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">שעות שמש/שנה</div>
-                            <div class="result-value" id="sunAnnualHours">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">kWh/m²/שנה</div>
-                            <div class="result-value" id="sunIrradiance">-</div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 8px; font-size: 11px; color: var(--text-medium);">
-                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                            <span>זריחה:</span>
-                            <span id="sunSunrise" style="font-weight: 600;">-</span>
-                            <span style="margin-right: 12px;">שקיעה:</span>
-                            <span id="sunSunset" style="font-weight: 600;">-</span>
-                        </div>
-                        <div id="sunCurrentPosition" style="color: var(--text-dark);">
-                            מיקום שמש נוכחי: <span id="sunAzimuth">-</span>° (אזימוט), <span id="sunElevation">-</span>° (גובה)
-                        </div>
-                    </div>
-                    <div id="sunRecommendations" style="margin-top: 8px; display: none;">
-                        <div style="background: rgba(76, 175, 80, 0.1); border-right: 3px solid #4caf50; padding: 8px; border-radius: 4px; font-size: 11px;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">המלצות:</div>
-                            <ul id="sunRecommendationsList" style="margin: 0; padding-right: 20px; list-style: disc;">
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PHASE 4: Energy & Financial Estimates -->
-                <div class="results-panel" id="energyEstimatePanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(139, 195, 74, 0.03)); border-right: 3px solid #4caf50;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
-                        <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
-                        אנרגיה ופיננסים
-                    </h3>
-
-                    <!-- Production -->
-                    <div style="margin-bottom: 10px;">
-                        <div style="font-size: 11px; color: var(--text-medium); margin-bottom: 4px;">ייצור שנתי</div>
-                        <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span id="energyAnnualKwh" style="font-size: 22px; font-weight: 600; color: #4caf50;">-</span>
-                            <span style="font-size: 11px; color: var(--text-medium);">kWh/שנה</span>
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-medium);">
-                            ממוצע יומי: <span id="energyDailyKwh" style="font-weight: 600;">-</span> kWh
-                        </div>
-                    </div>
-
-                    <!-- Financial -->
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 10px;">
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">עלות מערכת</div>
-                            <div class="result-value" style="font-size: 14px;">₪<span id="energySystemCost">-</span></div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">חיסכון שנתי</div>
-                            <div class="result-value" style="font-size: 14px; color: #4caf50;">₪<span id="energyAnnualSavings">-</span></div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">החזר השקעה</div>
-                            <div class="result-value" style="font-size: 14px;"><span id="energyPaybackYears">-</span> שנים</div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">ROI ל-25 שנה</div>
-                            <div class="result-value" style="font-size: 14px; color: #8bc34a;"><span id="energyRoi25">-</span>%</div>
-                        </div>
-                    </div>
-
-                    <!-- Environmental -->
-                    <div style="background: rgba(33, 150, 243, 0.08); padding: 8px; border-radius: 4px; font-size: 11px;">
-                        <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                            <i data-lucide="leaf" style="width: 12px; height: 12px;"></i>
-                            השפעה סביבתית (שנתי)
-                        </div>
-                        <div style="display: flex; gap: 16px;">
-                            <span>CO₂ נחסך: <strong id="energyCo2Offset">-</strong> ק"ג</span>
-                            <span>שווה ערך: <strong id="energyTreesEquiv">-</strong> עצים</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Electrical Stringing Panel -->
-                <div class="results-panel" id="stringingPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 152, 0, 0.08), rgba(255, 193, 7, 0.03)); border-right: 3px solid #ff9800;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
-                        <i data-lucide="plug" style="width: 14px; height: 14px;"></i>
-                        חיבור חשמלי
-                    </h3>
-
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 10px;">
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">מספר סטרינגים</div>
-                            <div class="result-value" style="font-size: 14px;"><span id="stringingCount">-</span></div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">מתח מקסימלי</div>
-                            <div class="result-value" style="font-size: 14px;"><span id="stringingMaxVoltage">-</span>V</div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">הספק DC כולל</div>
-                            <div class="result-value" style="font-size: 14px;"><span id="stringingDcPower">-</span> kW</div>
-                        </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
-                            <div class="result-label">ממיר מומלץ</div>
-                            <div class="result-value" style="font-size: 14px; color: #ff9800;"><span id="stringingInverter">-</span> kW</div>
-                        </div>
-                    </div>
-
-                    <!-- String details -->
-                    <div id="stringingDetails" style="font-size: 11px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px;"></div>
-
-                    <!-- Warnings -->
-                    <div id="stringingWarnings" style="display: none; margin-top: 8px; font-size: 11px; color: #ff5722; background: rgba(255, 87, 34, 0.1); padding: 8px; border-radius: 4px;"></div>
-                </div>
-
-                <div class="form-group" style="margin-top: 12px;">
+                <div class="section-title" style="margin-bottom: 12px;">שמירת עיצוב</div>
+                <div class="form-group">
                     <label>שם לקוח (אופציונלי)</label>
                     <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
                 </div>
@@ -1577,6 +1524,146 @@
                 <button class="zoom-btn" id="resetZoomBtn" onclick="resetZoom()" disabled>
                     <i data-lucide="maximize"></i>
                 </button>
+            </div>
+        </div>
+
+        <!-- Bottom Results Panel -->
+        <div class="bottom-panel" id="bottomPanel">
+            <div class="bottom-panel-header">
+                <div class="bottom-panel-tabs">
+                    <button class="bottom-tab active" data-tab="layout" onclick="switchBottomTab('layout')">פריסה</button>
+                    <button class="bottom-tab" data-tab="sun" onclick="switchBottomTab('sun')">שמש</button>
+                    <button class="bottom-tab" data-tab="energy" onclick="switchBottomTab('energy')">אנרגיה</button>
+                    <button class="bottom-tab" data-tab="electrical" onclick="switchBottomTab('electrical')">חשמל</button>
+                </div>
+                <div class="bottom-panel-actions">
+                    <button class="icon-btn" onclick="toggleBottomPanel()" title="מזער">
+                        <i data-lucide="chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="bottom-panel-content">
+                <!-- Layout Results Tab -->
+                <div class="bottom-tab-content active" id="tab-layout">
+                    <div class="results-row">
+                        <div class="result-card">
+                            <div class="result-card-label">פאנלים</div>
+                            <div class="result-card-value highlight" id="resultPanelsBottom">0</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">הספק מערכת</div>
+                            <div class="result-card-value" id="resultPowerBottom">0 kW</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">כיסוי גג</div>
+                            <div class="result-card-value" id="resultCoverageBottom">0%</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">שטח גג</div>
+                            <div class="result-card-value" id="resultAreaBottom">0 m²</div>
+                        </div>
+                        <div class="result-card" id="measurementLengthCard" style="display:none;">
+                            <div class="result-card-label">אורך גג</div>
+                            <div class="result-card-value" id="measurementLengthBottom">-</div>
+                        </div>
+                        <div class="result-card" id="measurementWidthCard" style="display:none;">
+                            <div class="result-card-label">רוחב גג</div>
+                            <div class="result-card-value" id="measurementWidthBottom">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sun Analysis Tab -->
+                <div class="bottom-tab-content" id="tab-sun">
+                    <div class="results-row">
+                        <div class="result-card">
+                            <div class="result-card-label">איכות כיוון</div>
+                            <div class="result-card-value" id="sunOrientationBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">יעילות</div>
+                            <div class="result-card-value highlight" id="sunEfficiencyBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">שעות שמש/שנה</div>
+                            <div class="result-card-value" id="sunHoursBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">kWh/m²/שנה</div>
+                            <div class="result-card-value" id="sunIrradianceBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">זריחה</div>
+                            <div class="result-card-value" id="sunSunriseBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">שקיעה</div>
+                            <div class="result-card-value" id="sunSunsetBottom">-</div>
+                        </div>
+                    </div>
+                    <div id="sunRecommendationsBottom" style="margin-top: 16px; display: none;">
+                        <div class="result-section-title">המלצות</div>
+                        <ul id="sunRecommendationsListBottom" style="margin: 0; padding-right: 20px; font-size: 12px; color: var(--text-medium);"></ul>
+                    </div>
+                </div>
+
+                <!-- Energy & Financial Tab -->
+                <div class="bottom-tab-content" id="tab-energy">
+                    <div class="results-row">
+                        <div class="result-card" style="min-width: 180px;">
+                            <div class="result-card-label">ייצור שנתי</div>
+                            <div class="result-card-value highlight" id="energyAnnualBottom">- kWh</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">ממוצע יומי</div>
+                            <div class="result-card-value" id="energyDailyBottom">- kWh</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">עלות מערכת</div>
+                            <div class="result-card-value" id="energyCostBottom">₪-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">חיסכון שנתי</div>
+                            <div class="result-card-value highlight" id="energySavingsBottom">₪-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">החזר השקעה</div>
+                            <div class="result-card-value accent" id="energyPaybackBottom">- שנים</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">ROI 25 שנה</div>
+                            <div class="result-card-value" id="energyRoiBottom">-%</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">CO₂ נחסך</div>
+                            <div class="result-card-value" id="energyCo2Bottom">- ק"ג</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Electrical Tab -->
+                <div class="bottom-tab-content" id="tab-electrical">
+                    <div class="results-row">
+                        <div class="result-card">
+                            <div class="result-card-label">מספר סטרינגים</div>
+                            <div class="result-card-value" id="elecStringsBottom">-</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">מתח מקסימלי</div>
+                            <div class="result-card-value" id="elecVoltageBottom">- V</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">הספק DC</div>
+                            <div class="result-card-value" id="elecDcPowerBottom">- kW</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-card-label">ממיר מומלץ</div>
+                            <div class="result-card-value accent" id="elecInverterBottom">- kW</div>
+                        </div>
+                    </div>
+                    <div id="elecDetailsBottom" style="margin-top: 16px; font-size: 12px; color: var(--text-medium);"></div>
+                    <div id="elecWarningsBottom" style="margin-top: 8px; display: none; color: #ff5722; font-size: 12px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2835,226 +2922,162 @@
             console.log(`[SUN] Displayed sun indicator: azimuth=${azimuth}°, elevation=${elevation}°`);
         }
 
-        function displayResults(result) {
-            document.getElementById('resultPanels').textContent = result.total_panels || result.num_panels || 0;
-            document.getElementById('resultPower').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
-            document.getElementById('resultCoverage').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
-            document.getElementById('resultArea').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
+        // Bottom panel tab switching
+        function switchBottomTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.bottom-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
 
-            // PHASE 2: Display automatic measurements if available
+            // Update tab content
+            document.querySelectorAll('.bottom-tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === 'tab-' + tabName);
+            });
+        }
+
+        // Toggle bottom panel visibility
+        function toggleBottomPanel() {
+            const panel = document.getElementById('bottomPanel');
+            const icon = panel.querySelector('.bottom-panel-actions i');
+
+            if (panel.classList.contains('visible')) {
+                panel.classList.remove('visible');
+            } else {
+                panel.classList.add('visible');
+            }
+        }
+
+        // Show bottom panel
+        function showBottomPanel() {
+            const panel = document.getElementById('bottomPanel');
+            panel.classList.add('visible');
+            lucide.createIcons();
+        }
+
+        function displayResults(result) {
+            // Populate bottom panel - Layout tab
+            document.getElementById('resultPanelsBottom').textContent = result.total_panels || result.num_panels || 0;
+            document.getElementById('resultPowerBottom').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
+            document.getElementById('resultCoverageBottom').textContent = (result.coverage_percent || result.coverage_percentage || 0).toFixed(1) + '%';
+            document.getElementById('resultAreaBottom').textContent = (result.roof_area_m2 || result.roof_area || 0).toFixed(1) + ' m²';
+
+            // Show bottom panel
+            showBottomPanel();
+
+            // PHASE 2: Display automatic measurements in bottom panel
             if (result.measurements) {
                 const m = result.measurements;
-                const measurementsPanel = document.getElementById('measurementsPanel');
 
-                if (measurementsPanel) {
-                    measurementsPanel.style.display = 'block';
+                // Show measurement cards in bottom panel
+                const lengthCard = document.getElementById('measurementLengthCard');
+                const widthCard = document.getElementById('measurementWidthCard');
 
-                    // Update measurement values
-                    document.getElementById('measurementLength').textContent = m.length_m ? m.length_m.toFixed(1) + ' m' : '-';
-                    document.getElementById('measurementWidth').textContent = m.width_m ? m.width_m.toFixed(1) + ' m' : '-';
-                    document.getElementById('measurementOrientation').textContent = m.orientation_name || '-';
-
-                    // Display confidence with color coding
-                    const confidence = m.confidence || 0;
-                    const confidenceEl = document.getElementById('measurementConfidence');
-                    confidenceEl.textContent = confidence + '%';
-
-                    if (confidence >= 80) {
-                        confidenceEl.style.color = '#3AE478'; // Green
-                    } else if (confidence >= 60) {
-                        confidenceEl.style.color = '#ffc107'; // Yellow
-                    } else {
-                        confidenceEl.style.color = '#ff5252'; // Red
-                    }
-
-                    // Display warnings if any
-                    const warningsDiv = document.getElementById('measurementWarnings');
-                    const warningsList = document.getElementById('measurementWarningsList');
-
-                    if (m.warnings && m.warnings.length > 0) {
-                        warningsList.innerHTML = '';
-                        m.warnings.forEach(warning => {
-                            const li = document.createElement('li');
-                            li.textContent = warning;
-                            li.style.marginBottom = '4px';
-                            warningsList.appendChild(li);
-                        });
-                        warningsDiv.style.display = 'block';
-                    } else {
-                        warningsDiv.style.display = 'none';
-                    }
-
-                    console.log('[PHASE 2] Measurements displayed:', m.summary);
+                if (lengthCard && widthCard) {
+                    lengthCard.style.display = 'block';
+                    widthCard.style.display = 'block';
+                    document.getElementById('measurementLengthBottom').textContent = m.length_m ? m.length_m.toFixed(1) + ' m' : '-';
+                    document.getElementById('measurementWidthBottom').textContent = m.width_m ? m.width_m.toFixed(1) + ' m' : '-';
                 }
-            } else {
-                // Hide measurements panel if no data
-                const measurementsPanel = document.getElementById('measurementsPanel');
-                if (measurementsPanel) {
-                    measurementsPanel.style.display = 'none';
-                }
+
+                console.log('[PHASE 2] Measurements displayed:', m.summary);
             }
 
-            // PHASE 3: Display sun analysis if available
-            console.log('[DEBUG] Full API result:', result);
-            console.log('[DEBUG] sun_analysis present:', !!result.sun_analysis);
+            // PHASE 3: Display sun analysis in bottom panel
             if (result.sun_analysis) {
                 const sun = result.sun_analysis;
-                const sunPanel = document.getElementById('sunAnalysisPanel');
 
-                if (sunPanel) {
-                    sunPanel.style.display = 'block';
+                if (sun.solar_potential) {
+                    const sp = sun.solar_potential;
+                    document.getElementById('sunOrientationBottom').textContent = sp.orientation_quality || '-';
+                    document.getElementById('sunEfficiencyBottom').textContent = (sp.overall_efficiency || 0).toFixed(0) + '%';
+                    document.getElementById('sunHoursBottom').textContent = sp.annual_sun_hours || '-';
 
-                    // Solar potential data
-                    if (sun.solar_potential) {
-                        const sp = sun.solar_potential;
-
-                        // Orientation quality with color
-                        const qualityEl = document.getElementById('sunOrientationQuality');
-                        qualityEl.textContent = sp.orientation_quality || '-';
-
-                        // Color based on efficiency
-                        const efficiency = sp.overall_efficiency || 0;
-                        if (efficiency >= 85) {
-                            qualityEl.style.color = '#3AE478'; // Green
-                        } else if (efficiency >= 65) {
-                            qualityEl.style.color = '#ffc107'; // Yellow
-                        } else {
-                            qualityEl.style.color = '#ff9800'; // Orange
-                        }
-
-                        document.getElementById('sunEfficiency').textContent = efficiency.toFixed(0) + '%';
-                        document.getElementById('sunAnnualHours').textContent = sp.annual_sun_hours || '-';
-
-                        // Recommendations
-                        const recsDiv = document.getElementById('sunRecommendations');
-                        const recsList = document.getElementById('sunRecommendationsList');
-
-                        if (sp.recommendations && sp.recommendations.length > 0) {
-                            recsList.innerHTML = '';
-                            sp.recommendations.forEach(rec => {
-                                const li = document.createElement('li');
-                                li.textContent = rec;
-                                li.style.marginBottom = '4px';
-                                recsList.appendChild(li);
-                            });
-                            recsDiv.style.display = 'block';
-                        } else {
-                            recsDiv.style.display = 'none';
-                        }
+                    // Recommendations in bottom panel
+                    if (sp.recommendations && sp.recommendations.length > 0) {
+                        const recsDiv = document.getElementById('sunRecommendationsBottom');
+                        const recsList = document.getElementById('sunRecommendationsListBottom');
+                        recsList.innerHTML = '';
+                        sp.recommendations.forEach(rec => {
+                            const li = document.createElement('li');
+                            li.textContent = rec;
+                            recsList.appendChild(li);
+                        });
+                        recsDiv.style.display = 'block';
                     }
-
-                    // Irradiance data
-                    if (sun.irradiance) {
-                        document.getElementById('sunIrradiance').textContent = sun.irradiance.annual_kwh_per_m2 || '-';
-                    }
-
-                    // Current sun position
-                    if (sun.current_sun) {
-                        const cs = sun.current_sun;
-                        document.getElementById('sunSunrise').textContent = cs.sunrise || '-';
-                        document.getElementById('sunSunset').textContent = cs.sunset || '-';
-                        document.getElementById('sunAzimuth').textContent = cs.azimuth?.toFixed(0) || '-';
-                        document.getElementById('sunElevation').textContent = cs.elevation?.toFixed(0) || '-';
-
-                        // Display sun direction indicator on canvas
-                        displaySunDirection(cs.azimuth, cs.elevation, cs.is_daytime);
-                    }
-
-                    console.log('[PHASE 3] Sun analysis displayed:', sun.solar_potential?.orientation_quality);
                 }
-            } else {
-                // Hide sun analysis panel if no data
-                const sunPanel = document.getElementById('sunAnalysisPanel');
-                if (sunPanel) {
-                    sunPanel.style.display = 'none';
+
+                if (sun.irradiance) {
+                    document.getElementById('sunIrradianceBottom').textContent = sun.irradiance.annual_kwh_per_m2 || '-';
                 }
+
+                if (sun.current_sun) {
+                    const cs = sun.current_sun;
+                    document.getElementById('sunSunriseBottom').textContent = cs.sunrise || '-';
+                    document.getElementById('sunSunsetBottom').textContent = cs.sunset || '-';
+                    displaySunDirection(cs.azimuth, cs.elevation, cs.is_daytime);
+                }
+
+                console.log('[PHASE 3] Sun analysis displayed in bottom panel');
             }
 
-            // PHASE 4: Display energy and financial estimates
+            // PHASE 4: Display energy and financial estimates in bottom panel
             if (result.energy_estimate) {
                 const energy = result.energy_estimate;
-                const energyPanel = document.getElementById('energyEstimatePanel');
 
-                if (energyPanel) {
-                    energyPanel.style.display = 'block';
-
-                    // Production data
-                    if (energy.production) {
-                        document.getElementById('energyAnnualKwh').textContent =
-                            energy.production.annual_kwh?.toLocaleString() || '-';
-                        document.getElementById('energyDailyKwh').textContent =
-                            energy.production.daily_avg_kwh || '-';
-                    }
-
-                    // Financial data
-                    if (energy.financial) {
-                        document.getElementById('energySystemCost').textContent =
-                            energy.financial.system_cost_nis?.toLocaleString() || '-';
-                        document.getElementById('energyAnnualSavings').textContent =
-                            energy.financial.annual_savings_nis?.toLocaleString() || '-';
-                        document.getElementById('energyPaybackYears').textContent =
-                            energy.financial.payback_years || '-';
-                        document.getElementById('energyRoi25').textContent =
-                            energy.financial.roi_25_years || '-';
-                    }
-
-                    // Environmental data
-                    if (energy.environmental) {
-                        document.getElementById('energyCo2Offset').textContent =
-                            energy.environmental.annual_co2_offset_kg?.toLocaleString() || '-';
-                        document.getElementById('energyTreesEquiv').textContent =
-                            energy.environmental.trees_equivalent || '-';
-                    }
-
-                    console.log('[PHASE 4] Energy estimate displayed:', energy.production?.annual_kwh, 'kWh/year');
+                if (energy.production) {
+                    document.getElementById('energyAnnualBottom').textContent =
+                        (energy.production.annual_kwh?.toLocaleString() || '-') + ' kWh';
+                    document.getElementById('energyDailyBottom').textContent =
+                        (energy.production.daily_avg_kwh || '-') + ' kWh';
                 }
-            } else {
-                // Hide energy panel if no data
-                const energyPanel = document.getElementById('energyEstimatePanel');
-                if (energyPanel) {
-                    energyPanel.style.display = 'none';
+
+                if (energy.financial) {
+                    document.getElementById('energyCostBottom').textContent =
+                        '₪' + (energy.financial.system_cost_nis?.toLocaleString() || '-');
+                    document.getElementById('energySavingsBottom').textContent =
+                        '₪' + (energy.financial.annual_savings_nis?.toLocaleString() || '-');
+                    document.getElementById('energyPaybackBottom').textContent =
+                        (energy.financial.payback_years || '-') + ' שנים';
+                    document.getElementById('energyRoiBottom').textContent =
+                        (energy.financial.roi_25_years || '-') + '%';
                 }
+
+                if (energy.environmental) {
+                    document.getElementById('energyCo2Bottom').textContent =
+                        (energy.environmental.annual_co2_offset_kg?.toLocaleString() || '-') + ' ק"ג';
+                }
+
+                console.log('[PHASE 4] Energy estimate displayed in bottom panel');
             }
 
-            // Display electrical stringing data
+            // Display electrical stringing data in bottom panel
             if (result.electrical_stringing) {
                 const stringing = result.electrical_stringing;
-                const stringingPanel = document.getElementById('stringingPanel');
 
-                if (stringingPanel) {
-                    stringingPanel.style.display = 'block';
+                document.getElementById('elecStringsBottom').textContent = stringing.string_count || '-';
+                document.getElementById('elecVoltageBottom').textContent = (stringing.max_string_voltage || '-') + ' V';
+                document.getElementById('elecDcPowerBottom').textContent = (stringing.total_dc_power_kw || '-') + ' kW';
+                document.getElementById('elecInverterBottom').textContent = (stringing.recommended_inverter_kw || '-') + ' kW';
 
-                    document.getElementById('stringingCount').textContent = stringing.string_count || '-';
-                    document.getElementById('stringingMaxVoltage').textContent = stringing.max_string_voltage || '-';
-                    document.getElementById('stringingDcPower').textContent = stringing.total_dc_power_kw || '-';
-                    document.getElementById('stringingInverter').textContent = stringing.recommended_inverter_kw || '-';
-
-                    // Build string details
-                    const detailsDiv = document.getElementById('stringingDetails');
-                    if (detailsDiv && stringing.strings && stringing.strings.length > 0) {
-                        let detailsHtml = '<div style="font-weight: 600; margin-bottom: 4px;">פירוט סטרינגים:</div>';
-                        stringing.strings.forEach(s => {
-                            detailsHtml += `<div style="margin-bottom: 2px;">סטרינג ${s.string_id}: ${s.panel_count} פאנלים, ${s.voltage_vmp}V, ${s.power_w}W (MPPT ${s.mppt})</div>`;
-                        });
-                        detailsDiv.innerHTML = detailsHtml;
-                    }
-
-                    // Show warnings if any
-                    const warningsDiv = document.getElementById('stringingWarnings');
-                    if (warningsDiv && stringing.warnings && stringing.warnings.length > 0) {
-                        warningsDiv.style.display = 'block';
-                        warningsDiv.innerHTML = '<strong>אזהרות:</strong><br>' + stringing.warnings.join('<br>');
-                    } else if (warningsDiv) {
-                        warningsDiv.style.display = 'none';
-                    }
-
-                    console.log('[PHASE 4] Stringing displayed:', stringing.string_count, 'strings');
+                // Build string details for bottom panel
+                const detailsDiv = document.getElementById('elecDetailsBottom');
+                if (detailsDiv && stringing.strings && stringing.strings.length > 0) {
+                    let detailsHtml = stringing.strings.map(s =>
+                        `סטרינג ${s.string_id}: ${s.panel_count} פאנלים, ${s.voltage_vmp}V (MPPT ${s.mppt})`
+                    ).join(' | ');
+                    detailsDiv.textContent = detailsHtml;
                 }
-            } else {
-                const stringingPanel = document.getElementById('stringingPanel');
-                if (stringingPanel) {
-                    stringingPanel.style.display = 'none';
+
+                // Show warnings
+                const warningsDiv = document.getElementById('elecWarningsBottom');
+                if (warningsDiv && stringing.warnings && stringing.warnings.length > 0) {
+                    warningsDiv.style.display = 'block';
+                    warningsDiv.textContent = stringing.warnings.join(' | ');
+                } else if (warningsDiv) {
+                    warningsDiv.style.display = 'none';
                 }
+
+                console.log('[PHASE 4] Stringing displayed in bottom panel');
             }
         }
 
