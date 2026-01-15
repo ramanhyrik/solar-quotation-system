@@ -1430,6 +1430,52 @@
                     </div>
                 </div>
 
+                <!-- PHASE 4: Energy & Financial Estimates -->
+                <div class="results-panel" id="energyEstimatePanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.05));">
+                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">⚡ אומדן אנרגיה ופיננסים</h3>
+
+                    <!-- Production -->
+                    <div style="margin-bottom: 10px;">
+                        <div style="font-size: 11px; color: var(--text-medium); margin-bottom: 4px;">ייצור שנתי</div>
+                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                            <span id="energyAnnualKwh" style="font-size: 24px; font-weight: 700; color: #4caf50;">-</span>
+                            <span style="font-size: 12px; color: var(--text-medium);">kWh/שנה</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-medium);">
+                            ממוצע יומי: <span id="energyDailyKwh" style="font-weight: 600;">-</span> kWh
+                        </div>
+                    </div>
+
+                    <!-- Financial -->
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">עלות מערכת</div>
+                            <div class="result-value" style="font-size: 16px;">₪<span id="energySystemCost">-</span></div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">חיסכון שנתי</div>
+                            <div class="result-value" style="font-size: 16px; color: #4caf50;">₪<span id="energyAnnualSavings">-</span></div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">החזר השקעה</div>
+                            <div class="result-value" style="font-size: 16px;"><span id="energyPaybackYears">-</span> שנים</div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">ROI ל-25 שנה</div>
+                            <div class="result-value" style="font-size: 16px; color: #8bc34a;"><span id="energyRoi25">-</span>%</div>
+                        </div>
+                    </div>
+
+                    <!-- Environmental -->
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 8px; border-radius: 6px; font-size: 11px;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">🌍 השפעה סביבתית (שנתי)</div>
+                        <div style="display: flex; gap: 16px;">
+                            <span>CO₂ נחסך: <strong id="energyCo2Offset">-</strong> ק"ג</span>
+                            <span>🌳 שווה ערך: <strong id="energyTreesEquiv">-</strong> עצים</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
                     <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
@@ -2763,6 +2809,52 @@
                 const sunPanel = document.getElementById('sunAnalysisPanel');
                 if (sunPanel) {
                     sunPanel.style.display = 'none';
+                }
+            }
+
+            // PHASE 4: Display energy and financial estimates
+            if (result.energy_estimate) {
+                const energy = result.energy_estimate;
+                const energyPanel = document.getElementById('energyEstimatePanel');
+
+                if (energyPanel) {
+                    energyPanel.style.display = 'block';
+
+                    // Production data
+                    if (energy.production) {
+                        document.getElementById('energyAnnualKwh').textContent =
+                            energy.production.annual_kwh?.toLocaleString() || '-';
+                        document.getElementById('energyDailyKwh').textContent =
+                            energy.production.daily_avg_kwh || '-';
+                    }
+
+                    // Financial data
+                    if (energy.financial) {
+                        document.getElementById('energySystemCost').textContent =
+                            energy.financial.system_cost_nis?.toLocaleString() || '-';
+                        document.getElementById('energyAnnualSavings').textContent =
+                            energy.financial.annual_savings_nis?.toLocaleString() || '-';
+                        document.getElementById('energyPaybackYears').textContent =
+                            energy.financial.payback_years || '-';
+                        document.getElementById('energyRoi25').textContent =
+                            energy.financial.roi_25_years || '-';
+                    }
+
+                    // Environmental data
+                    if (energy.environmental) {
+                        document.getElementById('energyCo2Offset').textContent =
+                            energy.environmental.annual_co2_offset_kg?.toLocaleString() || '-';
+                        document.getElementById('energyTreesEquiv').textContent =
+                            energy.environmental.trees_equivalent || '-';
+                    }
+
+                    console.log('[PHASE 4] Energy estimate displayed:', energy.production?.annual_kwh, 'kWh/year');
+                }
+            } else {
+                // Hide energy panel if no data
+                const energyPanel = document.getElementById('energyEstimatePanel');
+                if (energyPanel) {
+                    energyPanel.style.display = 'none';
                 }
             }
         }

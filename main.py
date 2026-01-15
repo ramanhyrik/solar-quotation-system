@@ -2462,6 +2462,43 @@ async def calculate_layout_endpoint(
 
                 print(f"[PHASE 3] Sun analysis: {solar_potential['orientation_quality']} ({solar_potential['overall_efficiency']}% efficiency)")
 
+                # PHASE 4: Add energy production and financial estimates
+                try:
+                    from energy_calculations import calculate_complete_estimate
+
+                    energy_estimate = calculate_complete_estimate(
+                        system_power_kw=layout_result['total_power_kw'],
+                        panel_count=layout_result['total_panels'],
+                        latitude=location['latitude'],
+                        orientation_efficiency=solar_potential['overall_efficiency'],
+                        self_consumption_ratio=0.70
+                    )
+
+                    response_data["energy_estimate"] = {
+                        "production": {
+                            "annual_kwh": energy_estimate['production']['annual_kwh'],
+                            "daily_avg_kwh": energy_estimate['production']['daily_avg_kwh'],
+                            "monthly_kwh": energy_estimate['production']['monthly_kwh'],
+                            "system_efficiency": energy_estimate['production']['system_efficiency']
+                        },
+                        "financial": {
+                            "system_cost_nis": energy_estimate['financial']['system_cost']['total'],
+                            "annual_savings_nis": energy_estimate['financial']['annual_savings']['total'],
+                            "payback_years": energy_estimate['financial']['payback_years'],
+                            "roi_25_years": energy_estimate['financial']['roi_25_years'],
+                            "break_even_year": energy_estimate['financial']['break_even_year']
+                        },
+                        "environmental": {
+                            "annual_co2_offset_kg": energy_estimate['environmental']['annual_co2_offset_kg'],
+                            "trees_equivalent": energy_estimate['environmental']['equivalencies']['trees_planted']
+                        }
+                    }
+
+                    print(f"[PHASE 4] Energy estimate: {energy_estimate['production']['annual_kwh']} kWh/year, payback {energy_estimate['financial']['payback_years']} years")
+
+                except Exception as energy_error:
+                    print(f"[PHASE 4] Energy calculation error (non-fatal): {str(energy_error)}")
+
             except Exception as sun_error:
                 print(f"[PHASE 3] Sun analysis error (non-fatal): {str(sun_error)}")
                 # Don't fail the whole request if sun analysis fails
