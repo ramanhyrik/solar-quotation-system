@@ -19,17 +19,25 @@ class AdvancedPanelLayoutCalculator:
     - Polygon-based exclusion zones
     - Edge-to-edge coverage
     - Gap-filling algorithm
+    - Setback enforcement (building code compliance)
     """
 
     def __init__(self, roof_polygon: List[Tuple[float, float]],
-                 obstacles: List[Dict] = None):
+                 obstacles: List[Dict] = None,
+                 setback_m: float = 0.0,
+                 pixels_per_meter: float = 100.0):
         """
         Initialize panel layout calculator
 
         Args:
             roof_polygon: List of (x, y) tuples defining roof boundary
             obstacles: List of obstacle dictionaries with 'points' (polygon) or 'x,y,width,height' (rectangle)
+            setback_m: Setback distance from roof edge in meters (building code requirement)
+            pixels_per_meter: Scale factor for converting meters to pixels
         """
+        self.setback_m = setback_m
+        self.pixels_per_meter = pixels_per_meter
+        self.original_roof_polygon = None  # Store original for reference
         # Create polygon and fix if invalid
         try:
             poly = Polygon(roof_polygon)
@@ -49,13 +57,32 @@ class AdvancedPanelLayoutCalculator:
 
                 print(f"[PANEL CALCULATOR] Polygon repaired. Valid: {poly.is_valid}")
 
+            self.original_roof_polygon = poly
             self.roof_polygon = poly
+
+            # Apply setback if specified (shrink polygon by setback distance)
+            if self.setback_m > 0:
+                setback_px = self.setback_m * self.pixels_per_meter
+                setback_poly = poly.buffer(-setback_px)  # Negative buffer shrinks
+
+                if setback_poly.is_valid and not setback_poly.is_empty:
+                    if isinstance(setback_poly, MultiPolygon):
+                        # Use largest component if setback creates multiple polygons
+                        setback_poly = max(setback_poly.geoms, key=lambda p: p.area)
+
+                    self.roof_polygon = setback_poly
+                    print(f"[PANEL CALCULATOR] Applied {self.setback_m}m setback ({setback_px:.1f}px)")
+                    print(f"[PANEL CALCULATOR] Usable area after setback: {setback_poly.area:.0f}px² (was {poly.area:.0f}px²)")
+                else:
+                    print(f"[PANEL CALCULATOR] WARNING: Setback too large, using original polygon")
+
         except Exception as e:
             print(f"[PANEL CALCULATOR] ERROR creating polygon: {e}")
             coords = np.array(roof_polygon)
             min_x, min_y = coords.min(axis=0)
             max_x, max_y = coords.max(axis=0)
             self.roof_polygon = box(min_x, min_y, max_x, max_y)
+            self.original_roof_polygon = self.roof_polygon
             print(f"[PANEL CALCULATOR] Using bounding box fallback")
 
         self.obstacles = obstacles or []
@@ -536,10 +563,22 @@ def calculate_panel_layout_from_data(
     panel_power_w: int = 400,
     spacing_m: float = 0.05,
     pixels_per_meter: float = 100.0,
-    orientation: str = "auto"
+    orientation: str = "auto",
+    setback_m: float = 0.3  # Default 30cm setback (building code)
 ) -> Dict:
     """
     Calculate panel layout from manually drawn roof data
+
+    Args:
+        roof_polygon: List of (x, y) tuples defining roof boundary
+        obstacles: List of obstacle dictionaries
+        panel_width_m: Panel width in meters
+        panel_height_m: Panel height in meters
+        panel_power_w: Panel power in watts
+        spacing_m: Spacing between panels in meters
+        pixels_per_meter: Image scale
+        orientation: "landscape", "portrait", or "auto"
+        setback_m: Distance from roof edge (building code requirement)
 
     Returns:
         Panel layout results
@@ -604,7 +643,12 @@ def calculate_panel_layout_from_data(
                     print(f"[WARNING] Could not convert obstacle {obs}: {e}")
                     continue
 
-        calculator = AdvancedPanelLayoutCalculator(cleaned_polygon, cleaned_obstacles)
+        calculator = AdvancedPanelLayoutCalculator(
+            cleaned_polygon,
+            cleaned_obstacles,
+            setback_m=setback_m,
+            pixels_per_meter=pixels_per_meter
+        )
 
         results = calculator.calculate_layout(
             panel_width_m=panel_width_m,

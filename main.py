@@ -2496,6 +2496,62 @@ async def calculate_layout_endpoint(
 
                     print(f"[PHASE 4] Energy estimate: {energy_estimate['production']['annual_kwh']} kWh/year, payback {energy_estimate['financial']['payback_years']} years")
 
+                    # Add electrical stringing calculation
+                    try:
+                        from energy_calculations import calculate_electrical_stringing
+
+                        stringing = calculate_electrical_stringing(
+                            panel_count=layout_result['total_panels'],
+                            panel_power_w=panel_power_w
+                        )
+
+                        response_data["electrical_stringing"] = {
+                            "string_count": stringing['string_count'],
+                            "strings": stringing['strings'],
+                            "mppt_assignments": stringing['mppt_assignments'],
+                            "total_dc_power_kw": stringing['total_dc_power_kw'],
+                            "max_string_voltage": stringing['max_string_voltage'],
+                            "recommended_inverter_kw": stringing['recommended_inverter_kw'],
+                            "warnings": stringing['warnings']
+                        }
+                        print(f"[PHASE 4] Stringing: {stringing['string_count']} strings, recommended inverter: {stringing['recommended_inverter_kw']} kW")
+
+                    except Exception as stringing_error:
+                        print(f"[PHASE 4] Stringing calculation error (non-fatal): {str(stringing_error)}")
+
+                    # Save energy production data to database
+                    try:
+                        with get_db() as conn:
+                            cursor = get_cursor(conn)
+                            cursor.execute('''
+                                UPDATE roof_designs SET
+                                    annual_production_kwh = %s,
+                                    annual_savings_nis = %s,
+                                    system_cost_nis = %s,
+                                    payback_years = %s,
+                                    roi_25_years = %s,
+                                    co2_offset_kg = %s,
+                                    string_count = %s,
+                                    recommended_inverter_kw = %s,
+                                    energy_estimate_json = %s
+                                WHERE id = %s
+                            ''', (
+                                energy_estimate['production']['annual_kwh'],
+                                energy_estimate['financial']['annual_savings']['total'],
+                                energy_estimate['financial']['system_cost']['total'],
+                                energy_estimate['financial']['payback_years'],
+                                energy_estimate['financial']['roi_25_years'],
+                                energy_estimate['environmental']['annual_co2_offset_kg'],
+                                response_data.get('electrical_stringing', {}).get('string_count'),
+                                response_data.get('electrical_stringing', {}).get('recommended_inverter_kw'),
+                                json.dumps(energy_estimate),
+                                design_id
+                            ))
+                            conn.commit()
+                            print(f"[PHASE 4] Energy data saved to database")
+                    except Exception as db_error:
+                        print(f"[PHASE 4] Failed to save energy data: {str(db_error)}")
+
                 except Exception as energy_error:
                     print(f"[PHASE 4] Energy calculation error (non-fatal): {str(energy_error)}")
 

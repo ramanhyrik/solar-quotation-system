@@ -1476,6 +1476,36 @@
                     </div>
                 </div>
 
+                <!-- Electrical Stringing Panel -->
+                <div class="results-panel" id="stringingPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 193, 7, 0.05));">
+                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">🔌 חיבור חשמלי</h3>
+
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">מספר סטרינגים</div>
+                            <div class="result-value" style="font-size: 16px;"><span id="stringingCount">-</span></div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">מתח מקסימלי</div>
+                            <div class="result-value" style="font-size: 16px;"><span id="stringingMaxVoltage">-</span>V</div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">הספק DC כולל</div>
+                            <div class="result-value" style="font-size: 16px;"><span id="stringingDcPower">-</span> kW</div>
+                        </div>
+                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                            <div class="result-label">ממיר מומלץ</div>
+                            <div class="result-value" style="font-size: 16px; color: #ff9800;"><span id="stringingInverter">-</span> kW</div>
+                        </div>
+                    </div>
+
+                    <!-- String details -->
+                    <div id="stringingDetails" style="font-size: 11px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px;"></div>
+
+                    <!-- Warnings -->
+                    <div id="stringingWarnings" style="display: none; margin-top: 8px; font-size: 11px; color: #ff5722; background: rgba(255, 87, 34, 0.1); padding: 8px; border-radius: 6px;"></div>
+                </div>
+
                 <div class="form-group" style="margin-top: 12px;">
                     <label>שם לקוח (אופציונלי)</label>
                     <input type="text" id="customerNameInput" placeholder="לדוגמה: יעל כהן" dir="rtl" class="rtl-input">
@@ -2680,6 +2710,107 @@
             console.log(`[DISPLAY] Rendered ${panels.length} photo-realistic panels`);
         }
 
+        // Sun direction indicator on canvas
+        let sunIndicator = null;
+
+        function displaySunDirection(azimuth, elevation, isDay) {
+            // Remove existing sun indicator
+            if (sunIndicator) {
+                canvas.remove(sunIndicator);
+                sunIndicator = null;
+            }
+
+            if (!isDay || elevation <= 0) {
+                console.log('[SUN] Sun below horizon, not displaying indicator');
+                return;
+            }
+
+            // Position sun indicator in top-right corner of canvas
+            const indicatorSize = 80;
+            const margin = 20;
+            const centerX = canvas.width - indicatorSize / 2 - margin;
+            const centerY = indicatorSize / 2 + margin;
+
+            // Create compass circle
+            const compassCircle = new fabric.Circle({
+                radius: indicatorSize / 2,
+                fill: 'rgba(0, 0, 0, 0.6)',
+                stroke: '#ffc107',
+                strokeWidth: 2,
+                originX: 'center',
+                originY: 'center'
+            });
+
+            // Cardinal direction labels
+            const directions = [
+                { text: 'N', angle: 0 },
+                { text: 'E', angle: 90 },
+                { text: 'S', angle: 180 },
+                { text: 'W', angle: 270 }
+            ];
+
+            const dirLabels = directions.map(d => {
+                const rad = (d.angle - 90) * Math.PI / 180;
+                const r = indicatorSize / 2 - 12;
+                return new fabric.Text(d.text, {
+                    fontSize: 10,
+                    fill: d.text === 'S' ? '#4caf50' : '#ffffff',
+                    fontWeight: d.text === 'S' ? 'bold' : 'normal',
+                    originX: 'center',
+                    originY: 'center',
+                    left: Math.cos(rad) * r,
+                    top: Math.sin(rad) * r
+                });
+            });
+
+            // Sun arrow pointing to sun azimuth
+            const sunRad = (azimuth - 90) * Math.PI / 180;
+            const arrowLength = indicatorSize / 2 - 20;
+
+            const sunArrow = new fabric.Line([0, 0, Math.cos(sunRad) * arrowLength, Math.sin(sunRad) * arrowLength], {
+                stroke: '#ffc107',
+                strokeWidth: 3,
+                originX: 'center',
+                originY: 'center'
+            });
+
+            // Sun icon at arrow tip
+            const sunIconX = Math.cos(sunRad) * (arrowLength - 5);
+            const sunIconY = Math.sin(sunRad) * (arrowLength - 5);
+            const sunIcon = new fabric.Circle({
+                radius: 6,
+                fill: '#ffc107',
+                stroke: '#ff9800',
+                strokeWidth: 1,
+                originX: 'center',
+                originY: 'center',
+                left: sunIconX,
+                top: sunIconY
+            });
+
+            // Elevation text
+            const elevText = new fabric.Text(`☀️ ${elevation.toFixed(0)}°`, {
+                fontSize: 10,
+                fill: '#ffc107',
+                originX: 'center',
+                originY: 'center',
+                top: indicatorSize / 2 + 12
+            });
+
+            // Group all elements
+            sunIndicator = new fabric.Group([compassCircle, ...dirLabels, sunArrow, sunIcon, elevText], {
+                left: centerX,
+                top: centerY,
+                selectable: false,
+                evented: false,
+                objectType: 'sunIndicator'
+            });
+
+            canvas.add(sunIndicator);
+            canvas.renderAll();
+            console.log(`[SUN] Displayed sun indicator: azimuth=${azimuth}°, elevation=${elevation}°`);
+        }
+
         function displayResults(result) {
             document.getElementById('resultPanels').textContent = result.total_panels || result.num_panels || 0;
             document.getElementById('resultPower').textContent = ((result.total_power_kw || result.total_power / 1000) || 0).toFixed(2) + ' kW';
@@ -2800,6 +2931,9 @@
                         document.getElementById('sunSunset').textContent = cs.sunset || '-';
                         document.getElementById('sunAzimuth').textContent = cs.azimuth?.toFixed(0) || '-';
                         document.getElementById('sunElevation').textContent = cs.elevation?.toFixed(0) || '-';
+
+                        // Display sun direction indicator on canvas
+                        displaySunDirection(cs.azimuth, cs.elevation, cs.is_daytime);
                     }
 
                     console.log('[PHASE 3] Sun analysis displayed:', sun.solar_potential?.orientation_quality);
@@ -2855,6 +2989,47 @@
                 const energyPanel = document.getElementById('energyEstimatePanel');
                 if (energyPanel) {
                     energyPanel.style.display = 'none';
+                }
+            }
+
+            // Display electrical stringing data
+            if (result.electrical_stringing) {
+                const stringing = result.electrical_stringing;
+                const stringingPanel = document.getElementById('stringingPanel');
+
+                if (stringingPanel) {
+                    stringingPanel.style.display = 'block';
+
+                    document.getElementById('stringingCount').textContent = stringing.string_count || '-';
+                    document.getElementById('stringingMaxVoltage').textContent = stringing.max_string_voltage || '-';
+                    document.getElementById('stringingDcPower').textContent = stringing.total_dc_power_kw || '-';
+                    document.getElementById('stringingInverter').textContent = stringing.recommended_inverter_kw || '-';
+
+                    // Build string details
+                    const detailsDiv = document.getElementById('stringingDetails');
+                    if (detailsDiv && stringing.strings && stringing.strings.length > 0) {
+                        let detailsHtml = '<div style="font-weight: 600; margin-bottom: 4px;">פירוט סטרינגים:</div>';
+                        stringing.strings.forEach(s => {
+                            detailsHtml += `<div style="margin-bottom: 2px;">סטרינג ${s.string_id}: ${s.panel_count} פאנלים, ${s.voltage_vmp}V, ${s.power_w}W (MPPT ${s.mppt})</div>`;
+                        });
+                        detailsDiv.innerHTML = detailsHtml;
+                    }
+
+                    // Show warnings if any
+                    const warningsDiv = document.getElementById('stringingWarnings');
+                    if (warningsDiv && stringing.warnings && stringing.warnings.length > 0) {
+                        warningsDiv.style.display = 'block';
+                        warningsDiv.innerHTML = '<strong>אזהרות:</strong><br>' + stringing.warnings.join('<br>');
+                    } else if (warningsDiv) {
+                        warningsDiv.style.display = 'none';
+                    }
+
+                    console.log('[PHASE 4] Stringing displayed:', stringing.string_count, 'strings');
+                }
+            } else {
+                const stringingPanel = document.getElementById('stringingPanel');
+                if (stringingPanel) {
+                    stringingPanel.style.display = 'none';
                 }
             }
         }

@@ -252,6 +252,15 @@ def init_database():
     except Exception as e:
         print(f"[WARNING] Phase 2 migration failed: {e}")
 
+    # Run Phase 4 migration (Energy Production & Financial Estimates)
+    try:
+        from database_migration_phase4 import migrate_phase4_energy_production
+        migrate_phase4_energy_production()
+    except ImportError:
+        print("[WARNING] database_migration_phase4.py not found - skipping Phase 4 migration")
+    except Exception as e:
+        print(f"[WARNING] Phase 4 migration failed: {e}")
+
 def hash_password(password: str) -> str:
     """Hash password using bcrypt with SHA-256 pre-hash (handles any length)"""
     password_hash = hashlib.sha256(password.encode()).hexdigest()

@@ -292,6 +292,152 @@ def calculate_environmental_impact(annual_kwh: float) -> Dict:
     }
 
 
+def calculate_electrical_stringing(
+    panel_count: int,
+    panel_power_w: int = 400,
+    panel_voc: float = 49.5,  # Open circuit voltage
+    panel_vmp: float = 41.5,  # Voltage at max power
+    panel_isc: float = 10.5,  # Short circuit current
+    panel_imp: float = 9.6,   # Current at max power
+    inverter_max_voltage: float = 600,  # Max DC voltage
+    inverter_min_voltage: float = 200,  # Min MPPT voltage
+    inverter_max_current: float = 20,   # Max input current per MPPT
+    mppt_count: int = 2,      # Number of MPPT inputs
+    min_string_length: int = 6,
+    max_string_length: int = 15
+) -> Dict:
+    """
+    Calculate optimal electrical stringing configuration.
+
+    Groups panels into strings for inverter connection, considering:
+    - Voltage limits (min/max for MPPT operation)
+    - Current limits per MPPT input
+    - Balanced string lengths
+
+    Args:
+        panel_count: Total number of panels
+        panel_power_w: Panel wattage
+        panel_voc: Open circuit voltage (V)
+        panel_vmp: Voltage at maximum power (V)
+        panel_isc: Short circuit current (A)
+        panel_imp: Current at maximum power (A)
+        inverter_max_voltage: Maximum DC input voltage
+        inverter_min_voltage: Minimum MPPT operating voltage
+        inverter_max_current: Maximum current per MPPT
+        mppt_count: Number of MPPT inputs on inverter
+        min_string_length: Minimum panels per string
+        max_string_length: Maximum panels per string
+
+    Returns:
+        Dictionary with stringing configuration
+    """
+    # Calculate voltage limits for string length
+    # Account for temperature variations (+/- 15% from STC)
+    voc_hot = panel_voc * 0.85   # Voltage decreases when hot
+    voc_cold = panel_voc * 1.15  # Voltage increases when cold
+
+    # Max string length based on cold Voc (highest voltage scenario)
+    max_by_voltage = int(inverter_max_voltage / voc_cold)
+
+    # Min string length based on hot Vmp (lowest voltage scenario)
+    min_by_voltage = int(inverter_min_voltage / (panel_vmp * 0.85)) + 1
+
+    # Clamp to reasonable range
+    effective_min = max(min_string_length, min_by_voltage)
+    effective_max = min(max_string_length, max_by_voltage)
+
+    if effective_min > effective_max:
+        # Voltage requirements conflict - use defaults
+        effective_min = min_string_length
+        effective_max = max_string_length
+
+    # Calculate optimal string length for equal distribution
+    strings = []
+    remaining_panels = panel_count
+
+    # Try to create balanced strings
+    # Start with optimal length (middle of range)
+    optimal_length = (effective_min + effective_max) // 2
+
+    # Calculate number of strings needed
+    num_strings = max(1, round(panel_count / optimal_length))
+
+    # Adjust to fit MPPT constraints
+    if num_strings > mppt_count * 2:  # Allow 2 strings per MPPT (parallel)
+        num_strings = mppt_count * 2
+        optimal_length = panel_count // num_strings
+
+    # Create strings
+    panels_per_string = panel_count // num_strings
+    extra_panels = panel_count % num_strings
+
+    for i in range(num_strings):
+        string_length = panels_per_string + (1 if i < extra_panels else 0)
+        if string_length > 0:
+            strings.append({
+                'string_id': i + 1,
+                'panel_count': string_length,
+                'voltage_voc': round(string_length * panel_voc, 1),
+                'voltage_vmp': round(string_length * panel_vmp, 1),
+                'power_w': string_length * panel_power_w,
+                'mppt': (i % mppt_count) + 1
+            })
+
+    # Calculate totals
+    total_dc_power = sum(s['power_w'] for s in strings)
+    max_string_voc = max(s['voltage_voc'] for s in strings) if strings else 0
+
+    # Assign strings to MPPTs
+    mppt_assignments = {}
+    for i in range(mppt_count):
+        mppt_strings = [s for s in strings if s['mppt'] == i + 1]
+        mppt_assignments[f'MPPT {i + 1}'] = {
+            'strings': len(mppt_strings),
+            'panels': sum(s['panel_count'] for s in mppt_strings),
+            'power_w': sum(s['power_w'] for s in mppt_strings)
+        }
+
+    # Recommended inverter size (typically 90-110% of DC power)
+    recommended_inverter_kw = round(total_dc_power / 1000 * 0.95, 1)
+
+    return {
+        'panel_count': panel_count,
+        'string_count': len(strings),
+        'strings': strings,
+        'mppt_assignments': mppt_assignments,
+        'total_dc_power_kw': round(total_dc_power / 1000, 2),
+        'max_string_voltage': round(max_string_voc, 1),
+        'recommended_inverter_kw': recommended_inverter_kw,
+        'voltage_limits': {
+            'min_string_length': effective_min,
+            'max_string_length': effective_max,
+            'panels_voc': panel_voc,
+            'panels_vmp': panel_vmp
+        },
+        'warnings': _get_stringing_warnings(strings, inverter_max_voltage, inverter_max_current, panel_isc)
+    }
+
+
+def _get_stringing_warnings(strings: List[Dict], max_voltage: float,
+                           max_current: float, panel_isc: float) -> List[str]:
+    """Generate warnings for stringing configuration."""
+    warnings = []
+
+    for s in strings:
+        if s['voltage_voc'] > max_voltage * 0.9:
+            warnings.append(f"String {s['string_id']}: Voltage ({s['voltage_voc']}V) approaching inverter limit")
+
+    # Check if parallel strings exceed current limit
+    from collections import Counter
+    mppt_string_counts = Counter(s['mppt'] for s in strings)
+    for mppt, count in mppt_string_counts.items():
+        parallel_current = panel_isc * count
+        if parallel_current > max_current:
+            warnings.append(f"MPPT {mppt}: Parallel current ({parallel_current:.1f}A) exceeds limit ({max_current}A)")
+
+    return warnings
+
+
 def calculate_complete_estimate(
     system_power_kw: float,
     panel_count: int,
