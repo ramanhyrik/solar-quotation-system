@@ -17,16 +17,19 @@
 
     <style>
         :root {
-            --primary-blue: #2B7EB4;
-            --primary-dark: #1A1D22;
-            --success-green: #3AE478;
-            --text-dark: #E5E7EB;
-            --text-medium: #A0AEC0;
-            --border-color: rgba(58, 228, 120, 0.25);
-            --bg-gray: #14181F;
-            --panel-bg: #1A1D22;
-            --panel-alt: #0f1724;
-            --sidebar-width: 350px;
+            --primary-blue: #1e3a5f;
+            --primary-dark: #0d1117;
+            --accent-blue: #3b82f6;
+            --success-green: #22c55e;
+            --text-dark: #f1f5f9;
+            --text-medium: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(148, 163, 184, 0.15);
+            --bg-gray: #0d1117;
+            --panel-bg: #161b22;
+            --panel-alt: #0d1117;
+            --sidebar-width: 340px;
+            --header-height: 52px;
         }
 
         * {
@@ -36,64 +39,63 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-gray);
             color: var(--text-dark);
-            line-height: 1.6;
+            line-height: 1.5;
             overflow: hidden;
             direction: rtl;
+            font-size: 13px;
         }
 
         /* Header */
         .header {
             background: var(--primary-blue);
             color: white;
-            padding: 16px 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0 24px;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            height: 60px;
+            height: var(--header-height);
             position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         .header h1 {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 500;
             margin: 0;
-            text-align: center;
+            letter-spacing: 0.3px;
         }
 
         .header-right {
-            position: absolute;
-            inset-inline-start: 24px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 13px;
+            font-size: 12px;
             display: flex;
             align-items: center;
         }
 
         .header-right a {
-            color: #93C5FD;
+            color: rgba(255,255,255,0.8);
             text-decoration: none;
-            padding: 8px 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            transition: background 0.15s, color 0.15s;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            transition: all 0.15s;
+            font-size: 12px;
         }
 
         .header-right a:hover {
             color: white;
             background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         /* Main Layout */
         .main-container {
             display: flex;
-            height: calc(100vh - 60px);
+            height: calc(100vh - var(--header-height));
             overflow: hidden;
-            flex-direction: row; /* Normal row, RTL handled by direction */
+            flex-direction: row;
             direction: rtl;
         }
 
@@ -101,36 +103,36 @@
         .sidebar {
             width: var(--sidebar-width);
             background: var(--panel-bg);
-            border-left: 1px solid var(--border-color); /* Border on left side of sidebar */
+            border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
-            order: 1; /* First item in RTL (appears on right) */
+            order: 1;
             direction: rtl;
             text-align: right;
         }
 
         .sidebar::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .sidebar::-webkit-scrollbar-track {
-            background: var(--panel-alt);
+            background: transparent;
         }
 
         .sidebar::-webkit-scrollbar-thumb {
-            background: #2d3748;
-            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
         }
 
         .sidebar::-webkit-scrollbar-thumb:hover {
-            background: #4a5568;
+            background: rgba(148, 163, 184, 0.3);
         }
 
         /* Sidebar Sections */
         .sidebar-section {
-            padding: 20px;
+            padding: 16px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-dark);
         }
@@ -140,11 +142,11 @@
         }
 
         .section-title {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-medium);
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
             margin-bottom: 12px;
             display: flex;
             align-items: center;
@@ -159,42 +161,42 @@
 
         /* Upload Zone */
         .upload-zone {
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 24px 16px;
+            border: 1px dashed var(--border-color);
+            border-radius: 4px;
+            padding: 20px 12px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
-            background: var(--panel-alt);
+            transition: all 0.15s ease;
+            background: rgba(0,0,0,0.15);
         }
 
         .upload-zone:hover {
-            background: #1f2a33;
-            border-color: var(--primary-blue);
+            background: rgba(59, 130, 246, 0.08);
+            border-color: var(--accent-blue);
         }
 
         .upload-zone svg {
-            width: 32px;
-            height: 32px;
-            margin: 0 auto 8px;
-            color: var(--text-medium);
+            width: 28px;
+            height: 28px;
+            margin: 0 auto 6px;
+            color: var(--text-muted);
         }
 
         .upload-zone h3 {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: var(--text-dark);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .upload-zone p {
-            font-size: 11px;
-            color: var(--text-medium);
+            font-size: 10px;
+            color: var(--text-muted);
         }
 
         .image-preview {
-            margin-top: 12px;
-            border-radius: 6px;
+            margin-top: 10px;
+            border-radius: 4px;
             overflow: hidden;
             border: 1px solid var(--border-color);
         }
@@ -219,49 +221,49 @@
         .tool-group {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .tool-btn {
             width: 100%;
-            padding: 10px 12px;
+            padding: 8px 12px;
             border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            border-radius: 6px;
+            background: transparent;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
-            transition: all 0.15s;
+            transition: all 0.12s ease;
             display: flex;
             align-items: center;
             gap: 8px;
             color: var(--text-dark);
         }
 
-        .tool-btn:hover {
-            background: var(--panel-alt);
-            border-color: var(--primary-blue);
+        .tool-btn:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent-blue);
         }
 
         .tool-btn.active {
-            background: var(--primary-blue);
+            background: var(--accent-blue);
             color: white;
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
         }
 
         .tool-btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
         }
 
         .tool-btn.primary {
-            background: var(--primary-blue);
+            background: var(--accent-blue);
             color: white;
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
         }
 
-        .tool-btn.primary:hover {
-            background: var(--primary-dark);
+        .tool-btn.primary:hover:not(:disabled) {
+            background: #2563eb;
         }
 
         .tool-btn.success {
@@ -270,23 +272,23 @@
             border-color: var(--success-green);
         }
 
-        .tool-btn.success:hover {
-            background: #32c86a;
+        .tool-btn.success:hover:not(:disabled) {
+            background: #16a34a;
         }
 
         .tool-btn.danger {
-            border-color: #EF4444;
-            color: #EF4444;
+            border-color: #ef4444;
+            color: #ef4444;
         }
 
-        .tool-btn.danger:hover {
-            background: rgba(239, 68, 68, 0.15);
+        .tool-btn.danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .tool-btn i,
         .tool-btn svg {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             flex-shrink: 0;
         }
 
@@ -347,9 +349,9 @@
         }
 
         .icon-action:hover:enabled {
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
             color: white;
-            background: var(--primary-blue);
+            background: var(--accent-blue);
         }
 
         .input-row .icon-action,
@@ -358,30 +360,30 @@
         }
 
         .icon-circle {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
             border: 1px solid var(--border-color);
-            background: var(--panel-alt);
+            background: transparent;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            color: var(--text-dark);
-            transition: all 0.15s;
-            padding: 4px; /* inset the icon so it doesn't touch the border */
+            color: var(--text-medium);
+            transition: all 0.12s ease;
+            padding: 4px;
         }
 
         .icon-circle:hover:enabled {
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
             color: white;
-            background: var(--primary-blue);
+            background: var(--accent-blue);
         }
 
         .icon-circle i,
         .icon-circle svg {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
         }
 
         /* RTL Support for Hebrew UI */
@@ -462,15 +464,17 @@
 
         /* Form Controls */
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 500;
-            font-size: 12px;
-            color: var(--text-dark);
+            font-size: 11px;
+            color: var(--text-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .form-group input,
@@ -478,10 +482,10 @@
             width: 100%;
             padding: 8px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 13px;
-            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-            background: var(--panel-alt);
+            border-radius: 4px;
+            font-size: 12px;
+            transition: border-color 0.12s ease, box-shadow 0.12s ease;
+            background: rgba(0,0,0,0.2);
             color: var(--text-dark);
             caret-color: var(--text-dark);
         }
@@ -489,8 +493,8 @@
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(43, 126, 180, 0.2);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
         }
 
         .form-group input:disabled,
@@ -564,27 +568,33 @@
         .result-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 8px;
         }
 
         .result-item {
             text-align: center;
+            padding: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
         }
 
         .result-label {
-            font-size: 11px;
-            opacity: 0.9;
-            margin-bottom: 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .result-value {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 600;
             direction: ltr;
             unicode-bidi: plaintext;
-            text-align: right;
+            text-align: center;
             display: flex;
-            justify-content: flex-end;
+            justify-content: center;
+            color: var(--text-dark);
         }
 
         .ltr-text {
@@ -777,79 +787,81 @@
         /* Icon Toolbars */
         .icon-toolbar {
             display: flex;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
         .icon-btn {
-            min-width: 44px;
-            height: 44px;
+            min-width: 36px;
+            height: 36px;
             border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            border-radius: 8px;
+            background: transparent;
+            border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.15s;
+            transition: all 0.12s ease;
             position: relative;
-            padding: 0 10px;
+            padding: 0 8px;
+            color: var(--text-medium);
+            gap: 4px;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent-blue);
             color: var(--text-dark);
         }
 
-        .icon-btn:hover {
-            background: var(--panel-alt);
-            border-color: var(--primary-blue);
-        }
-
         .icon-btn.active {
-            background: var(--primary-blue);
+            background: var(--accent-blue);
             color: white;
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
         }
 
         .icon-btn.primary {
-            background: var(--primary-blue);
+            background: var(--accent-blue);
             color: white;
-            border-color: var(--primary-blue);
+            border-color: var(--accent-blue);
         }
 
-        .icon-btn.primary:hover {
-            background: var(--primary-dark);
+        .icon-btn.primary:hover:not(:disabled) {
+            background: #2563eb;
         }
 
         .icon-btn.danger {
-            border-color: #EF4444;
-            color: #EF4444;
+            border-color: #ef4444;
+            color: #ef4444;
         }
 
-        .icon-btn.danger:hover {
-            background: rgba(239, 68, 68, 0.15);
+        .icon-btn.danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .icon-btn:disabled {
-            opacity: 0.4;
+            opacity: 0.35;
             cursor: not-allowed;
         }
 
         .icon-btn i,
         .icon-btn svg {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
         }
 
         .icon-btn[data-tooltip]:hover::after {
             content: attr(data-tooltip);
             position: absolute;
-            bottom: -32px;
+            bottom: -28px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
             font-weight: 500;
             white-space: nowrap;
             z-index: 1000;
@@ -1390,8 +1402,11 @@
                 </div>
 
                 <!-- PHASE 3: Sun Analysis Display -->
-                <div class="results-panel" id="sunAnalysisPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05));">
-                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">☀️ ניתוח שמש</h3>
+                <div class="results-panel" id="sunAnalysisPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 152, 0, 0.03)); border-right: 3px solid #ffc107;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="sun" style="width: 14px; height: 14px;"></i>
+                        ניתוח שמש
+                    </h3>
                     <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px;">
                         <div class="result-item">
                             <div class="result-label">איכות כיוון</div>
@@ -1412,9 +1427,9 @@
                     </div>
                     <div style="margin-top: 8px; font-size: 11px; color: var(--text-medium);">
                         <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                            <span>🌅 זריחה:</span>
+                            <span>זריחה:</span>
                             <span id="sunSunrise" style="font-weight: 600;">-</span>
-                            <span style="margin-right: 12px;">🌇 שקיעה:</span>
+                            <span style="margin-right: 12px;">שקיעה:</span>
                             <span id="sunSunset" style="font-weight: 600;">-</span>
                         </div>
                         <div id="sunCurrentPosition" style="color: var(--text-dark);">
@@ -1423,7 +1438,7 @@
                     </div>
                     <div id="sunRecommendations" style="margin-top: 8px; display: none;">
                         <div style="background: rgba(76, 175, 80, 0.1); border-right: 3px solid #4caf50; padding: 8px; border-radius: 4px; font-size: 11px;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">💡 המלצות:</div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">המלצות:</div>
                             <ul id="sunRecommendationsList" style="margin: 0; padding-right: 20px; list-style: disc;">
                             </ul>
                         </div>
@@ -1431,15 +1446,18 @@
                 </div>
 
                 <!-- PHASE 4: Energy & Financial Estimates -->
-                <div class="results-panel" id="energyEstimatePanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.05));">
-                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">⚡ אומדן אנרגיה ופיננסים</h3>
+                <div class="results-panel" id="energyEstimatePanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(139, 195, 74, 0.03)); border-right: 3px solid #4caf50;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                        אנרגיה ופיננסים
+                    </h3>
 
                     <!-- Production -->
                     <div style="margin-bottom: 10px;">
                         <div style="font-size: 11px; color: var(--text-medium); margin-bottom: 4px;">ייצור שנתי</div>
                         <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span id="energyAnnualKwh" style="font-size: 24px; font-weight: 700; color: #4caf50;">-</span>
-                            <span style="font-size: 12px; color: var(--text-medium);">kWh/שנה</span>
+                            <span id="energyAnnualKwh" style="font-size: 22px; font-weight: 600; color: #4caf50;">-</span>
+                            <span style="font-size: 11px; color: var(--text-medium);">kWh/שנה</span>
                         </div>
                         <div style="font-size: 11px; color: var(--text-medium);">
                             ממוצע יומי: <span id="energyDailyKwh" style="font-weight: 600;">-</span> kWh
@@ -1447,63 +1465,69 @@
                     </div>
 
                     <!-- Financial -->
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px;">
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 10px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">עלות מערכת</div>
-                            <div class="result-value" style="font-size: 16px;">₪<span id="energySystemCost">-</span></div>
+                            <div class="result-value" style="font-size: 14px;">₪<span id="energySystemCost">-</span></div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">חיסכון שנתי</div>
-                            <div class="result-value" style="font-size: 16px; color: #4caf50;">₪<span id="energyAnnualSavings">-</span></div>
+                            <div class="result-value" style="font-size: 14px; color: #4caf50;">₪<span id="energyAnnualSavings">-</span></div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">החזר השקעה</div>
-                            <div class="result-value" style="font-size: 16px;"><span id="energyPaybackYears">-</span> שנים</div>
+                            <div class="result-value" style="font-size: 14px;"><span id="energyPaybackYears">-</span> שנים</div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">ROI ל-25 שנה</div>
-                            <div class="result-value" style="font-size: 16px; color: #8bc34a;"><span id="energyRoi25">-</span>%</div>
+                            <div class="result-value" style="font-size: 14px; color: #8bc34a;"><span id="energyRoi25">-</span>%</div>
                         </div>
                     </div>
 
                     <!-- Environmental -->
-                    <div style="background: rgba(33, 150, 243, 0.1); padding: 8px; border-radius: 6px; font-size: 11px;">
-                        <div style="font-weight: 600; margin-bottom: 4px;">🌍 השפעה סביבתית (שנתי)</div>
+                    <div style="background: rgba(33, 150, 243, 0.08); padding: 8px; border-radius: 4px; font-size: 11px;">
+                        <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="leaf" style="width: 12px; height: 12px;"></i>
+                            השפעה סביבתית (שנתי)
+                        </div>
                         <div style="display: flex; gap: 16px;">
                             <span>CO₂ נחסך: <strong id="energyCo2Offset">-</strong> ק"ג</span>
-                            <span>🌳 שווה ערך: <strong id="energyTreesEquiv">-</strong> עצים</span>
+                            <span>שווה ערך: <strong id="energyTreesEquiv">-</strong> עצים</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Electrical Stringing Panel -->
-                <div class="results-panel" id="stringingPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 193, 7, 0.05));">
-                    <h3 style="margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.3px;">🔌 חיבור חשמלי</h3>
+                <div class="results-panel" id="stringingPanel" style="padding: 12px; margin-top: 12px; display: none; background: linear-gradient(135deg, rgba(255, 152, 0, 0.08), rgba(255, 193, 7, 0.03)); border-right: 3px solid #ff9800;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-medium); display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="plug" style="width: 14px; height: 14px;"></i>
+                        חיבור חשמלי
+                    </h3>
 
-                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px;">
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                    <div class="result-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 10px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">מספר סטרינגים</div>
-                            <div class="result-value" style="font-size: 16px;"><span id="stringingCount">-</span></div>
+                            <div class="result-value" style="font-size: 14px;"><span id="stringingCount">-</span></div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">מתח מקסימלי</div>
-                            <div class="result-value" style="font-size: 16px;"><span id="stringingMaxVoltage">-</span>V</div>
+                            <div class="result-value" style="font-size: 14px;"><span id="stringingMaxVoltage">-</span>V</div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">הספק DC כולל</div>
-                            <div class="result-value" style="font-size: 16px;"><span id="stringingDcPower">-</span> kW</div>
+                            <div class="result-value" style="font-size: 14px;"><span id="stringingDcPower">-</span> kW</div>
                         </div>
-                        <div class="result-item" style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px;">
+                        <div class="result-item" style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px;">
                             <div class="result-label">ממיר מומלץ</div>
-                            <div class="result-value" style="font-size: 16px; color: #ff9800;"><span id="stringingInverter">-</span> kW</div>
+                            <div class="result-value" style="font-size: 14px; color: #ff9800;"><span id="stringingInverter">-</span> kW</div>
                         </div>
                     </div>
 
                     <!-- String details -->
-                    <div id="stringingDetails" style="font-size: 11px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px;"></div>
+                    <div id="stringingDetails" style="font-size: 11px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px;"></div>
 
                     <!-- Warnings -->
-                    <div id="stringingWarnings" style="display: none; margin-top: 8px; font-size: 11px; color: #ff5722; background: rgba(255, 87, 34, 0.1); padding: 8px; border-radius: 6px;"></div>
+                    <div id="stringingWarnings" style="display: none; margin-top: 8px; font-size: 11px; color: #ff5722; background: rgba(255, 87, 34, 0.1); padding: 8px; border-radius: 4px;"></div>
                 </div>
 
                 <div class="form-group" style="margin-top: 12px;">
@@ -2789,12 +2813,12 @@
             });
 
             // Elevation text
-            const elevText = new fabric.Text(`☀️ ${elevation.toFixed(0)}°`, {
-                fontSize: 10,
+            const elevText = new fabric.Text(`${elevation.toFixed(0)}° elev`, {
+                fontSize: 9,
                 fill: '#ffc107',
                 originX: 'center',
                 originY: 'center',
-                top: indicatorSize / 2 + 12
+                top: indicatorSize / 2 + 10
             });
 
             // Group all elements
