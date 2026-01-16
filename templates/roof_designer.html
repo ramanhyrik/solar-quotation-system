@@ -1036,7 +1036,7 @@
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
-            justify-content: flex-start;
+            justify-content: center;
         }
 
         .icon-btn {
@@ -1426,18 +1426,6 @@
             color: var(--text-dark);
             margin-bottom: 8px;
         }
-
-        /* Instruction badge */
-        .instruction-badge {
-            background: #FEF3C7;
-            color: #92400E;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 12px;
-            border-left: 3px solid #F59E0B;
-        }
     </style>
 </head>
 <body>
@@ -1508,8 +1496,11 @@
                     <span>כלים</span>
                 </div>
 
-                <div id="drawingInstruction" class="instruction-badge" style="font-size: 11px;">
-                    בחר זיהוי אוטומטי או ציור ידני
+                <!-- Scale Input -->
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11px;">סקלה <span class="ltr-text">(px/m)</span></label>
+                    <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled
+                           style="font-size: 12px; padding: 6px 8px;">
                 </div>
 
                 <!-- Drawing Tools -->
@@ -1577,17 +1568,6 @@
                         <span style="font-size: 12px;">קיצורים</span>
                     </button>
                 </div>
-
-                <div style="margin-top: 16px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-size: 11px;">סקלה <span class="ltr-text">(px/m)</span></label>
-                        <input type="number" id="pixelsPerMeter" value="100" min="10" max="1000" step="10" disabled
-                               style="font-size: 12px; padding: 6px 8px;">
-                    </div>
-                </div>
-
-                <div class="toolbar-divider"></div>
-                <!-- Zoom controls moved to canvas overlay -->
             </div>
         </div>
 
@@ -2544,14 +2524,7 @@
         }
 
         function updateDrawingInstruction() {
-            const instruction = document.getElementById('drawingInstruction');
-            if (drawingMode === 'roof') {
-                instruction.textContent = 'לחץ לציור גבול גג';
-            } else if (drawingMode === 'exclusion') {
-                instruction.textContent = 'לחץ לציור אזור מוחרג';
-            } else {
-                instruction.textContent = 'בחר כלי כדי להתחיל';
-            }
+            // Instruction display removed - function kept for compatibility
         }
 
         function resetDrawingUndoRedo() {
@@ -2604,7 +2577,7 @@
                 updateClosePolygonButton(false);
                 resetDrawingUndoRedo();
 
-                document.getElementById('drawingInstruction').textContent = 'גג הוחל. התאם נקודות או הגדר פאנלים כשאתה מוכן.';
+                // Instruction removed
             } else if (drawingMode === 'exclusion' && currentExclusionPoints.length >= 3) {
                 const exclusionPoly = new fabric.Polygon(currentExclusionPoints, {
                     fill: 'rgba(239, 68, 68, 0.3)',
@@ -2663,7 +2636,7 @@
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);
                     resetDrawingUndoRedo();
-                    document.getElementById('drawingInstruction').textContent = 'בחר זיהוי אוטומטי או ציור ידני';
+                    // Instruction removed
                 }
             );
         }
@@ -2688,7 +2661,7 @@
                     clearCandidatePolygons();
                     toggleUploadOverlay(true);
                     updateClosePolygonButton(false);
-                    document.getElementById('drawingInstruction').textContent = 'העלה תמונה כדי להתחיל';
+                    // Instruction removed
 
                     disableDrawingTools();
                     disablePanelConfig();
@@ -3397,7 +3370,6 @@
             exitEditMode();
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
-            document.getElementById('drawingInstruction').textContent = `${candidates.length} גג${candidates.length > 1 ? 'ות' : ''} זוהה - המועמד הראשון נבחר. לחץ על קווי מתאר אחרים לשינוי, לאחר מכן אשר בחירה.`;
 
             candidates.forEach((candidate, index) => {
                 // Convert API coordinates (original image coords) to canvas coordinates
@@ -3456,11 +3428,6 @@
 
             // Update instruction
             const candidate = detectedCandidates[index];
-            const confidenceText = candidate.confidence
-                ? ` (${Math.round(candidate.confidence * 100)}% ביטחון)`
-                : '';
-            document.getElementById('drawingInstruction').textContent =
-                `גג נבחר${confidenceText} - לחץ "אשר בחירה" להחלה`;
         }
 
         function confirmCandidateSelection() {
@@ -3501,10 +3468,6 @@
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             updateClosePolygonButton(false);
-
-            // Update instruction
-            document.getElementById('drawingInstruction').textContent =
-                'Roof ready. Use Edit Points or Panel Settings as needed.';
 
             // Add to canvas
             canvas.add(roofPolygonObject);
@@ -3818,7 +3781,7 @@
                     enableDrawingTools();
                     setZoomButtonsEnabled(true);
                     updateZoomDisplay();
-                    document.getElementById('drawingInstruction').textContent = 'בחר זיהוי אוטומטי או ציור ידני';
+                    // Instruction removed
                     // Don't auto-activate manual mode - let user choose AI or manual
                     // startDrawingRoof();
 
