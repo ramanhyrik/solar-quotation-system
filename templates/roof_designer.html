@@ -2776,7 +2776,7 @@
                 }
             });
 
-            console.log(`[DISPLAY] Rendering ${panels.length} photo-realistic solar panels...`);
+            console.log(`[DISPLAY] Rendering ${panels.length} solar panels...`);
 
             panels.forEach((panel, index) => {
                 // Convert original image coordinates to canvas coordinates
@@ -2784,6 +2784,7 @@
                 const y = (panel.y * imageScaleFactor) + uploadedImage.top;
                 const width = panel.width * imageScaleFactor;
                 const height = panel.height * imageScaleFactor;
+                const angle = panel.angle || 0;  // Rotation angle from backend
 
                 const elements = [];
 
@@ -2885,10 +2886,13 @@
                 });
                 elements.push(reflection);
 
-                // Group all elements into photo-realistic panel
+                // Group all elements into panel
                 const panelGroup = new fabric.Group(elements, {
                     left: x,
                     top: y,
+                    angle: angle,  // Apply rotation from backend
+                    originX: 'left',
+                    originY: 'top',
                     selectable: false,
                     objectCaching: false,
                     objectType: 'panel',
@@ -2896,11 +2900,23 @@
                     hoverCursor: 'default'
                 });
 
+                // If panel has center coordinates, use them for proper rotation
+                if (panel.cx && panel.cy) {
+                    const cx = (panel.cx * imageScaleFactor) + uploadedImage.left;
+                    const cy = (panel.cy * imageScaleFactor) + uploadedImage.top;
+                    panelGroup.set({
+                        left: cx,
+                        top: cy,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                }
+
                 canvas.add(panelGroup);
             });
 
             canvas.renderAll();
-            console.log(`[DISPLAY] Rendered ${panels.length} photo-realistic panels`);
+            console.log(`[DISPLAY] Rendered ${panels.length} panels with rotation`);
         }
 
         // Sun direction indicator on canvas

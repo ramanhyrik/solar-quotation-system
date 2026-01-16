@@ -6,10 +6,12 @@ Advanced multi-orientation panel placement with polygon exclusion zones
 import numpy as np
 from shapely.geometry import Polygon, Point, box, MultiPolygon
 from shapely.ops import unary_union
+from shapely.affinity import rotate, translate
 from typing import List, Dict, Tuple, Optional
 import json
 from datetime import datetime
 import os
+import math
 
 
 class AdvancedPanelLayoutCalculator:
@@ -117,6 +119,165 @@ class AdvancedPanelLayoutCalculator:
                 continue
 
         print(f"[PANEL CALCULATOR] Total obstacles created: {len(self.obstacle_geoms)}")
+
+        # Calculate roof orientation angle
+        self.roof_angle = self._calculate_roof_orientation()
+        print(f"[PANEL CALCULATOR] Roof orientation angle: {self.roof_angle:.1f}°")
+
+    def _calculate_roof_orientation(self) -> float:
+        """
+        Calculate the principal orientation angle of the roof using minimum bounding rectangle.
+        Returns angle in degrees (0-180) representing the roof's main axis.
+        """
+        try:
+            # Get minimum bounding rectangle (rotated rectangle that fits the polygon)
+            min_rect = self.roof_polygon.minimum_rotated_rectangle
+
+            # Get the corners of the minimum bounding rectangle
+            coords = list(min_rect.exterior.coords)[:-1]  # Remove duplicate last point
+
+            if len(coords) < 4:
+                return 0.0
+
+            # Calculate the lengths of the two edge types
+            edge1 = np.array(coords[1]) - np.array(coords[0])
+            edge2 = np.array(coords[2]) - np.array(coords[1])
+
+            # Find the longer edge (main axis of the roof)
+            len1 = np.linalg.norm(edge1)
+            len2 = np.linalg.norm(edge2)
+
+            # Use the longer edge as the main axis
+            if len1 >= len2:
+                main_edge = edge1
+            else:
+                main_edge = edge2
+
+            # Calculate angle from the positive x-axis
+            angle_rad = math.atan2(main_edge[1], main_edge[0])
+            angle_deg = math.degrees(angle_rad)
+
+            # Normalize to 0-180 range (panels can face either direction along the axis)
+            while angle_deg < 0:
+                angle_deg += 180
+            while angle_deg >= 180:
+                angle_deg -= 180
+
+            return angle_deg
+
+        except Exception as e:
+            print(f"[PANEL CALCULATOR] Error calculating roof orientation: {e}")
+            return 0.0
+
+    def _place_panels_roof_aligned(self, panel_w: float, panel_h: float,
+                                    spacing: float, orientation: str) -> List[Dict]:
+        """
+        Place panels in neat rows aligned with the roof's orientation.
+        All panels face the same direction for a professional look.
+
+        Args:
+            panel_w: Panel width in pixels (landscape)
+            panel_h: Panel height in pixels (landscape)
+            spacing: Spacing between panels in pixels
+            orientation: "landscape" or "portrait"
+
+        Returns:
+            List of panel dictionaries with x, y, width, height, and angle
+        """
+        panels = []
+        angle = self.roof_angle
+
+        # Swap dimensions for portrait
+        if orientation == "portrait":
+            panel_w, panel_h = panel_h, panel_w
+
+        # Get the centroid of the roof for rotation center
+        centroid = self.roof_polygon.centroid
+        cx, cy = centroid.x, centroid.y
+
+        # Create a rotated coordinate system aligned with the roof
+        # We'll work in rotated space, then transform back
+        angle_rad = math.radians(-angle)  # Negative to rotate roof to axis-aligned
+
+        # Rotate the roof polygon to be axis-aligned (for easier grid placement)
+        rotated_roof = rotate(self.roof_polygon, -angle, origin=(cx, cy))
+        rotated_obstacles = [rotate(obs, -angle, origin=(cx, cy)) for obs in self.obstacle_geoms]
+
+        # Get bounds of the rotated (now axis-aligned) roof
+        minx, miny, maxx, maxy = rotated_roof.bounds
+
+        # Place panels in a regular grid within the rotated space
+        placed_boxes = []
+
+        # Start from top-left with spacing
+        y = miny + spacing
+        row = 0
+
+        while y + panel_h <= maxy - spacing:
+            x = minx + spacing
+            col = 0
+
+            while x + panel_w <= maxx - spacing:
+                # Create panel box in rotated space
+                panel_box = box(x, y, x + panel_w, y + panel_h)
+
+                # Check if panel fits within rotated roof
+                if rotated_roof.contains(panel_box):
+                    # Check obstacles in rotated space
+                    obstacle_hit = False
+                    for obs in rotated_obstacles:
+                        if panel_box.intersects(obs):
+                            obstacle_hit = True
+                            break
+
+                    # Check overlap with placed panels
+                    overlap = False
+                    for placed in placed_boxes:
+                        if panel_box.intersects(placed):
+                            overlap = True
+                            break
+
+                    if not obstacle_hit and not overlap:
+                        placed_boxes.append(panel_box)
+
+                        # Get center of panel in rotated space
+                        panel_cx = x + panel_w / 2
+                        panel_cy = y + panel_h / 2
+
+                        # Rotate center back to original space
+                        cos_a = math.cos(math.radians(angle))
+                        sin_a = math.sin(math.radians(angle))
+
+                        # Rotate around centroid
+                        dx = panel_cx - cx
+                        dy = panel_cy - cy
+
+                        final_cx = cx + dx * cos_a - dy * sin_a
+                        final_cy = cy + dx * sin_a + dy * cos_a
+
+                        # Store panel with top-left corner and rotation angle
+                        panels.append({
+                            "x": int(final_cx - panel_w / 2),
+                            "y": int(final_cy - panel_h / 2),
+                            "cx": final_cx,  # Center x for rotation
+                            "cy": final_cy,  # Center y for rotation
+                            "width": int(panel_w),
+                            "height": int(panel_h),
+                            "angle": angle,  # Rotation angle in degrees
+                            "row": row,
+                            "col": col,
+                            "orientation": orientation
+                        })
+                        col += 1
+                        x += panel_w + spacing
+                        continue
+
+                x += spacing  # Small step if panel doesn't fit
+
+            y += panel_h + spacing
+            row += 1
+
+        return panels
 
     def _try_place_panel(self, x: float, y: float, width: float, height: float,
                         placed_panels: List[box]) -> bool:
@@ -361,27 +522,27 @@ class AdvancedPanelLayoutCalculator:
 
         print(f"[PANEL CALCULATOR] Roof bounds: ({minx:.0f}, {miny:.0f}) to ({maxx:.0f}, {maxy:.0f})")
         print(f"[PANEL CALCULATOR] Panel size: {panel_w_px:.1f}px x {panel_h_px:.1f}px")
+        print(f"[PANEL CALCULATOR] Roof orientation: {self.roof_angle:.1f}°")
 
-        # Multi-pass placement algorithm
-        if orientation == "auto":
-            # GREEDY MIXED-ORIENTATION ALGORITHM
-            # Try BOTH orientations at EVERY position for maximum coverage
-            print("[PANEL CALCULATOR] Using greedy mixed-orientation algorithm...")
-            panels = self._place_panels_greedy_mixed(
-                minx, miny, maxx, maxy,
-                panel_w_px, panel_h_px, spacing_px
+        # Use roof-aligned placement algorithm for professional results
+        # "auto" defaults to landscape orientation aligned with roof
+        actual_orientation = "landscape" if orientation == "auto" else orientation
+
+        print(f"[PANEL CALCULATOR] Using roof-aligned placement algorithm ({actual_orientation})...")
+        panels = self._place_panels_roof_aligned(
+            panel_w_px, panel_h_px, spacing_px, actual_orientation
+        )
+
+        # If roof-aligned didn't find enough panels, try portrait orientation
+        if len(panels) < 3 and orientation == "auto":
+            print("[PANEL CALCULATOR] Trying portrait orientation for better fit...")
+            portrait_panels = self._place_panels_roof_aligned(
+                panel_w_px, panel_h_px, spacing_px, "portrait"
             )
-
-        else:
-            # Single orientation
-            if orientation == "portrait":
-                panel_w_px, panel_h_px = panel_h_px, panel_w_px
-
-            result = self._place_panels_optimized(
-                minx, miny, maxx, maxy,
-                panel_w_px, panel_h_px, spacing_px, orientation
-            )
-            panels = result['panels']
+            if len(portrait_panels) > len(panels):
+                panels = portrait_panels
+                actual_orientation = "portrait"
+                print(f"[PANEL CALCULATOR] Portrait orientation fits better: {len(panels)} panels")
 
         # Calculate statistics
         total_panels = len(panels)
@@ -403,6 +564,7 @@ class AdvancedPanelLayoutCalculator:
             "total_power_kw": round(total_power_kw, 2),
             "coverage_percent": round(coverage_percent, 1),
             "roof_area_m2": round(roof_area_m2, 2),
+            "roof_angle": round(self.roof_angle, 1),
             "success": True
         }
 
