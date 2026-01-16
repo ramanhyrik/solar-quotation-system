@@ -2794,7 +2794,10 @@ async def delete_roof_design(
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            created_by, original_image_path, processed_image_path = design
+            design = dict(design)
+            created_by = design.get('created_by')
+            original_image_path = design.get('original_image_path')
+            processed_image_path = design.get('processed_image_path')
 
             # Delete image files if they exist
             if original_image_path and os.path.exists(original_image_path):
@@ -2848,7 +2851,11 @@ async def download_roof_visualization(
             if not design:
                 raise HTTPException(status_code=404, detail="Design not found")
 
-            created_by, processed_image_path, customer_name, original_image_path = design
+            design = dict(design)
+            created_by = design.get('created_by')
+            processed_image_path = design.get('processed_image_path')
+            customer_name = design.get('customer_name')
+            original_image_path = design.get('original_image_path')
 
             # Check if visualization exists
             resolved_path = resolve_visualization_path(processed_image_path)
