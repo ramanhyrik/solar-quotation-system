@@ -269,6 +269,17 @@ def get_current_user(session_id: Optional[str] = Cookie(None)):
     """Get current user from session (database-backed)"""
     return get_session_db(session_id)
 
+def require_auth(session_id: Optional[str] = Cookie(None)):
+    """Strict authentication - raises exception if not logged in"""
+    user = get_session_db(session_id)
+    if not user:
+        raise HTTPException(
+            status_code=303,
+            detail="Not authenticated",
+            headers={"Location": "/login"}
+        )
+    return user
+
 @app.get("/")
 async def home():
     """Redirect to login page"""
@@ -328,40 +339,57 @@ async def dashboard(request: Request, user=Depends(get_current_user)):
     """Sales dashboard"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("dashboard.html", {
+    response = templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": user
     })
+    # Prevent caching of authenticated pages
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin(request: Request, user=Depends(get_current_user)):
     """Admin panel"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("admin.html", {
+    response = templates.TemplateResponse("admin.html", {
         "request": request,
         "user": user
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, user=Depends(get_current_user)):
     """User management page"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("users.html", {
+    response = templates.TemplateResponse("users.html", {
         "request": request,
         "user": user
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/submissions", response_class=HTMLResponse)
 async def submissions_page(request: Request, user=Depends(get_current_user)):
     """Customer submissions management page"""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("submissions.html", {
+    response = templates.TemplateResponse("submissions.html", {
         "request": request,
         "user": user
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/api/pricing")
 async def get_pricing():
@@ -2671,8 +2699,8 @@ async def roof_designer_page(request: Request, user=Depends(get_current_user)):
         "request": request,
         "user": user
     })
-    # Prevent caching to ensure latest updates are served
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # Prevent caching of authenticated pages
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
