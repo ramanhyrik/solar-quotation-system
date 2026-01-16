@@ -2747,6 +2747,16 @@
                 formData.append('pixels_per_meter', pixelsPerMeter);
                 formData.append('orientation', orientation);
 
+                // Include coordinates if available (for full analysis on uploaded images)
+                const latInput = document.getElementById('latitudeInput');
+                const lonInput = document.getElementById('longitudeInput');
+                const lat = parseFloat(latInput?.value);
+                const lon = parseFloat(lonInput?.value);
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                    formData.append('latitude', lat);
+                    formData.append('longitude', lon);
+                }
+
                 const response = await fetch('/api/roof-designer/calculate-layout', {
                     method: 'POST',
                     body: formData
@@ -3704,6 +3714,23 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
+                // Include coordinates if available from sidebar inputs
+                const latInput = document.getElementById('latitudeInput');
+                const lonInput = document.getElementById('longitudeInput');
+                const lat = parseFloat(latInput?.value);
+                const lon = parseFloat(lonInput?.value);
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                    formData.append('latitude', lat);
+                    formData.append('longitude', lon);
+                }
+
+                // Include scale if set
+                const ppmInput = document.getElementById('pixelsPerMeter');
+                const ppm = parseFloat(ppmInput?.value);
+                if (Number.isFinite(ppm) && ppm > 0) {
+                    formData.append('pixels_per_meter', ppm);
+                }
+
                 const response = await fetch('/api/roof-designer/upload', {
                     method: 'POST',
                     body: formData
@@ -3714,6 +3741,12 @@
 
                 if (result.success) {
                     designId = result.design_id;
+
+                    // Update sidebar with returned data if available
+                    if (result.pixels_per_meter && ppmInput) {
+                        ppmInput.value = result.pixels_per_meter;
+                    }
+
                     await loadImageOnCanvas(result.image_url);
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);

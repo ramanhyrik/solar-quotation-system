@@ -2065,12 +2065,17 @@ async def upload_roof_image_endpoint(
     file: UploadFile = File(...),
     customer_name: str = Form(None),
     customer_address: str = Form(None),
+    latitude: float = Form(None),
+    longitude: float = Form(None),
+    zoom_level: int = Form(None),
+    pixels_per_meter: float = Form(None),
     user=Depends(get_current_user)
 ):
     """
     Upload roof image for manual drawing (no AI detection)
 
-    Returns image URL for user to draw on
+    Optionally accepts coordinates and scale for full analysis.
+    Returns image URL for user to draw on.
     """
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2096,32 +2101,53 @@ async def upload_roof_image_endpoint(
         with Image.open(file_path) as img:
             width, height = img.size
 
-        # Save to database (without polygons - user will draw them)
+        # Calculate meters_per_pixel if pixels_per_meter provided
+        meters_per_pixel = 1.0 / pixels_per_meter if pixels_per_meter and pixels_per_meter > 0 else None
+
+        # Save to database with optional location and scale data
         with get_db() as conn:
             cursor = get_cursor(conn)
             cursor.execute('''
                 INSERT INTO roof_designs (
                     customer_name, customer_address, original_image_path,
+                    latitude, longitude, zoom_level,
+                    pixels_per_meter, meters_per_pixel,
                     created_by
-                ) VALUES (%s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             ''', (
                 customer_name,
                 customer_address,
                 file_path,
+                latitude,
+                longitude,
+                zoom_level,
+                pixels_per_meter,
+                meters_per_pixel,
                 user['user_id']
             ))
             design_id = cursor.fetchone()['id']
             conn.commit()
 
-        print(f"[ROOF DESIGNER] Created design #{design_id}")
+        print(f"[ROOF DESIGNER] Created design #{design_id}" +
+              (f" with coordinates ({latitude}, {longitude})" if latitude and longitude else ""))
 
-        return JSONResponse(content={
+        response_data = {
             "success": True,
             "design_id": design_id,
             "image_url": f"/uploads/roof_images/{filename}" if os.getenv("RENDER") else f"/static/roof_images/{filename}",
             "image_dimensions": {"width": width, "height": height}
-        })
+        }
+
+        # Include location and scale data in response if provided
+        if latitude is not None:
+            response_data["latitude"] = latitude
+        if longitude is not None:
+            response_data["longitude"] = longitude
+        if pixels_per_meter is not None:
+            response_data["pixels_per_meter"] = pixels_per_meter
+
+        return JSONResponse(content=response_data)
 
     except HTTPException:
         raise
@@ -2284,12 +2310,16 @@ async def calculate_layout_endpoint(
     spacing_m: float = Form(0.05),
     pixels_per_meter: float = Form(100.0),
     orientation: str = Form("landscape"),
+    latitude: float = Form(None),
+    longitude: float = Form(None),
     user=Depends(get_current_user)
 ):
     """
     Calculate optimal panel layout based on roof data
 
-    User can edit the detected polygon/obstacles before calculation
+    User can edit the detected polygon/obstacles before calculation.
+    Optional latitude/longitude can be provided for uploaded images to enable
+    full analysis (measurements, sun analysis, energy estimates).
     """
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2318,16 +2348,33 @@ async def calculate_layout_endpoint(
             ''', (design_id,))
             location = cursor.fetchone()
 
+        # If coordinates provided but not in DB, update the design record
+        use_lat = latitude if latitude is not None else (location['latitude'] if location else None)
+        use_lon = longitude if longitude is not None else (location['longitude'] if location else None)
+        use_zoom = location['zoom_level'] if location else 19
+
+        # Update design with new coordinates if provided
+        if latitude is not None and longitude is not None:
+            with get_db() as conn:
+                cursor = get_cursor(conn)
+                cursor.execute('''
+                    UPDATE roof_designs
+                    SET latitude = %s, longitude = %s, zoom_level = COALESCE(zoom_level, 19)
+                    WHERE id = %s
+                ''', (latitude, longitude, design_id))
+                conn.commit()
+                print(f"[ROOF DESIGNER] Updated design #{design_id} with coordinates ({latitude}, {longitude})")
+
         # PHASE 2: Calculate automatic roof measurements if location available
-        if location and location['latitude'] and location['longitude']:
+        if use_lat and use_lon:
             from roof_measurements import calculate_comprehensive_measurements
 
             print("[ROOF DESIGNER] Calculating automatic measurements...")
             measurements_data = calculate_comprehensive_measurements(
                 polygon_points=roof_poly_points,
-                latitude=location['latitude'],
-                longitude=location['longitude'],
-                zoom_level=location['zoom_level'] or 19,
+                latitude=use_lat,
+                longitude=use_lon,
+                zoom_level=use_zoom or 19,
                 pixels_per_meter=pixels_per_meter,
                 building_type="residential"
             )
@@ -2437,7 +2484,7 @@ async def calculate_layout_endpoint(
             }
 
         # PHASE 3: Add sun analysis if location available
-        if location and location['latitude'] and location['longitude']:
+        if use_lat and use_lon:
             try:
                 from sun_calculations import (
                     get_current_sun_position,
@@ -2449,20 +2496,20 @@ async def calculate_layout_endpoint(
 
                 # Current sun position
                 current_sun = get_current_sun_position(
-                    location['latitude'],
-                    location['longitude']
+                    use_lat,
+                    use_lon
                 )
 
                 # Solar potential based on roof orientation
                 solar_potential = calculate_solar_potential(
-                    location['latitude'],
-                    location['longitude'],
+                    use_lat,
+                    use_lon,
                     roof_azimuth
                 )
 
                 # Annual irradiance estimate
                 irradiance = calculate_annual_irradiance_estimate(
-                    location['latitude'],
+                    use_lat,
                     roof_azimuth
                 )
 
@@ -2497,7 +2544,7 @@ async def calculate_layout_endpoint(
                     energy_estimate = calculate_complete_estimate(
                         system_power_kw=layout_result['total_power_kw'],
                         panel_count=layout_result['total_panels'],
-                        latitude=location['latitude'],
+                        latitude=use_lat,
                         orientation_efficiency=solar_potential['overall_efficiency'],
                         self_consumption_ratio=0.70
                     )
