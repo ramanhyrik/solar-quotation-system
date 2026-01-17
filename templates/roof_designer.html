@@ -2387,6 +2387,7 @@
             canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
             canvas.renderAll();
             updateZoomDisplay();
+            updateSunIndicatorPosition();
         }
 
         function setZoomButtonsEnabled(enabled) {
@@ -2408,6 +2409,7 @@
             canvas.zoomToPoint(centerPoint, canvasZoom);
             canvas.renderAll();
             updateZoomDisplay();
+            updateSunIndicatorPosition();
         }
 
         function updateZoomDisplay() {
@@ -2932,6 +2934,26 @@
         // Sun direction indicator on canvas
         let sunIndicator = null;
 
+        function updateSunIndicatorPosition() {
+            if (!canvas || !sunIndicator) return;
+
+            const zoom = canvas.getZoom();
+            const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+            const viewWidth = canvas.getWidth() / zoom;
+            const viewLeft = -vpt[4] / zoom;
+            const viewTop = -vpt[5] / zoom;
+            const indicatorSize = sunIndicator.baseSize || 72;
+            const margin = 12;
+
+            sunIndicator.set({
+                left: viewLeft + viewWidth - (indicatorSize / 2) - margin,
+                top: viewTop + (indicatorSize / 2) + margin,
+                scaleX: 1 / zoom,
+                scaleY: 1 / zoom
+            });
+            sunIndicator.setCoords();
+        }
+
         function displaySunDirection(azimuth, elevation, isDay) {
             // Remove existing sun indicator
             if (sunIndicator) {
@@ -2944,20 +2966,23 @@
                 return;
             }
 
-            // Position sun indicator in top-right corner of canvas
-            const indicatorSize = 80;
-            const margin = 20;
-            const centerX = canvas.width - indicatorSize / 2 - margin;
-            const centerY = indicatorSize / 2 + margin;
+            // Base size in screen pixels (kept consistent across zoom)
+            const indicatorSize = 72;
 
             // Create compass circle
             const compassCircle = new fabric.Circle({
                 radius: indicatorSize / 2,
-                fill: 'rgba(0, 0, 0, 0.6)',
-                stroke: '#ffc107',
-                strokeWidth: 2,
+                fill: 'rgba(15, 23, 42, 0.78)',
+                stroke: '#f59e0b',
+                strokeWidth: 1.5,
                 originX: 'center',
-                originY: 'center'
+                originY: 'center',
+                shadow: new fabric.Shadow({
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    blur: 8,
+                    offsetX: 0,
+                    offsetY: 2
+                })
             });
 
             // Cardinal direction labels
@@ -2973,7 +2998,7 @@
                 const r = indicatorSize / 2 - 12;
                 return new fabric.Text(d.text, {
                     fontSize: 10,
-                    fill: d.text === 'S' ? '#4caf50' : '#ffffff',
+                    fill: d.text === 'S' ? '#22c55e' : '#e2e8f0',
                     fontWeight: d.text === 'S' ? 'bold' : 'normal',
                     originX: 'center',
                     originY: 'center',
@@ -2987,8 +3012,8 @@
             const arrowLength = indicatorSize / 2 - 20;
 
             const sunArrow = new fabric.Line([0, 0, Math.cos(sunRad) * arrowLength, Math.sin(sunRad) * arrowLength], {
-                stroke: '#ffc107',
-                strokeWidth: 3,
+                stroke: '#f59e0b',
+                strokeWidth: 2,
                 originX: 'center',
                 originY: 'center'
             });
@@ -2998,8 +3023,8 @@
             const sunIconY = Math.sin(sunRad) * (arrowLength - 5);
             const sunIcon = new fabric.Circle({
                 radius: 6,
-                fill: '#ffc107',
-                stroke: '#ff9800',
+                fill: '#fbbf24',
+                stroke: '#f59e0b',
                 strokeWidth: 1,
                 originX: 'center',
                 originY: 'center',
@@ -3008,9 +3033,9 @@
             });
 
             // Elevation text
-            const elevText = new fabric.Text(`${elevation.toFixed(0)}° elev`, {
+            const elevText = new fabric.Text(`${Math.round(elevation)} deg`, {
                 fontSize: 9,
-                fill: '#ffc107',
+                fill: '#f8fafc',
                 originX: 'center',
                 originY: 'center',
                 top: indicatorSize / 2 + 10
@@ -3018,16 +3043,16 @@
 
             // Group all elements
             sunIndicator = new fabric.Group([compassCircle, ...dirLabels, sunArrow, sunIcon, elevText], {
-                left: centerX,
-                top: centerY,
                 selectable: false,
                 evented: false,
                 objectType: 'sunIndicator'
             });
+            sunIndicator.baseSize = indicatorSize;
 
             canvas.add(sunIndicator);
+            updateSunIndicatorPosition();
             canvas.renderAll();
-            console.log(`[SUN] Displayed sun indicator: azimuth=${azimuth}°, elevation=${elevation}°`);
+            console.log(`[SUN] Displayed sun indicator: azimuth=${azimuth} deg, elevation=${elevation} deg`);
         }
 
         // Results modal tab switching
@@ -3882,6 +3907,7 @@
                     const vpt = canvas.viewportTransform;
                     vpt[4] += evt.clientX - panStartPoint.x;
                     vpt[5] += evt.clientY - panStartPoint.y;
+                    updateSunIndicatorPosition();
                     canvas.requestRenderAll();
                     panStartPoint = { x: evt.clientX, y: evt.clientY };
                 }
@@ -3906,6 +3932,7 @@
                     canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
                     canvasZoom = zoom;
                     updateZoomDisplay();
+                    updateSunIndicatorPosition();
                 }
             });
 
