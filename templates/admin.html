@@ -60,9 +60,23 @@
                         <label>מכפיל עצים</label>
                         <input type="number" id="treesMultiplier" step="0.01" value="0.05">
                     </div>
+                </div>
+                <div class="form-grid" style="margin-top: 20px;">
                     <div>
-                        <label>שיעור מע״מ (%)</label>
-                        <input type="number" id="vatRate" step="0.01" value="17">
+                        <label>Basic Assumptions</label>
+                        <textarea id="basicAssumptionsDefault"></textarea>
+                    </div>
+                    <div>
+                        <label>Revenue Calculation</label>
+                        <textarea id="revenueCalculationDefault"></textarea>
+                    </div>
+                    <div>
+                        <label>Summary</label>
+                        <textarea id="summaryDefault"></textarea>
+                    </div>
+                    <div>
+                        <label>Environmental Impact</label>
+                        <textarea id="environmentalImpactDefault"></textarea>
                     </div>
                 </div>
                 <button type="submit" class="btn-calculate">עדכן תמחור</button>
@@ -100,26 +114,6 @@
         <div class="quote-form" style="margin-top: 20px; display: none;" id="calculatorSection">
             <h3>הגדרות מחשבון סולארי</h3>
             <form id="calculatorForm">
-                <h4 style="margin-bottom: 15px; color: #00358A;">מקדמי כיוון גג</h4>
-                <div class="form-grid">
-                    <div>
-                        <label>דרום (100%)</label>
-                        <input type="number" id="directionSouth" step="0.01" min="0" max="1" value="1.0" required>
-                    </div>
-                    <div>
-                        <label>דרום-מזרח</label>
-                        <input type="number" id="directionSoutheast" step="0.01" min="0" max="1" value="0.95" required>
-                    </div>
-                    <div>
-                        <label>דרום-מערב</label>
-                        <input type="number" id="directionSouthwest" step="0.01" min="0" max="1" value="0.95" required>
-                    </div>
-                    <div>
-                        <label>מזרח-מערב</label>
-                        <input type="number" id="directionEastWest" step="0.01" min="0" max="1" value="0.9" required>
-                    </div>
-                </div>
-
                 <h4 style="margin: 20px 0 15px; color: #3AE478;">פרמטרים טכניים</h4>
                 <div class="form-grid">
                     <div>
@@ -252,13 +246,12 @@
             document.getElementById('productionPerKwp').value = pricing.production_per_kwp;
             document.getElementById('tariffRate').value = pricing.tariff_rate;
             document.getElementById('treesMultiplier').value = pricing.trees_multiplier;
-            document.getElementById('vatRate').value = pricing.vat_rate * 100;
+            document.getElementById('basicAssumptionsDefault').value = pricing.basic_assumptions_default || '';
+            document.getElementById('revenueCalculationDefault').value = pricing.revenue_calculation_default || '';
+            document.getElementById('summaryDefault').value = pricing.summary_default || '';
+            document.getElementById('environmentalImpactDefault').value = pricing.environmental_impact_default || '';
 
             // טעינת הגדרות מחשבון
-            document.getElementById('directionSouth').value = pricing.direction_south || 1.0;
-            document.getElementById('directionSoutheast').value = pricing.direction_southeast || 0.95;
-            document.getElementById('directionSouthwest').value = pricing.direction_southwest || 0.95;
-            document.getElementById('directionEastWest').value = pricing.direction_east_west || 0.9;
             document.getElementById('shadingFactor').value = pricing.shading_factor || 0.85;
             document.getElementById('degradationRate').value = pricing.degradation_rate || 0.004;
             document.getElementById('operatingCostBase').value = pricing.operating_cost_base || 0.005;
@@ -296,7 +289,10 @@
             formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
             formData.append('tariff_rate', document.getElementById('tariffRate').value);
             formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
-            formData.append('vat_rate', parseFloat(document.getElementById('vatRate').value) / 100);
+            formData.append('basic_assumptions_default', document.getElementById('basicAssumptionsDefault').value);
+            formData.append('revenue_calculation_default', document.getElementById('revenueCalculationDefault').value);
+            formData.append('summary_default', document.getElementById('summaryDefault').value);
+            formData.append('environmental_impact_default', document.getElementById('environmentalImpactDefault').value);
 
             try {
                 const response = await fetch('/api/pricing', {
@@ -320,18 +316,7 @@
             e.preventDefault();
 
             const formData = new FormData();
-            // Pricing parameters (keep existing values)
-            formData.append('price_per_kwp', document.getElementById('pricePerKwp').value);
-            formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
-            formData.append('tariff_rate', document.getElementById('tariffRate').value);
-            formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
-            formData.append('vat_rate', parseFloat(document.getElementById('vatRate').value) / 100);
-
             // Calculator parameters
-            formData.append('direction_south', document.getElementById('directionSouth').value);
-            formData.append('direction_southeast', document.getElementById('directionSoutheast').value);
-            formData.append('direction_southwest', document.getElementById('directionSouthwest').value);
-            formData.append('direction_east_west', document.getElementById('directionEastWest').value);
             formData.append('shading_factor', document.getElementById('shadingFactor').value);
             formData.append('degradation_rate', document.getElementById('degradationRate').value);
             formData.append('operating_cost_base', document.getElementById('operatingCostBase').value);

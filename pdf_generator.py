@@ -1,1716 +1,988 @@
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak, NextPageTemplate, CondPageBreak, FrameBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus.frames import Frame
-from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
-from io import BytesIO
-from datetime import datetime, timedelta
-from chart_generator import generate_monthly_production_chart, generate_directional_production_chart
 import os
 import traceback
-from PIL import Image as PILImage
+from datetime import datetime, timedelta
+from io import BytesIO
 
-# Try to import libraries for proper RTL text handling
+from PIL import Image as PILImage
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import (
+    FrameBreak,
+    Image,
+    NextPageTemplate,
+    PageBreak,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
+from reportlab.platypus.doctemplate import BaseDocTemplate, PageTemplate
+from reportlab.platypus.frames import Frame
+
+from chart_generator import generate_monthly_production_chart
+from quote_defaults import QUOTE_ACCENT, QUOTE_BACKGROUND, QUOTE_MUTED, QUOTE_SURFACE, QUOTE_TEXT
+
+
 try:
     import arabic_reshaper
     from bidi.algorithm import get_display
+
     RTL_AVAILABLE = True
-    print("[OK] RTL text libraries loaded for PDF (arabic_reshaper + bidi)")
-except ImportError as e:
+except ImportError:
     RTL_AVAILABLE = False
-    print(f"[WARNING] RTL text libraries not available for PDF: {e}")
-    print("[INFO] Install with: pip install arabic-reshaper python-bidi")
+
     def get_display(text):
         return text
 
+
 def reshape_hebrew(text):
-    """
-    Reshape Hebrew text for proper RTL display in PDF.
-    Uses two-step process: arabic_reshaper + bidi algorithm.
-    """
     if text is None:
-        return ''
+        return ""
 
-    # Ensure text is a string
     text_str = str(text)
-    if text_str == 'None' or text_str == '':
-        return ''
+    if text_str in {"", "None"}:
+        return ""
 
-    # Ensure text is properly encoded as UTF-8
     try:
-        # If it's bytes, decode it
         if isinstance(text_str, bytes):
-            text_str = text_str.decode('utf-8')
-        # Ensure it can be encoded/decoded properly
-        text_str = text_str.encode('utf-8', errors='ignore').decode('utf-8')
-    except Exception as e:
-        print(f"[WARNING] Text encoding error: {e}")
+            text_str = text_str.decode("utf-8")
+        text_str = text_str.encode("utf-8", errors="ignore").decode("utf-8")
+    except Exception:
+        return str(text)
 
-    if RTL_AVAILABLE:
-        try:
-            # Step 1: Reshape the text (handles character connections)
-            reshaped_text = arabic_reshaper.reshape(text_str)
-            # Step 2: Apply bidi algorithm for proper RTL display
-            bidi_text = get_display(reshaped_text)
-            return bidi_text
-        except Exception as e:
-            print(f"[WARNING] RTL text processing error: {e}")
-            return text_str
+    if not RTL_AVAILABLE:
+        return text_str
+
+    try:
+        return get_display(arabic_reshaper.reshape(text_str))
+    except Exception:
+        return text_str
+
+
+def escape_for_paragraph(text):
+    if text is None:
+        return ""
+
+    text_str = str(text)
+    try:
+        if isinstance(text_str, bytes):
+            text_str = text_str.decode("utf-8", errors="replace")
+        text_str = text_str.encode("utf-8", errors="replace").decode("utf-8")
+    except Exception:
+        return ""
+
+    text_str = text_str.replace("&", "&amp;")
+    text_str = text_str.replace("<", "&lt;")
+    text_str = text_str.replace(">", "&gt;")
     return text_str
 
+
+def rtl(text):
+    return escape_for_paragraph(reshape_hebrew(text))
+
+
 def trim_signature_whitespace(image_path):
-    """
-    Aggressively trim whitespace from signature image using edge detection
-
-    Args:
-        image_path: Path to original signature image
-
-    Returns:
-        Path to trimmed signature image (temporary file)
-    """
     try:
-        # Open the image
         img = PILImage.open(image_path)
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
 
-        # Convert to RGBA if not already
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
-
-        # Get the alpha channel or create one
-        if img.mode == 'RGBA':
-            alpha = img.split()[3]
-        else:
-            # If no alpha, use the image itself
-            alpha = img.convert('L')
-
-        # Create a grayscale version for better edge detection
-        bg = PILImage.new('RGBA', img.size, (255, 255, 255, 255))
-        composite = PILImage.alpha_composite(bg, img)
-        gray = composite.convert('L')
-
-        # Apply threshold to detect non-white pixels more aggressively
-        # Pixels darker than 250 (out of 255) are considered content
-        threshold = 250
-        bbox_img = gray.point(lambda x: 0 if x > threshold else 255)
-
-        # Get bounding box with aggressive detection
+        background = PILImage.new("RGBA", img.size, (255, 255, 255, 255))
+        composite = PILImage.alpha_composite(background, img)
+        gray = composite.convert("L")
+        bbox_img = gray.point(lambda x: 0 if x > 250 else 255)
         bbox = bbox_img.getbbox()
 
         if bbox:
-            # Use minimal padding - just 2 pixels to avoid cutting edges
             padding = 2
             bbox = (
                 max(0, bbox[0] - padding),
                 max(0, bbox[1] - padding),
                 min(img.width, bbox[2] + padding),
-                min(img.height, bbox[3] + padding)
+                min(img.height, bbox[3] + padding),
             )
             img = img.crop(bbox)
 
-        # Save trimmed image to temporary location
-        trimmed_path = image_path.replace('.png', '_trimmed.png')
-        img.save(trimmed_path, 'PNG')
-
-        print(f"[OK] Aggressively trimmed signature to {img.size}, saved to: {trimmed_path}")
+        trimmed_path = image_path.replace(".png", "_trimmed.png")
+        img.save(trimmed_path, "PNG")
         return trimmed_path
-
-    except Exception as e:
-        print(f"[WARNING] Could not trim signature whitespace: {e}")
-        # Return original path if trimming fails
+    except Exception:
         return image_path
 
-# Register Hebrew-supporting font
+
 def register_hebrew_font():
-    """Register a Hebrew-supporting font for PDF generation"""
-    # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    bundled_font_dir = os.path.join(script_dir, 'fonts')
+    bundled_font_dir = os.path.join(script_dir, "fonts")
 
     font_paths = [
-        # Bundled Heebo fonts (highest priority - designed for Hebrew with full Latin support)
-        (os.path.join(bundled_font_dir, 'Heebo-Regular.ttf'),
-         os.path.join(bundled_font_dir, 'Heebo-Bold.ttf')),
-        # Bundled Rubik fonts (backup)
-        (os.path.join(bundled_font_dir, 'Rubik-Regular.ttf'),
-         os.path.join(bundled_font_dir, 'Rubik-Bold.ttf')),
-        # Windows fonts - Arial (has Hebrew support)
-        ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
-        ('C:/Windows/Fonts/ARIAL.TTF', 'C:/Windows/Fonts/ARIALBD.TTF'),
-        # Tahoma (has Hebrew support)
-        ('C:/Windows/Fonts/tahoma.ttf', 'C:/Windows/Fonts/tahomabd.ttf'),
-        # Linux system fonts - DejaVuSans has good Hebrew + Latin coverage
-        ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
-        ('/usr/share/fonts/truetype/freefont/FreeSans.ttf', '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf'),
+        (
+            os.path.join(bundled_font_dir, "Heebo-Regular.ttf"),
+            os.path.join(bundled_font_dir, "Heebo-Bold.ttf"),
+        ),
+        (
+            os.path.join(bundled_font_dir, "Rubik-Regular.ttf"),
+            os.path.join(bundled_font_dir, "Rubik-Bold.ttf"),
+        ),
+        ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf"),
+        ("C:/Windows/Fonts/ARIAL.TTF", "C:/Windows/Fonts/ARIALBD.TTF"),
+        ("C:/Windows/Fonts/tahoma.ttf", "C:/Windows/Fonts/tahomabd.ttf"),
+        (
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ),
     ]
 
     for regular_path, bold_path in font_paths:
-        if os.path.exists(regular_path):
-            try:
-                pdfmetrics.registerFont(TTFont('Hebrew', regular_path))
-                print(f"[OK] Registered Hebrew font: {regular_path}")
+        if not os.path.exists(regular_path):
+            continue
 
-                if os.path.exists(bold_path):
-                    pdfmetrics.registerFont(TTFont('Hebrew-Bold', bold_path))
-                    print(f"[OK] Registered Hebrew-Bold font: {bold_path}")
-                else:
-                    pdfmetrics.registerFont(TTFont('Hebrew-Bold', regular_path))
-                    print(f"[OK] Using regular font for bold: {regular_path}")
+        try:
+            pdfmetrics.registerFont(TTFont("Hebrew", regular_path))
+            if os.path.exists(bold_path):
+                pdfmetrics.registerFont(TTFont("Hebrew-Bold", bold_path))
+            else:
+                pdfmetrics.registerFont(TTFont("Hebrew-Bold", regular_path))
+            return True
+        except Exception:
+            continue
 
-                return True
-            except Exception as e:
-                print(f"[ERROR] Error registering font {regular_path}: {e}")
-                traceback.print_exc()
-                continue
-
-    print("[WARNING] No Hebrew font found. PDF will use default font.")
     return False
 
-# Register fonts on module load
+
 HEBREW_FONT_AVAILABLE = register_hebrew_font()
-FONT_NAME = 'Hebrew' if HEBREW_FONT_AVAILABLE else 'Helvetica'
-FONT_NAME_BOLD = 'Hebrew-Bold' if HEBREW_FONT_AVAILABLE else 'Helvetica-Bold'
+FONT_NAME = "Hebrew" if HEBREW_FONT_AVAILABLE else "Helvetica"
+FONT_NAME_BOLD = "Hebrew-Bold" if HEBREW_FONT_AVAILABLE else "Helvetica-Bold"
 
-print(f"[INFO] Using font: {FONT_NAME}, Bold: {FONT_NAME_BOLD}")
+THEME_BACKGROUND = colors.HexColor(QUOTE_BACKGROUND)
+THEME_SURFACE = colors.HexColor(QUOTE_SURFACE)
+THEME_ACCENT = colors.HexColor(QUOTE_ACCENT)
+THEME_MUTED = colors.HexColor(QUOTE_MUTED)
+THEME_TEXT = colors.HexColor(QUOTE_TEXT)
+THEME_DARK_TEXT = colors.HexColor(QUOTE_BACKGROUND)
+FOOTER_HEIGHT = 1.2 * inch
 
-def safe_get(data, key, default=''):
-    """Safely get a value from dictionary, handling None values and encoding"""
+
+def safe_get(data, key, default=""):
     value = data.get(key)
-    if value is None or str(value) == 'None' or value == '':
+    if value is None or value == "" or str(value) == "None":
         return default
-
-    # Ensure proper UTF-8 encoding for string values
-    if isinstance(value, str):
-        try:
-            # Clean and ensure UTF-8 encoding
-            value = value.encode('utf-8', errors='ignore').decode('utf-8')
-        except Exception as e:
-            print(f"[WARNING] Encoding error for key '{key}': {e}")
-
     return value
 
-def format_number(num):
-    """Format number with thousands separator"""
+
+def format_number(value):
     try:
-        return f"{int(num):,}"
-    except:
-        return str(num)
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
 
-def format_rtl_number_text(text_before, number, text_after=''):
-    """
-    Format text with embedded numbers for proper RTL display.
-    Uses Unicode direction marks to ensure numbers stay in correct position.
+    if number.is_integer():
+        return f"{int(number):,}"
+    return f"{number:,.2f}".rstrip("0").rstrip(".")
 
-    Args:
-        text_before: Hebrew text before the number
-        number: The number to embed (will be formatted)
-        text_after: Hebrew text after the number
 
-    Returns:
-        Properly formatted RTL string with embedded number
-    """
-    # RLM (Right-to-Left Mark) U+200F helps maintain RTL flow
-    # LRM (Left-to-Right Mark) U+200E helps isolate LTR content
-    RLM = '\u200F'
-    LRM = '\u200E'
+def format_currency(value):
+    return f"₪{format_number(value)}"
 
-    # Reshape Hebrew text parts
-    reshaped_before = reshape_hebrew(text_before) if text_before else ''
-    reshaped_after = reshape_hebrew(text_after) if text_after else ''
 
-    # Format the number and wrap it with direction marks
-    number_str = str(format_number(number)) if isinstance(number, (int, float)) else str(number)
+def format_signed_currency(value):
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return format_currency(value)
+    prefix = "-" if numeric < 0 else ""
+    return f"{prefix}{format_currency(abs(numeric))}"
 
-    # Combine: Hebrew text + RLM + number + LRM + Hebrew text
-    # The RLM before the number keeps it close to the Hebrew text
-    # The LRM after helps separate it from following Hebrew
-    if reshaped_after:
-        result = f"{reshaped_before}{RLM}{number_str}{LRM}{reshaped_after}"
+
+def format_multiline_text(text):
+    lines = str(text or "").splitlines() or [""]
+    output = []
+    for line in lines:
+        output.append(rtl(line) if line.strip() else "&nbsp;")
+    return "<br/>".join(output)
+
+
+def append_text_section(elements, title, text, heading_style, body_style, spacing=0.08 * inch):
+    elements.append(Paragraph(rtl(title), heading_style))
+    elements.append(Spacer(1, 0.04 * inch))
+    elements.append(Paragraph(format_multiline_text(text), body_style))
+    elements.append(Spacer(1, spacing))
+
+
+def add_page_background(canvas, doc):
+    canvas.saveState()
+    canvas.setFillColor(THEME_BACKGROUND)
+    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+    canvas.restoreState()
+
+
+def add_page_background_with_footer(canvas, doc):
+    canvas.saveState()
+    canvas.setFillColor(THEME_BACKGROUND)
+    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+    canvas.setFillColor(THEME_SURFACE)
+    canvas.rect(0, 0, A4[0], FOOTER_HEIGHT, fill=1, stroke=0)
+    canvas.restoreState()
+
+
+def build_document(buffer):
+    doc = BaseDocTemplate(
+        buffer,
+        pagesize=A4,
+        topMargin=0.5 * inch,
+        bottomMargin=0.5 * inch,
+        leftMargin=0.75 * inch,
+        rightMargin=0.75 * inch,
+    )
+
+    regular_frame = Frame(
+        doc.leftMargin,
+        doc.bottomMargin,
+        doc.width,
+        doc.height,
+        id="regular",
+    )
+    last_content_frame = Frame(
+        doc.leftMargin,
+        1.35 * inch,
+        doc.width,
+        doc.height - 0.85 * inch,
+        id="last_content",
+    )
+    last_footer_frame = Frame(
+        doc.leftMargin,
+        0.22 * inch,
+        doc.width,
+        0.92 * inch,
+        id="last_footer",
+        showBoundary=0,
+    )
+
+    doc.addPageTemplates(
+        [
+            PageTemplate(id="regular_page", frames=regular_frame, onPage=add_page_background),
+            PageTemplate(
+                id="last_page",
+                frames=[last_content_frame, last_footer_frame],
+                onPage=add_page_background_with_footer,
+            ),
+        ]
+    )
+    return doc
+
+
+def build_styles():
+    styles = getSampleStyleSheet()
+    return {
+        "title": ParagraphStyle(
+            "QuoteTitle",
+            parent=styles["Normal"],
+            fontSize=24,
+            textColor=THEME_ACCENT,
+            spaceAfter=6,
+            alignment=TA_RIGHT,
+            fontName=FONT_NAME_BOLD,
+        ),
+        "heading": ParagraphStyle(
+            "QuoteHeading",
+            parent=styles["Heading2"],
+            fontSize=11,
+            textColor=THEME_ACCENT,
+            spaceAfter=4,
+            spaceBefore=6,
+            fontName=FONT_NAME_BOLD,
+            alignment=TA_RIGHT,
+        ),
+        "body": ParagraphStyle(
+            "QuoteBody",
+            parent=styles["Normal"],
+            fontSize=8.5,
+            leading=12,
+            spaceAfter=2,
+            textColor=THEME_TEXT,
+            fontName=FONT_NAME,
+            alignment=TA_RIGHT,
+        ),
+        "note": ParagraphStyle(
+            "QuoteNote",
+            parent=styles["Normal"],
+            fontSize=7.5,
+            leading=10,
+            textColor=THEME_MUTED,
+            fontName=FONT_NAME,
+            alignment=TA_RIGHT,
+        ),
+        "footer_right": ParagraphStyle(
+            "FooterRight",
+            parent=styles["Normal"],
+            fontSize=8,
+            leading=10,
+            textColor=THEME_TEXT,
+            fontName=FONT_NAME,
+            alignment=TA_RIGHT,
+        ),
+        "footer_left": ParagraphStyle(
+            "FooterLeft",
+            parent=styles["Normal"],
+            fontSize=8,
+            leading=10,
+            textColor=THEME_TEXT,
+            fontName=FONT_NAME,
+            alignment=TA_LEFT,
+        ),
+    }
+
+
+def build_info_table(rows, col_widths, boxed=False):
+    table = Table(rows, colWidths=col_widths)
+    style = [
+        ("FONTNAME", (0, 0), (-1, -1), FONT_NAME),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("TEXTCOLOR", (0, 0), (-1, -1), THEME_TEXT),
+        ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]
+    if boxed:
+        style.extend(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), THEME_SURFACE),
+                ("GRID", (0, 0), (-1, -1), 0.5, THEME_MUTED),
+            ]
+        )
+    table.setStyle(TableStyle(style))
+    return table
+
+
+def apply_standard_table_style(table):
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), THEME_ACCENT),
+                ("TEXTCOLOR", (0, 0), (-1, 0), THEME_DARK_TEXT),
+                ("TEXTCOLOR", (0, 1), (-1, -1), THEME_TEXT),
+                ("BACKGROUND", (0, 1), (-1, -1), THEME_SURFACE),
+                ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+                ("FONTNAME", (0, 0), (-1, 0), FONT_NAME_BOLD),
+                ("FONTNAME", (0, 1), (-1, -1), FONT_NAME),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.5, THEME_MUTED),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
+
+def apply_cashflow_table_style(table):
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), THEME_ACCENT),
+                ("TEXTCOLOR", (0, 0), (-1, 0), THEME_DARK_TEXT),
+                ("BACKGROUND", (0, 1), (-1, -2), THEME_SURFACE),
+                ("TEXTCOLOR", (0, 1), (-1, -2), THEME_TEXT),
+                ("BACKGROUND", (0, -1), (-1, -1), THEME_ACCENT),
+                ("TEXTCOLOR", (0, -1), (-1, -1), THEME_DARK_TEXT),
+                ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+                ("FONTNAME", (0, 0), (-1, 0), FONT_NAME_BOLD),
+                ("FONTNAME", (0, 1), (-1, -1), FONT_NAME),
+                ("FONTSIZE", (0, 0), (-1, 0), 8.5),
+                ("FONTSIZE", (0, 1), (-1, -1), 6.8),
+                ("GRID", (0, 0), (-1, -1), 0.5, THEME_MUTED),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
+
+
+def get_assumption_values(quote_data):
+    return (
+        float(quote_data.get("degradation_rate") or 0.004),
+        float(quote_data.get("operating_cost_base") or 0.005),
+        float(quote_data.get("operating_cost_increase") or 0.02),
+        float(quote_data.get("leasing_payment_ratio") or 0.25),
+    )
+
+
+def calculate_purchase_cashflow_total(quote_data):
+    total_price = float(quote_data.get("total_price") or 0)
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    degradation_rate, operating_cost_base, operating_cost_increase, _ = get_assumption_values(
+        quote_data
+    )
+    base_operating_cost = total_price * operating_cost_base
+    total_cashflow = -total_price
+
+    for year in range(25):
+        production_factor = max(0.0, 1 - (degradation_rate * year))
+        yearly_revenue = annual_revenue * production_factor
+        yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** year)
+        total_cashflow += yearly_revenue - yearly_operating_cost
+
+    return int(round(total_cashflow))
+
+
+def calculate_leasing_cashflow_total(quote_data):
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    degradation_rate, _, _, leasing_ratio = get_assumption_values(quote_data)
+    total_cashflow = 0.0
+
+    for year in range(25):
+        production_factor = max(0.0, 1 - (degradation_rate * year))
+        total_cashflow += annual_revenue * production_factor * leasing_ratio
+
+    return int(round(total_cashflow))
+
+
+def build_specs_rows(quote_data, not_specified):
+    system_size = quote_data.get("system_size", 0) or 0
+    roof_area = quote_data.get("roof_area")
+    annual_prod = quote_data.get("annual_production", 0) or 0
+    return [
+        [f"{reshape_hebrew('קוט״ש')} {format_number(system_size)}", reshape_hebrew("גודל מערכת:")],
+        [f"{reshape_hebrew('מ״ר')} {format_number(roof_area)}" if roof_area else not_specified, reshape_hebrew("שטח גג:")],
+        [
+            f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified,
+            reshape_hebrew("ייצור שנתי:"),
+        ],
+        [reshape_hebrew(safe_get(quote_data, "maintenance")) or not_specified, reshape_hebrew("תחזוקה:")],
+        [reshape_hebrew(safe_get(quote_data, "service")) or not_specified, reshape_hebrew("שירות:")],
+    ]
+
+
+def build_purchase_financial_rows(quote_data):
+    total_price = quote_data.get("total_price", 0) or 0
+    annual_revenue = quote_data.get("annual_revenue", 0) or 0
+    system_value = quote_data.get("system_value_after_25_years")
+    total_cashflow = calculate_purchase_cashflow_total(quote_data)
+    return [
+        [reshape_hebrew("סכום"), reshape_hebrew("תיאור")],
+        [format_currency(total_price), reshape_hebrew("סך ההשקעה")],
+        [format_currency(annual_revenue), reshape_hebrew("הכנסה שנתית משוערת")],
+        [
+            format_currency(system_value) if system_value is not None else reshape_hebrew("לא צוין"),
+            reshape_hebrew("שווי מערכת לאחר 25 שנה"),
+        ],
+        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
+    ]
+
+
+def build_leasing_financial_rows(quote_data):
+    total_price = quote_data.get("total_price", 0) or 0
+    annual_revenue = quote_data.get("annual_revenue", 0) or 0
+    _, _, _, leasing_ratio = get_assumption_values(quote_data)
+    annual_customer_income = int(round(annual_revenue * leasing_ratio))
+    system_value = quote_data.get("system_value_after_25_years")
+    total_cashflow = calculate_leasing_cashflow_total(quote_data)
+    return [
+        [reshape_hebrew("סכום"), reshape_hebrew("תיאור")],
+        [format_currency(total_price), reshape_hebrew("שווי המערכת")],
+        [format_currency(annual_customer_income), reshape_hebrew("הכנסה שנתית ללקוח")],
+        [
+            format_currency(system_value) if system_value is not None else reshape_hebrew("לא צוין"),
+            reshape_hebrew("שווי מערכת לאחר 25 שנה"),
+        ],
+        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
+    ]
+
+
+def build_purchase_metrics_rows(quote_data):
+    total_price = float(quote_data.get("total_price") or 0)
+    system_size = float(quote_data.get("system_size") or 0)
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    price_per_kwp = total_price / system_size if system_size else 0
+    roa = (annual_revenue / total_price) * 100 if total_price else 0
+    total_cashflow = calculate_purchase_cashflow_total(quote_data)
+    return [
+        [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
+        [format_currency(total_price), reshape_hebrew("עלות כוללת")],
+        [format_currency(price_per_kwp), reshape_hebrew("מחיר לקילו-וואט")],
+        [f"{roa:.1f}%", reshape_hebrew("תשואה שנתית (ROA)")],
+        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר 25 שנה")],
+    ]
+
+
+def build_leasing_metrics_rows(quote_data):
+    total_price = float(quote_data.get("total_price") or 0)
+    system_size = float(quote_data.get("system_size") or 0)
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    _, _, _, leasing_ratio = get_assumption_values(quote_data)
+    price_per_kwp = total_price / system_size if system_size else 0
+    annual_customer_income = annual_revenue * leasing_ratio
+    total_cashflow = calculate_leasing_cashflow_total(quote_data)
+    return [
+        [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
+        [format_currency(total_price), reshape_hebrew("שווי המערכת")],
+        [format_currency(price_per_kwp), reshape_hebrew("מחיר לקילו-וואט")],
+        [format_currency(annual_customer_income), reshape_hebrew("הכנסה שנתית ללקוח")],
+        [f"{leasing_ratio * 100:.0f}%", reshape_hebrew("חלק הלקוח מההכנסה")],
+        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר 25 שנה")],
+    ]
+
+
+def build_purchase_cashflow_rows(quote_data):
+    total_price = float(quote_data.get("total_price") or 0)
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    degradation_rate, operating_cost_base, operating_cost_increase, _ = get_assumption_values(
+        quote_data
+    )
+    base_operating_cost = total_price * operating_cost_base
+
+    rows = [
+        [
+            reshape_hebrew("תזרים מצטבר"),
+            reshape_hebrew("רווח נקי"),
+            reshape_hebrew("הכנסה"),
+            reshape_hebrew("השקעה"),
+            reshape_hebrew("שנה"),
+        ],
+        [format_signed_currency(-total_price), "-", "-", format_currency(total_price), "0"],
+    ]
+
+    total_revenue = 0
+    total_net = 0
+    cumulative = -total_price
+
+    for year in range(1, 26):
+        production_factor = max(0.0, 1 - (degradation_rate * (year - 1)))
+        year_revenue = int(round(annual_revenue * production_factor))
+        year_operating_cost = int(
+            round(base_operating_cost * ((1 + operating_cost_increase) ** (year - 1)))
+        )
+        year_net = year_revenue - year_operating_cost
+        total_revenue += year_revenue
+        total_net += year_net
+        cumulative += year_net
+        rows.append(
+            [
+                format_signed_currency(cumulative),
+                format_currency(year_net),
+                format_currency(year_revenue),
+                "-",
+                str(year),
+            ]
+        )
+
+    rows.append(
+        [
+            format_signed_currency(cumulative),
+            format_currency(total_net),
+            format_currency(total_revenue),
+            format_currency(total_price),
+            reshape_hebrew("סה״כ"),
+        ]
+    )
+    return rows
+
+
+def build_leasing_cashflow_rows(quote_data):
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    degradation_rate, _, _, leasing_ratio = get_assumption_values(quote_data)
+
+    rows = [
+        [
+            reshape_hebrew("תזרים מצטבר"),
+            reshape_hebrew("לקוח"),
+            reshape_hebrew("השקעה"),
+            reshape_hebrew("שנה"),
+        ],
+        ["0", "-", "0", "0"],
+    ]
+
+    total_customer_income = 0
+    cumulative = 0
+
+    for year in range(1, 26):
+        production_factor = max(0.0, 1 - (degradation_rate * (year - 1)))
+        year_customer_income = int(round(annual_revenue * production_factor * leasing_ratio))
+        total_customer_income += year_customer_income
+        cumulative += year_customer_income
+        rows.append(
+            [
+                format_currency(cumulative),
+                format_currency(year_customer_income),
+                "-",
+                str(year),
+            ]
+        )
+
+    rows.append(
+        [
+            format_currency(cumulative),
+            format_currency(total_customer_income),
+            "0",
+            reshape_hebrew("סה״כ"),
+        ]
+    )
+    return rows
+
+
+def find_first_existing_path(paths):
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def build_header(elements, quote_data, title_text, title_style):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cwd = os.getcwd()
+
+    logo_path = find_first_existing_path(
+        [
+            os.path.join(cwd, "static", "images", "logo2.png"),
+            os.path.join(script_dir, "static", "images", "logo2.png"),
+            os.path.join(cwd, "logo2.png"),
+            os.path.join(script_dir, "logo2.png"),
+            os.path.join(cwd, "static", "images", "logo.png"),
+            os.path.join(script_dir, "static", "images", "logo.png"),
+        ]
+    )
+
+    subtitle_text = f"הצעת מחיר מספר {safe_get(quote_data, 'quote_number', 'N/A')}"
+    title_para = Paragraph(
+        (
+            f"<para align=right><b><font color='{QUOTE_ACCENT}'>{rtl(title_text)}</font></b>"
+            f"<br/><font size=12 color='{QUOTE_TEXT}'>{rtl(subtitle_text)}</font></para>"
+        ),
+        title_style,
+    )
+
+    if logo_path:
+        try:
+            logo = Image(logo_path, width=2.2 * inch, height=0.9 * inch, kind="proportional")
+            table = Table([[logo, title_para]], colWidths=[2.5 * inch, 4.0 * inch])
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 15),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 15),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 20),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 20),
+                    ]
+                )
+            )
+            elements.append(table)
+        except Exception:
+            elements.append(title_para)
     else:
-        result = f"{reshaped_before}{RLM}{number_str}"
+        elements.append(title_para)
 
-    return result
+    elements.append(Spacer(1, 0.1 * inch))
+    return cwd, script_dir
 
-def escape_for_paragraph(text):
-    """
-    Escape text for use in ReportLab Paragraph with proper encoding.
-    This prevents latin-1 encoding errors.
-    """
-    if text is None:
-        return ''
 
-    text_str = str(text)
+def build_signature_element(label_text, image_path, style, image_width, image_height):
+    if image_path and os.path.exists(image_path):
+        try:
+            trimmed_path = trim_signature_whitespace(image_path)
+            signature_image = Image(
+                trimmed_path,
+                width=image_width,
+                height=image_height,
+                kind="proportional",
+            )
+            label = Paragraph(rtl(label_text), style)
+            table = Table([[signature_image, label]], colWidths=[image_width, 0.82 * inch])
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                        ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                    ]
+                )
+            )
+            return table
+        except Exception:
+            pass
 
-    # Ensure UTF-8 encoding
-    try:
-        if isinstance(text_str, bytes):
-            text_str = text_str.decode('utf-8', errors='replace')
-        # Normalize the text to ensure compatibility
-        text_str = text_str.encode('utf-8', errors='replace').decode('utf-8')
-    except Exception as e:
-        print(f"[WARNING] Text escape error: {e}")
-        return ''
+    placeholder = Paragraph(rtl(f"{label_text} ______________"), style)
+    table = Table([[placeholder]], colWidths=[1.9 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("VALIGN", (0, 0), (0, 0), "BOTTOM"),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 0),
+                ("TOPPADDING", (0, 0), (0, 0), 0),
+                ("BOTTOMPADDING", (0, 0), (0, 0), 0),
+            ]
+        )
+    )
+    return table
 
-    # Escape XML special characters that Paragraph uses
-    text_str = text_str.replace('&', '&amp;')
-    text_str = text_str.replace('<', '&lt;')
-    text_str = text_str.replace('>', '&gt;')
 
-    return text_str
+def build_footer_table(
+    company_info,
+    company_name,
+    customer_signature_path,
+    footer_right_style,
+    footer_left_style,
+    cwd,
+    script_dir,
+):
+    company_signature_path = find_first_existing_path(
+        [
+            os.path.join(cwd, "sign.png"),
+            os.path.join(script_dir, "sign.png"),
+            os.path.join(cwd, "static", "images", "sign.png"),
+            os.path.join(script_dir, "static", "images", "sign.png"),
+        ]
+    )
 
-def add_blue_background_only(canvas, doc):
-    """Add blue background to the entire page (for non-last pages)"""
-    canvas.saveState()
-    canvas.setFillColor(colors.HexColor('#000080'))  # Blue background
-    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
-    canvas.restoreState()
+    company_lines = [f"<b>{escape_for_paragraph(company_name)}</b>"]
+    if company_info:
+        if company_info.get("company_phone"):
+            company_lines.append(
+                f"{escape_for_paragraph(company_info['company_phone'])} :{rtl('טלפון')}"
+            )
+        if company_info.get("company_email"):
+            company_lines.append(
+                f"{escape_for_paragraph(company_info['company_email'])} :{rtl('אימייל')}"
+            )
+        if company_info.get("company_address"):
+            company_lines.append(f"{rtl(company_info['company_address'])} :{rtl('כתובת')}")
+    company_lines.append("")
+    company_lines.append(rtl("זמינים לשירותכם בכל שאלה."))
+    right_para = Paragraph("<br/>".join(company_lines), footer_right_style)
 
-def add_blue_background_with_footer(canvas, doc):
-    """Add blue background and yellow footer (for last page only)"""
-    canvas.saveState()
-    # Blue background
-    canvas.setFillColor(colors.HexColor('#000080'))
-    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
-    # Yellow-green footer at bottom
-    footer_height = 1.2 * inch
-    canvas.setFillColor(colors.HexColor('#D9FF0D'))
-    canvas.rect(0, 0, A4[0], footer_height, fill=1, stroke=0)
-    canvas.restoreState()
+    customer_signature = build_signature_element(
+        "חתימת הלקוח:",
+        customer_signature_path,
+        footer_left_style,
+        1.1 * inch,
+        0.5 * inch,
+    )
+    company_signature = build_signature_element(
+        "חתימת החברה:",
+        company_signature_path,
+        footer_left_style,
+        1.0 * inch,
+        0.4 * inch,
+    )
+
+    footer_table = Table(
+        [[customer_signature, company_signature, right_para]],
+        colWidths=[1.9 * inch, 1.85 * inch, 2.25 * inch],
+    )
+    footer_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (1, 0), "BOTTOM"),
+                ("VALIGN", (2, 0), (2, 0), "TOP"),
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("ALIGN", (1, 0), (1, 0), "CENTER"),
+                ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (2, 0), (2, 0), 0),
+            ]
+        )
+    )
+    return footer_table
+
+
+def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_path=None, model_type="purchase"):
+    buffer = BytesIO()
+    doc = build_document(buffer)
+    styles = build_styles()
+    elements = []
+
+    company_name = (
+        safe_get(company_info, "company_name", "Solar Energy Solutions")
+        if company_info
+        else "Solar Energy Solutions"
+    )
+    title_text = "הצעת מחיר ליסינג" if model_type == "leasing" else "הצעת מחיר"
+    cwd, script_dir = build_header(elements, quote_data, title_text, styles["title"])
+
+    today = datetime.now()
+    valid_until = today + timedelta(days=30)
+    not_specified = reshape_hebrew("לא צוין")
+
+    quote_info_rows = [
+        [str(safe_get(quote_data, "quote_number", "N/A")), reshape_hebrew("מספר הצעה:")],
+        [today.strftime("%d/%m/%Y"), reshape_hebrew("תאריך:")],
+        [valid_until.strftime("%d/%m/%Y"), reshape_hebrew("בתוקף עד:")],
+    ]
+    elements.append(build_info_table(quote_info_rows, [4.8 * inch, 1.2 * inch]))
+    elements.append(Spacer(1, 0.06 * inch))
+
+    customer_rows = [
+        [reshape_hebrew(safe_get(quote_data, "customer_name")) or not_specified, reshape_hebrew("שם:")],
+        [safe_get(quote_data, "customer_phone", not_specified), reshape_hebrew("טלפון:")],
+        [safe_get(quote_data, "customer_email", not_specified), reshape_hebrew("אימייל:")],
+        [reshape_hebrew(safe_get(quote_data, "customer_address")) or not_specified, reshape_hebrew("כתובת:")],
+    ]
+    elements.append(Paragraph(rtl("פרטי לקוח"), styles["heading"]))
+    elements.append(Spacer(1, 0.04 * inch))
+    elements.append(build_info_table(customer_rows, [4.8 * inch, 1.2 * inch]))
+    elements.append(Spacer(1, 0.06 * inch))
+
+    elements.append(Paragraph(rtl("מפרט מערכת"), styles["heading"]))
+    elements.append(Spacer(1, 0.04 * inch))
+    elements.append(
+        build_info_table(
+            build_specs_rows(quote_data, not_specified),
+            [3.8 * inch, 2.2 * inch],
+            boxed=True,
+        )
+    )
+    elements.append(Spacer(1, 0.06 * inch))
+
+    system_size = float(quote_data.get("system_size") or 0)
+    annual_production = float(quote_data.get("annual_production") or 0)
+    if system_size and annual_production:
+        elements.append(Paragraph(rtl("ייצור אנרגיה חודשי"), styles["heading"]))
+        elements.append(Spacer(1, 0.04 * inch))
+        try:
+            chart_bytes = generate_monthly_production_chart(system_size, annual_production)
+            chart_image = Image(BytesIO(chart_bytes), width=6.3 * inch, height=2.6 * inch)
+            elements.append(chart_image)
+            elements.append(Spacer(1, 0.06 * inch))
+        except Exception:
+            traceback.print_exc()
+
+    elements.append(Paragraph(rtl("סיכום פיננסי"), styles["heading"]))
+    elements.append(Spacer(1, 0.04 * inch))
+    financial_rows = (
+        build_leasing_financial_rows(quote_data)
+        if model_type == "leasing"
+        else build_purchase_financial_rows(quote_data)
+    )
+    financial_table = Table(financial_rows, colWidths=[2.4 * inch, 3.6 * inch])
+    apply_standard_table_style(financial_table)
+    elements.append(financial_table)
+    elements.append(Spacer(1, 0.06 * inch))
+
+    elements.append(Paragraph(rtl("מדדים פיננסיים"), styles["heading"]))
+    elements.append(Spacer(1, 0.04 * inch))
+    metrics_rows = (
+        build_leasing_metrics_rows(quote_data)
+        if model_type == "leasing"
+        else build_purchase_metrics_rows(quote_data)
+    )
+    metrics_table = Table(metrics_rows, colWidths=[2.1 * inch, 3.9 * inch])
+    apply_standard_table_style(metrics_table)
+    elements.append(metrics_table)
+    elements.append(Spacer(1, 0.06 * inch))
+
+    append_text_section(
+        elements,
+        "השפעה סביבתית",
+        quote_data.get("environmental_impact_text", ""),
+        styles["heading"],
+        styles["body"],
+        spacing=0.06 * inch,
+    )
+
+    elements.append(NextPageTemplate("last_page"))
+    elements.append(PageBreak())
+
+    elements.append(Paragraph(rtl("ניתוח תזרים מזומנים - 25 שנה"), styles["heading"]))
+    elements.append(Spacer(1, 0.04 * inch))
+    cashflow_rows = (
+        build_leasing_cashflow_rows(quote_data)
+        if model_type == "leasing"
+        else build_purchase_cashflow_rows(quote_data)
+    )
+    cashflow_widths = (
+        [1.7 * inch, 1.7 * inch, 1.7 * inch, 1.1 * inch]
+        if model_type == "leasing"
+        else [1.35 * inch, 1.35 * inch, 1.35 * inch, 1.35 * inch, 0.8 * inch]
+    )
+    cashflow_table = Table(cashflow_rows, colWidths=cashflow_widths)
+    apply_cashflow_table_style(cashflow_table)
+    elements.append(cashflow_table)
+    elements.append(Spacer(1, 0.06 * inch))
+
+    append_text_section(
+        elements,
+        "הנחות יסוד",
+        quote_data.get("basic_assumptions_text", ""),
+        styles["heading"],
+        styles["body"],
+        spacing=0.05 * inch,
+    )
+    append_text_section(
+        elements,
+        "חישוב הכנסות",
+        quote_data.get("revenue_calculation_text", ""),
+        styles["heading"],
+        styles["body"],
+        spacing=0.05 * inch,
+    )
+    append_text_section(
+        elements,
+        "סיכום",
+        quote_data.get("summary_text", ""),
+        styles["heading"],
+        styles["body"],
+        spacing=0.05 * inch,
+    )
+
+    elements.append(
+        Paragraph(
+            rtl("* כל הנתונים בהצעה משוערים ועשויים להשתנות בהתאם לאתר ההתקנה ולבדיקות הסופיות בשטח."),
+            styles["note"],
+        )
+    )
+
+    elements.append(FrameBreak())
+    elements.append(
+        build_footer_table(
+            company_info or {},
+            company_name,
+            customer_signature_path,
+            styles["footer_right"],
+            styles["footer_left"],
+            cwd,
+            script_dir,
+        )
+    )
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
 
 def generate_quote_pdf(quote_data, company_info=None, customer_signature_path=None):
-    """
-    Generate a professional PDF quote with Hebrew support
+    return generate_quote_pdf_base(
+        quote_data,
+        company_info=company_info,
+        customer_signature_path=customer_signature_path,
+        model_type="purchase",
+    )
 
-    Args:
-        quote_data: Dictionary containing quote information
-        company_info: Dictionary containing company information
-        customer_signature_path: Optional path to customer signature image
-
-    Returns:
-        BytesIO object containing the PDF
-    """
-    try:
-        buffer = BytesIO()
-
-        # Create document with blue background
-        doc = BaseDocTemplate(
-            buffer,
-            pagesize=A4,
-            topMargin=0.5*inch,
-            bottomMargin=0.5*inch,
-            leftMargin=0.75*inch,
-            rightMargin=0.75*inch
-        )
-
-        # Create two page templates: one for regular pages, one for last page with footer
-        frame_regular = Frame(
-            doc.leftMargin,
-            doc.bottomMargin,
-            doc.width,
-            doc.height,
-            id='regular'
-        )
-
-        # LastPage has TWO frames: one for content, one for footer in yellow area
-        # Frame 1: Main content (same as regular page)
-        frame_last_content = Frame(
-            doc.leftMargin,
-            1.3*inch,  # Start above yellow footer area (which is 0-1.2")
-            doc.width,
-            doc.height - 0.8*inch,  # Reduced height to accommodate footer frame
-            id='last_content'
-        )
-        # Frame 2: Footer frame positioned exactly in yellow area (0.2" to 1.2" from bottom)
-        frame_last_footer = Frame(
-            doc.leftMargin,
-            0.2*inch,  # Position in yellow area (lower to accommodate more content)
-            doc.width,
-            1.0*inch,  # Increased height to fit all footer content including signature
-            id='last_footer',
-            showBoundary=0
-        )
-
-        # Template for regular pages (blue background only)
-        template_regular = PageTemplate(id='RegularPage', frames=frame_regular, onPage=add_blue_background_only)
-        # Template for last page (blue background + yellow footer) with TWO frames
-        template_last = PageTemplate(id='LastPage', frames=[frame_last_content, frame_last_footer], onPage=add_blue_background_with_footer)
-
-        doc.addPageTemplates([template_regular, template_last])
-
-        # Container for PDF elements
-        elements = []
-        styles = getSampleStyleSheet()
-
-        # Custom styles with white text for blue background
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=11,
-            textColor=colors.white,  # White text for blue background
-            spaceAfter=4,  # Reduced from 6
-            spaceBefore=6,  # Reduced from 8
-            fontName=FONT_NAME_BOLD,
-            alignment=TA_RIGHT  # RTL alignment for Hebrew
-        )
-
-        normal_style = ParagraphStyle(
-            'CustomNormal',
-            parent=styles['Normal'],
-            fontSize=9,
-            spaceAfter=2,  # Reduced from 3
-            textColor=colors.white,  # White text for blue background
-            fontName=FONT_NAME,
-            alignment=TA_RIGHT  # RTL alignment for Hebrew
-        )
-
-        subtitle_style = ParagraphStyle(
-            'Subtitle',
-            parent=styles['Normal'],
-            fontSize=18,
-            textColor=colors.white,  # White color for consistency
-            spaceAfter=3,
-            alignment=TA_CENTER,
-            fontName=FONT_NAME_BOLD
-        )
-
-        title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Normal'],
-            fontSize=24,
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green for main heading
-            spaceAfter=6,
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME_BOLD
-        )
-
-        # Company header - Blue background with logo and yellow title
-        company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
-
-        # Create header with logo on LEFT and title on RIGHT
-        # IMPORTANT: Use logo2.png only
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        cwd = os.getcwd()
-
-        logo_paths = [
-            # Try static/images/logo2.png first (most reliable for Flask apps)
-            os.path.join(cwd, 'static', 'images', 'logo2.png'),
-            'static/images/logo2.png',
-            os.path.join(script_dir, 'static', 'images', 'logo2.png'),
-            # Then try root directory
-            os.path.join(cwd, 'logo2.png'),
-            'logo2.png',
-            os.path.join(script_dir, 'logo2.png'),
-            # Fallback to logo.png only if logo2.png not found anywhere
-            os.path.join(cwd, 'static', 'images', 'logo.png'),
-            'static/images/logo.png',
-            os.path.join(script_dir, 'static', 'images', 'logo.png')
-        ]
-
-        # Debug: Print current working directory and which paths we're trying
-        print(f"[DEBUG] Current working directory: {cwd}")
-        print(f"[DEBUG] Script directory: {script_dir}")
-        print("[DEBUG] Looking for logo in these paths (in order):")
-        for p in logo_paths:
-            exists = os.path.exists(p)
-            print(f"  - {p} {'[EXISTS]' if exists else '[NOT FOUND]'}")
-
-        # Title paragraph for header
-        title_hebrew = reshape_hebrew('הצעת מחיר')
-        quote_num = str(safe_get(quote_data, 'quote_number', 'N/A'))
-        subtitle_hebrew = reshape_hebrew(f'הצעת מחיר מספר {quote_num}')
-        safe_title = escape_for_paragraph(title_hebrew)
-        safe_subtitle = escape_for_paragraph(subtitle_hebrew)
-
-        # Create title cell content with yellow-green main title and white subtitle
-        title_para = Paragraph(f"<para align=right><b><font color='#D9FF0D'>{safe_title}</font></b><br/><font size=12 color='white'>{safe_subtitle}</font></para>", title_style)
-
-        # Try to load logo from multiple paths
-        logo_loaded = False
-        for logo_path in logo_paths:
-            if os.path.exists(logo_path):
-                try:
-                    logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
-                    # Header with logo on LEFT, title on RIGHT
-                    header_data = [[logo, title_para]]
-                    header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
-                    header_table.setStyle(TableStyle([
-                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Logo aligned left
-                        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),   # Title aligned right
-                        ('TOPPADDING', (0, 0), (-1, -1), 15),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 20),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 20),
-                    ]))
-                    elements.append(header_table)
-                    print(f"[OK] Logo loaded from: {logo_path}")
-                    logo_loaded = True
-                    break
-                except Exception as e:
-                    print(f"[ERROR] Error loading logo from {logo_path}: {e}")
-                    continue
-
-        if not logo_loaded:
-            print(f"[WARNING] Logo not found in any of these paths: {logo_paths}")
-            # Fallback: Just show title
-            title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
-            elements.append(title_para)
-
-        elements.append(Spacer(1, 0.1*inch))  # Reduced spacing
-
-        # Quote number and date
-        today = datetime.now()
-        valid_until = today + timedelta(days=30)
-
-        # RTL: Value first (right), Label second (left)
-        quote_info = [
-            [str(safe_get(quote_data, 'quote_number', 'N/A')), reshape_hebrew('מספר הצעה:')],
-            [today.strftime('%d/%m/%Y'), reshape_hebrew('תאריך:')],
-            [valid_until.strftime('%d/%m/%Y'), reshape_hebrew('בתוקף עד:')]
-        ]
-
-        quote_table = Table(quote_info, colWidths=[4.8*inch, 1.2*inch])
-        quote_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text for blue background
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        elements.append(quote_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Customer Information
-        customer_heading = Paragraph(escape_for_paragraph(reshape_hebrew("פרטי לקוח")), heading_style)
-        elements.append(customer_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        customer_name_val = safe_get(quote_data, 'customer_name', '')
-        customer_phone_val = safe_get(quote_data, 'customer_phone', '')
-        customer_email_val = safe_get(quote_data, 'customer_email', '')
-        customer_address_val = safe_get(quote_data, 'customer_address', '')
-
-        not_specified = reshape_hebrew('לא צוין')
-
-        # Apply reshape_hebrew to customer values for proper RTL display
-        customer_name_display = reshape_hebrew(customer_name_val) if customer_name_val else not_specified
-        customer_phone_display = customer_phone_val if customer_phone_val else not_specified  # Phone numbers don't need reshaping
-        customer_email_display = customer_email_val if customer_email_val else not_specified  # Email doesn't need reshaping
-        customer_address_display = reshape_hebrew(customer_address_val) if customer_address_val else not_specified
-
-        # RTL: Value first (right), Label second (left)
-        customer_data = [
-            [customer_name_display, reshape_hebrew('שם:')],
-            [customer_phone_display, reshape_hebrew('טלפון:')],
-            [customer_email_display, reshape_hebrew('אימייל:')],
-            [customer_address_display, reshape_hebrew('כתובת:')],
-        ]
-
-        customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
-        customer_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        elements.append(customer_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # System Specifications
-        specs_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מפרט מערכת")), heading_style)
-        elements.append(specs_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        system_size = quote_data.get('system_size', 0) or 0
-        roof_area = quote_data.get('roof_area')
-        annual_prod = quote_data.get('annual_production', 0) or 0
-
-        # RTL Hebrew: unit comes before number in code to display unit on RIGHT, number on LEFT
-        # Reading order RTL: קוט״ש (right/first) → 76.0 (left/second)
-        specs_data = [
-            [f"{reshape_hebrew('קוט״ש')} {system_size}", reshape_hebrew('גודל מערכת:')],
-            [f"{reshape_hebrew('מ״ר')} {roof_area}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
-            [f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
-            [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
-            [f"{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
-            [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
-            [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
-            [f"°{quote_data.get('tilt_angle')}" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
-            [f"{reshape_hebrew('שנים')} {quote_data.get('warranty_years', 25)}", reshape_hebrew('אחריות:')],
-        ]
-
-        specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
-        specs_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),  # White grid lines
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(specs_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Get financial data
-        total_price = quote_data.get('total_price', 0) or 0
-        annual_revenue = quote_data.get('annual_revenue', 0) or 0
-
-        # Production Charts Section
-        if system_size and annual_prod:
-            elements.append(Spacer(1, 0.05*inch))  # Reduced spacing
-
-            # Monthly Production Chart
-            chart_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור אנרגיה חודשי")), heading_style)
-            elements.append(chart_heading)
-            elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-
-            try:
-                monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                # Increased height slightly to push directional chart heading to page 2
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.85*inch)
-                elements.append(monthly_chart_img)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-            except Exception as e:
-                print(f"[ERROR] Error generating monthly chart: {e}")
-
-            # Directional Production Chart - maintain square aspect ratio
-            try:
-                directional_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור לפי כיוון גג")), heading_style)
-                elements.append(directional_heading)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-                directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
-                # Increased size for better visibility
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.5*inch, height=4.5*inch)
-                elements.append(directional_chart_img)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-            except Exception as e:
-                print(f"[ERROR] Error generating directional chart: {e}")
-
-        # Financial Summary
-        financial_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום פיננסי")), heading_style)
-        elements.append(financial_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        payback = quote_data.get('payback_period', 0) or 0
-
-        # RTL: Currency stays before numbers (LTR), Hebrew units before numbers for proper RTL display
-        financial_data = [
-            [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
-            [f"₪{format_number(total_price)}", reshape_hebrew('סך ההשקעה')],
-            [f"₪{format_number(annual_revenue)}", reshape_hebrew('הכנסה שנתית משוערת')],
-            [f"{reshape_hebrew('שנים')} {payback:.2f}", reshape_hebrew('תקופת החזר')],
-            [f"₪{format_number(annual_revenue * 25)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
-        ]
-
-        financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
-        financial_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White header
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),  # Dark text on white header
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),  # White text for data rows
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.7, colors.white),  # White grid lines
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(financial_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Calculate financial metrics here (moved from later in the code)
-        RLM = '\u200F'
-        price_per_kwp = total_price / system_size if system_size else 0  # Include VAT
-        roa = ((annual_revenue / total_price) * 100) if total_price else 0
-
-        # Financial Metrics Summary on Page 2
-        metrics_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מדדים פיננסיים - סיכום השקעה")), heading_style)
-        elements.append(metrics_heading)
-        elements.append(Spacer(1, 0.06*inch))
-
-        metrics_data = [
-            [reshape_hebrew('ערך'), reshape_hebrew('מדד')],
-            [f"₪{format_number(int(total_price))}", reshape_hebrew('עלות כוללת (כולל מע״מ)')],
-            [f"₪{format_number(int(price_per_kwp))}", reshape_hebrew('מחיר לקילו-וואט (כולל מע״מ)')],
-            [f"{roa:.1f}%", reshape_hebrew('תשואה שנתית (ROA)')],
-            [f"{reshape_hebrew('שנים')} {payback:.2f}", reshape_hebrew('תקופת החזר (שנים)')],
-        ]
-
-        metrics_table = Table(metrics_data, colWidths=[2.0*inch, 4.0*inch])
-        metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(metrics_table)
-        elements.append(Spacer(1, 0.08*inch))
-
-        # Environmental Impact
-        env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
-        elements.append(env_heading)
-        elements.append(Spacer(1, 0.06*inch))
-
-        trees = int(annual_prod * 0.05) if annual_prod else 0
-        co2_saved = int(annual_prod * 0.5) if annual_prod else 0
-
-        # Build environmental text - reshape for proper RTL display
-        env_text = f'המערכת הסולארית שלך תייצר כ-{format_number(annual_prod)} קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת {format_number(trees)} עצים והפחתת פליטות CO2 ב-{format_number(co2_saved)} ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.'
-        env_para = Paragraph(escape_for_paragraph(reshape_hebrew(env_text)), normal_style)
-        elements.append(env_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Switch to LastPage template for page 3 which has yellow footer
-        elements.append(NextPageTemplate('LastPage'))
-        # Page break to Page 3
-        elements.append(PageBreak())
-
-        # Cash Flow Analysis Section - Page 3
-        cashflow_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ניתוח תזרים מזומנים - 25 שנה")), heading_style)
-        elements.append(cashflow_heading)
-        elements.append(Spacer(1, 0.08*inch))
-
-        # Calculate cash flow data
-        degradation_rate = 0.004
-        cumulative_cashflow = -total_price
-
-        # Build cash flow table data
-        cashflow_table_data = []
-        # Header row
-        cashflow_table_data.append([
-            reshape_hebrew('תזרים מצטבר'),
-            reshape_hebrew('רווח נקי'),
-            reshape_hebrew('הכנסה'),
-            reshape_hebrew('השקעה'),
-            reshape_hebrew('שנה')
-        ])
-
-        # Year 0 - show investment as positive, cumulative in parentheses for negative
-        cashflow_table_data.append([
-            f"(₪{format_number(int(total_price))})",  # Negative cumulative in parentheses
-            '-',
-            '-',
-            f"₪{format_number(int(total_price))}",  # Investment shown as positive
-            '0'
-        ])
-
-        total_revenue_sum = 0
-        total_net_profit_sum = 0
-
-        # Years 1-25
-        for year in range(1, 26):
-            yearly_degradation = 1 - (degradation_rate * (year - 1))
-            year_revenue = int(annual_revenue * yearly_degradation)
-            year_net_profit = year_revenue  # Net profit equals revenue (no operating costs)
-
-            total_revenue_sum += year_revenue
-            total_net_profit_sum += year_net_profit
-            cumulative_cashflow = total_net_profit_sum - total_price
-
-            # Format cumulative cashflow - use parentheses for negative values
-            if cumulative_cashflow < 0:
-                cumulative_display = f"(₪{format_number(abs(cumulative_cashflow))})"
-            else:
-                cumulative_display = f"₪{format_number(cumulative_cashflow)}"
-
-            cashflow_table_data.append([
-                cumulative_display,
-                f"₪{format_number(year_net_profit)}",
-                f"₪{format_number(year_revenue)}",
-                '-',
-                str(year)
-            ])
-
-        # Total row - investment shown as positive amount
-        cashflow_table_data.append([
-            f"₪{format_number(cumulative_cashflow)}",
-            f"₪{format_number(total_net_profit_sum)}",
-            f"₪{format_number(total_revenue_sum)}",
-            f"₪{format_number(int(total_price))}",  # Show as positive
-            reshape_hebrew('סה״כ')
-        ])
-
-        # Create cash flow table (smaller font to fit all rows) - adjusted widths for 5 columns
-        cashflow_table = Table(cashflow_table_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch, 0.8*inch])
-        cashflow_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (0, 1), (-1, -2), colors.white),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2d3748')),
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(cashflow_table)
-        elements.append(Spacer(1, 0.08*inch))
-
-        # Assumptions note with detailed list
-        assumptions_heading = Paragraph(escape_for_paragraph(reshape_hebrew("הנחות יסוד לחישוב הכנסות:")), heading_style)
-        elements.append(assumptions_heading)
-        elements.append(Spacer(1, 0.04*inch))
-
-        # Detailed assumptions style
-        assumptions_style = ParagraphStyle(
-            'AssumptionsDetailed',
-            parent=normal_style,
-            fontSize=8,
-            textColor=colors.white,
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=5,  # Increased from 3 to 5 for better separation
-            leading=13,  # Slightly increased from 12 to 13 for readability
-            rightIndent=0,
-            leftIndent=0
-        )
-
-        # Assumption 1 (combined)
-        assumption1_text = '1.החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר,החישוב מניח תחזוקה נאותה של מערכת לאורך כל תקופת הפעולה.'
-        assumption1_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption1_text)), assumptions_style)
-        elements.append(assumption1_para)
-
-        # Assumption 2
-        assumption2_text = '2. כל הנתונים והחישובים המוצגים הינם הערכות בלבד, והכנסות מדויקות יתאפשרו רק לאחר התקנת המערכת וביצועיה בפועל.'
-        assumption2_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption2_text)), assumptions_style)
-        elements.append(assumption2_para)
-        elements.append(Spacer(1, 0.06*inch))
-
-        # Additional technical details
-        technical_details_text = 'ירידה שנתית בייצור: 0.4% | עלויות תפעול: 0.5% עלות המערכת.'
-        technical_para = Paragraph(escape_for_paragraph(reshape_hebrew(technical_details_text)), ParagraphStyle(
-            'TechnicalDetails',
-            parent=normal_style,
-            fontSize=8,
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=10
-        ))
-        elements.append(technical_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Closing remarks
-        closing_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום")), heading_style)
-        elements.append(closing_heading)
-        elements.append(Spacer(1, 0.04*inch))
-
-        total_cashflow_25 = cumulative_cashflow
-        # Reshape for proper RTL display
-        closing_text = f'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא {format_number(total_cashflow_25)} ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
-        closing_para = Paragraph(escape_for_paragraph(reshape_hebrew(closing_text)), normal_style)
-        elements.append(closing_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Disclaimer text
-        disclaimer_style = ParagraphStyle(
-            'Disclaimer',
-            parent=normal_style,
-            fontSize=8,  # Increased from 7 to 8 for better readability
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme and stand out
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=10
-        )
-        disclaimer_text = '* כל הנתונים בהצעה משוערים ועשויים להשתנות בהתאם לאיזור וייקבעו לאחר ביצוע ההתקנה.'
-        disclaimer_para = Paragraph(escape_for_paragraph(reshape_hebrew(disclaimer_text)), disclaimer_style)
-        elements.append(disclaimer_para)
-
-        # Break to footer frame - this moves content to the footer frame positioned in yellow area
-        elements.append(FrameBreak())
-
-        # Footer text (will appear in footer frame positioned on yellow background)
-        # Using two-column layout: company info on right, signature on left
-        footer_style_right = ParagraphStyle(
-            'FooterRight',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.HexColor('#2d3748'),  # Dark gray text on yellow-green
-            alignment=TA_RIGHT,
-            leading=10,
-            fontName=FONT_NAME
-        )
-
-        footer_style_left = ParagraphStyle(
-            'FooterLeft',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.HexColor('#2d3748'),
-            alignment=TA_LEFT,
-            leading=10,
-            fontName=FONT_NAME
-        )
-
-        # Right column: Company information
-        right_lines = []
-        right_lines.append(f"<b>{escape_for_paragraph(company_name)}</b>")
-
-        if company_info:
-            if company_info.get('company_phone'):
-                # RTL: Phone number on left, label on right
-                right_lines.append(escape_for_paragraph(company_info['company_phone']) + ' :' + escape_for_paragraph(reshape_hebrew('טלפון')))
-            if company_info.get('company_email'):
-                # RTL: Email on left, label on right
-                right_lines.append(escape_for_paragraph(company_info['company_email']) + ' :' + escape_for_paragraph(reshape_hebrew('אימייל')))
-            if company_info.get('company_address'):
-                # RTL: Address on left, label on right
-                right_lines.append(escape_for_paragraph(reshape_hebrew(company_info['company_address'])) + ' :' + escape_for_paragraph(reshape_hebrew('כתובת')))
-
-        right_lines.append("")
-        right_lines.append(escape_for_paragraph(reshape_hebrew('זמינים לשירותכם בכל שאלה.')))
-
-        right_text = "<br/>".join(right_lines)
-        right_para = Paragraph(right_text, footer_style_right)
-
-        # Signature section: customer signature on left, company signature in middle, company info on right
-        # Try to load sign.png from multiple paths
-        sign_paths = [
-            os.path.join(cwd, 'sign.png'),
-            'sign.png',
-            os.path.join(script_dir, 'sign.png'),
-            os.path.join(cwd, 'static', 'images', 'sign.png'),
-            'static/images/sign.png',
-            os.path.join(script_dir, 'static', 'images', 'sign.png'),
-        ]
-
-        signature_img = None
-        for sign_path in sign_paths:
-            if os.path.exists(sign_path):
-                try:
-                    # Load signature image - smaller size
-                    signature_img = Image(sign_path, width=1.0*inch, height=0.4*inch, kind='proportional')
-                    print(f"[OK] Signature image loaded from: {sign_path}")
-                    break
-                except Exception as e:
-                    print(f"[ERROR] Error loading signature from {sign_path}: {e}")
-                    continue
-
-        # Left column: Customer signature - use actual signature if provided, otherwise placeholder
-        if customer_signature_path and os.path.exists(customer_signature_path):
-            try:
-                # Trim whitespace from signature for better display
-                trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
-                # Load customer signature image - moderate size with aggressive trimming
-                customer_sig_img = Image(trimmed_sig_path, width=1.1*inch, height=0.5*inch, kind='proportional')
-                customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.1*inch, 0.75*inch])
-                customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
-                    ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 0),   # No gap - label touches signature
-                    ('RIGHTPADDING', (1, 0), (1, 0), 0),
-                    ('TOPPADDING', (0, 0), (-1, -1), 0),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                ]))
-                print(f"[OK] Customer signature loaded from: {customer_signature_path}")
-            except Exception as e:
-                print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
-                # Fallback to placeholder
-                customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.85*inch])
-                customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                    ('LEFTPADDING', (0, 0), (0, 0), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                    ('TOPPADDING', (0, 0), (0, 0), 0),
-                    ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-                ]))
-        else:
-            # Placeholder if no signature provided
-            customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.85*inch])
-            customer_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                ('TOPPADDING', (0, 0), (0, 0), 0),
-                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-            ]))
-
-        # Middle column: Company signature with label and image
-        if signature_img is not None:
-            # Create a table with signature label on right and image on left (RTL layout)
-            sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה:')), footer_style_left)
-            sig_table_data = [[signature_img, sig_label]]
-            company_sig_element = Table(sig_table_data, colWidths=[1.0*inch, 0.8*inch])
-            company_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'RIGHT'),  # Image aligned right (closer to label)
-                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Image aligned to bottom
-                ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Label aligned to bottom
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Minimal padding between image and label
-                ('RIGHTPADDING', (1, 0), (1, 0), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ]))
-        else:
-            # Fallback to text if image not found
-            print("[WARNING] Signature image not found, using text signature line")
-            company_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה: ______________')), footer_style_left)
-            company_sig_element = Table([[company_sig_para]], colWidths=[1.8*inch])
-            company_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                ('TOPPADDING', (0, 0), (0, 0), 0),
-                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-            ]))
-
-        # Create three-column footer table: customer signature on left, company signature in middle, company info on right
-        footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[1.85*inch, 1.8*inch, 2.35*inch])
-        footer_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
-            ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
-            ('VALIGN', (2, 0), (2, 0), 'TOP'),      # Company info at top
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),      # Customer signature left
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),    # Company signature center
-            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),     # Company info right
-            ('LEFTPADDING', (0, 0), (0, 0), 0),     # Remove left padding for customer signature
-            ('RIGHTPADDING', (2, 0), (2, 0), 0),    # Remove right padding to align with text margin
-        ]))
-
-        # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background
-        elements.append(footer_table)
-
-        # Build PDF
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer
-
-    except Exception as e:
-        print(f"[ERROR] Error building PDF: {e}")
-        traceback.print_exc()
-        raise
 
 def generate_leasing_quote_pdf(quote_data, company_info=None, customer_signature_path=None):
-    """
-    Generate a professional leasing PDF quote with Hebrew support
-    This is the leasing model variant with 25% customer income calculations
-
-    Args:
-        quote_data: Dictionary containing quote information
-        company_info: Dictionary containing company information
-        customer_signature_path: Optional path to customer signature image
-
-    Returns:
-        BytesIO object containing the PDF
-    """
-    try:
-        buffer = BytesIO()
-
-        # Create document with blue background
-        doc = BaseDocTemplate(
-            buffer,
-            pagesize=A4,
-            topMargin=0.5*inch,
-            bottomMargin=0.5*inch,
-            leftMargin=0.75*inch,
-            rightMargin=0.75*inch
-        )
-
-        # Create two page templates: one for regular pages, one for last page with footer
-        frame_regular = Frame(
-            doc.leftMargin,
-            doc.bottomMargin,
-            doc.width,
-            doc.height,
-            id='regular'
-        )
-
-        # LastPage has TWO frames: one for content, one for footer in yellow area
-        # Frame 1: Main content (same as regular page)
-        frame_last_content = Frame(
-            doc.leftMargin,
-            1.3*inch,  # Start above yellow footer area (which is 0-1.2")
-            doc.width,
-            doc.height - 0.8*inch,  # Reduced height to accommodate footer frame
-            id='last_content'
-        )
-        # Frame 2: Footer frame positioned exactly in yellow area (0.2" to 1.2" from bottom)
-        frame_last_footer = Frame(
-            doc.leftMargin,
-            0.2*inch,  # Position in yellow area (lower to accommodate more content)
-            doc.width,
-            1.0*inch,  # Increased height to fit all footer content including signature
-            id='last_footer',
-            showBoundary=0
-        )
-
-        # Template for regular pages (blue background only)
-        template_regular = PageTemplate(id='RegularPage', frames=frame_regular, onPage=add_blue_background_only)
-        # Template for last page (blue background + yellow footer) with TWO frames
-        template_last = PageTemplate(id='LastPage', frames=[frame_last_content, frame_last_footer], onPage=add_blue_background_with_footer)
-
-        doc.addPageTemplates([template_regular, template_last])
-
-        # Container for PDF elements
-        elements = []
-        styles = getSampleStyleSheet()
-
-        # Custom styles with white text for blue background
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=11,
-            textColor=colors.white,  # White text for blue background
-            spaceAfter=4,  # Reduced from 6
-            spaceBefore=6,  # Reduced from 8
-            fontName=FONT_NAME_BOLD,
-            alignment=TA_RIGHT  # RTL alignment for Hebrew
-        )
-
-        normal_style = ParagraphStyle(
-            'CustomNormal',
-            parent=styles['Normal'],
-            fontSize=9,
-            spaceAfter=2,  # Reduced from 3
-            textColor=colors.white,  # White text for blue background
-            fontName=FONT_NAME,
-            alignment=TA_RIGHT  # RTL alignment for Hebrew
-        )
-
-        subtitle_style = ParagraphStyle(
-            'Subtitle',
-            parent=styles['Normal'],
-            fontSize=18,
-            textColor=colors.white,  # White color for consistency
-            spaceAfter=3,
-            alignment=TA_CENTER,
-            fontName=FONT_NAME_BOLD
-        )
-
-        title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Normal'],
-            fontSize=24,
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green for main heading
-            spaceAfter=6,
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME_BOLD
-        )
-
-        # Company header - Blue background with logo and yellow title
-        company_name = safe_get(company_info, 'company_name', 'Solar Energy Solutions') if company_info else 'Solar Energy Solutions'
-
-        # Create header with logo on LEFT and title on RIGHT
-        # IMPORTANT: Use logo2.png only
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        cwd = os.getcwd()
-
-        logo_paths = [
-            # Try static/images/logo2.png first (most reliable for Flask apps)
-            os.path.join(cwd, 'static', 'images', 'logo2.png'),
-            'static/images/logo2.png',
-            os.path.join(script_dir, 'static', 'images', 'logo2.png'),
-            # Then try root directory
-            os.path.join(cwd, 'logo2.png'),
-            'logo2.png',
-            os.path.join(script_dir, 'logo2.png'),
-            # Fallback to logo.png only if logo2.png not found anywhere
-            os.path.join(cwd, 'static', 'images', 'logo.png'),
-            'static/images/logo.png',
-            os.path.join(script_dir, 'static', 'images', 'logo.png')
-        ]
-
-        # Debug: Print current working directory and which paths we're trying
-        print(f"[DEBUG] Current working directory: {cwd}")
-        print(f"[DEBUG] Script directory: {script_dir}")
-        print("[DEBUG] Looking for logo in these paths (in order):")
-        for p in logo_paths:
-            exists = os.path.exists(p)
-            print(f"  - {p} {'[EXISTS]' if exists else '[NOT FOUND]'}")
-
-        # LEASING TITLE - changed from "הצעת מחיר" to "הצעת מחיר ליסינג"
-        title_hebrew = reshape_hebrew('הצעת מחיר ליסינג')
-        quote_num = str(safe_get(quote_data, 'quote_number', 'N/A'))
-        subtitle_hebrew = reshape_hebrew(f'הצעת מחיר מספר {quote_num}')
-        safe_title = escape_for_paragraph(title_hebrew)
-        safe_subtitle = escape_for_paragraph(subtitle_hebrew)
-
-        # Create title cell content with yellow-green main title and white subtitle
-        title_para = Paragraph(f"<para align=right><b><font color='#D9FF0D'>{safe_title}</font></b><br/><font size=12 color='white'>{safe_subtitle}</font></para>", title_style)
-
-        # Try to load logo from multiple paths
-        logo_loaded = False
-        for logo_path in logo_paths:
-            if os.path.exists(logo_path):
-                try:
-                    logo = Image(logo_path, width=2.2*inch, height=0.9*inch, kind='proportional')
-                    # Header with logo on LEFT, title on RIGHT
-                    header_data = [[logo, title_para]]
-                    header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
-                    header_table.setStyle(TableStyle([
-                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Logo aligned left
-                        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),   # Title aligned right
-                        ('TOPPADDING', (0, 0), (-1, -1), 15),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 20),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 20),
-                    ]))
-                    elements.append(header_table)
-                    print(f"[OK] Logo loaded from: {logo_path}")
-                    logo_loaded = True
-                    break
-                except Exception as e:
-                    print(f"[ERROR] Error loading logo from {logo_path}: {e}")
-                    continue
-
-        if not logo_loaded:
-            print(f"[WARNING] Logo not found in any of these paths: {logo_paths}")
-            # Fallback: Just show title
-            title_para = Paragraph(f"<para align=center>{safe_title}</para>", title_style)
-            elements.append(title_para)
-
-        elements.append(Spacer(1, 0.1*inch))  # Reduced spacing
-
-        # Quote number and date
-        today = datetime.now()
-        valid_until = today + timedelta(days=30)
-
-        # RTL: Value first (right), Label second (left)
-        quote_info = [
-            [str(safe_get(quote_data, 'quote_number', 'N/A')), reshape_hebrew('מספר הצעה:')],
-            [today.strftime('%d/%m/%Y'), reshape_hebrew('תאריך:')],
-            [valid_until.strftime('%d/%m/%Y'), reshape_hebrew('בתוקף עד:')]
-        ]
-
-        quote_table = Table(quote_info, colWidths=[4.8*inch, 1.2*inch])
-        quote_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text for blue background
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        elements.append(quote_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Customer Information
-        customer_heading = Paragraph(escape_for_paragraph(reshape_hebrew("פרטי לקוח")), heading_style)
-        elements.append(customer_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        customer_name_val = safe_get(quote_data, 'customer_name', '')
-        customer_phone_val = safe_get(quote_data, 'customer_phone', '')
-        customer_email_val = safe_get(quote_data, 'customer_email', '')
-        customer_address_val = safe_get(quote_data, 'customer_address', '')
-
-        not_specified = reshape_hebrew('לא צוין')
-
-        # Apply reshape_hebrew to customer values for proper RTL display
-        customer_name_display = reshape_hebrew(customer_name_val) if customer_name_val else not_specified
-        customer_phone_display = customer_phone_val if customer_phone_val else not_specified  # Phone numbers don't need reshaping
-        customer_email_display = customer_email_val if customer_email_val else not_specified  # Email doesn't need reshaping
-        customer_address_display = reshape_hebrew(customer_address_val) if customer_address_val else not_specified
-
-        # RTL: Value first (right), Label second (left)
-        customer_data = [
-            [customer_name_display, reshape_hebrew('שם:')],
-            [customer_phone_display, reshape_hebrew('טלפון:')],
-            [customer_email_display, reshape_hebrew('אימייל:')],
-            [customer_address_display, reshape_hebrew('כתובת:')],
-        ]
-
-        customer_table = Table(customer_data, colWidths=[4.8*inch, 1.2*inch])
-        customer_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        elements.append(customer_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # System Specifications - LEASING: Remove warranty row
-        specs_heading = Paragraph(escape_for_paragraph(reshape_hebrew("מפרט מערכת")), heading_style)
-        elements.append(specs_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        system_size = quote_data.get('system_size', 0) or 0
-        roof_area = quote_data.get('roof_area')
-        annual_prod = quote_data.get('annual_production', 0) or 0
-
-        # RTL Hebrew: unit comes before number in code to display unit on RIGHT, number on LEFT
-        # Reading order RTL: קוט״ש (right/first) → 76.0 (left/second)
-        # LEASING: Removed warranty row
-        specs_data = [
-            [f"{reshape_hebrew('קוט״ש')} {system_size}", reshape_hebrew('גודל מערכת:')],
-            [f"{reshape_hebrew('מ״ר')} {roof_area}" if roof_area else not_specified, reshape_hebrew('שטח גג:')],
-            [f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified, reshape_hebrew('ייצור שנתי:')],
-            [safe_get(quote_data, 'panel_type') or not_specified, reshape_hebrew('סוג פאנל:')],
-            [f"{str(safe_get(quote_data, 'panel_count'))}" if safe_get(quote_data, 'panel_count') else not_specified, reshape_hebrew('מספר פאנלים:')],
-            [safe_get(quote_data, 'inverter_type') or not_specified, reshape_hebrew('סוג ממיר:')],
-            [safe_get(quote_data, 'direction') or not_specified, reshape_hebrew('כיוון:')],
-            [f"°{quote_data.get('tilt_angle')}" if quote_data.get('tilt_angle') else not_specified, reshape_hebrew('זווית הטיה:')],
-        ]
-
-        specs_table = Table(specs_data, colWidths=[3.8*inch, 2.2*inch])
-        specs_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),  # White text
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),  # White grid lines
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(specs_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # Get financial data
-        total_price = quote_data.get('total_price', 0) or 0
-        annual_revenue = quote_data.get('annual_revenue', 0) or 0
-
-        # Production Charts Section
-        if system_size and annual_prod:
-            elements.append(Spacer(1, 0.05*inch))  # Reduced spacing
-
-            # Monthly Production Chart
-            chart_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור אנרגיה חודשי")), heading_style)
-            elements.append(chart_heading)
-            elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-
-            try:
-                monthly_chart_bytes = generate_monthly_production_chart(system_size, annual_prod)
-                # Increased height slightly to push directional chart heading to page 2
-                monthly_chart_img = Image(BytesIO(monthly_chart_bytes), width=6.5*inch, height=2.85*inch)
-                elements.append(monthly_chart_img)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-            except Exception as e:
-                print(f"[ERROR] Error generating monthly chart: {e}")
-
-            # Directional Production Chart - maintain square aspect ratio
-            try:
-                directional_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ייצור לפי כיוון גג")), heading_style)
-                elements.append(directional_heading)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-                directional_chart_bytes = generate_directional_production_chart(system_size, annual_prod)
-                # Increased size for better visibility
-                directional_chart_img = Image(BytesIO(directional_chart_bytes), width=4.5*inch, height=4.5*inch)
-                elements.append(directional_chart_img)
-                elements.append(Spacer(1, 0.04*inch))  # Reduced spacing
-            except Exception as e:
-                print(f"[ERROR] Error generating directional chart: {e}")
-
-        # Financial Summary - LEASING: Removed annual revenue and payback period rows
-        financial_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום פיננסי")), heading_style)
-        elements.append(financial_heading)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # LEASING: 25-year savings calculated as 25% of total revenue with degradation, investment shown as 0
-        # Calculate accurate 25-year total with 0.4% annual degradation
-        degradation_rate_calc = 0.004
-        total_25_years_client = sum(int(annual_revenue * (1 - degradation_rate_calc * year) * 0.25) for year in range(25))
-        # Calculate annual customer income (25% of annual revenue)
-        annual_customer_income = int(annual_revenue * 0.25)
-
-        financial_data = [
-            [reshape_hebrew('סכום'), reshape_hebrew('תיאור')],
-            ["0", reshape_hebrew('סך ההשקעה')],
-            [f"₪{format_number(annual_customer_income)}", reshape_hebrew('הכנסה שנתית משוערת')],
-            [f"₪{format_number(total_25_years_client)}", reshape_hebrew('חיסכון כולל ל-25 שנה')],
-        ]
-
-        financial_table = Table(financial_data, colWidths=[2.5*inch, 3.5*inch])
-        financial_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White header
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),  # Dark text on white header
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.white),  # White text for data rows
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # RTL alignment for all cells
-            ('FONTNAME', (0, 0), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.7, colors.white),  # White grid lines
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(financial_table)
-        elements.append(Spacer(1, 0.06*inch))  # Reduced spacing
-
-        # LEASING: No financial metrics table (removed entirely)
-
-        # Environmental Impact
-        env_heading = Paragraph(escape_for_paragraph(reshape_hebrew("השפעה סביבתית")), heading_style)
-        elements.append(env_heading)
-        elements.append(Spacer(1, 0.06*inch))
-
-        trees = int(annual_prod * 0.05) if annual_prod else 0
-        co2_saved = int(annual_prod * 0.5) if annual_prod else 0
-
-        # Build environmental text - reshape for proper RTL display
-        env_text = f'המערכת הסולארית שלך תייצר כ-{format_number(annual_prod)} קוט״ש של אנרגיה נקייה בשנה, שווה ערך לנטיעת {format_number(trees)} עצים והפחתת פליטות CO2 ב-{format_number(co2_saved)} ק״ג בשנה. במשך 25 שנה, זהו תרומה משמעותית לקיימות סביבתית.'
-        env_para = Paragraph(escape_for_paragraph(reshape_hebrew(env_text)), normal_style)
-        elements.append(env_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Switch to LastPage template for page 3 which has yellow footer
-        elements.append(NextPageTemplate('LastPage'))
-        # Page break to Page 3
-        elements.append(PageBreak())
-
-        # Cash Flow Analysis Section - Page 3
-        # LEASING: Modified cash flow table with "לקוח" column instead of "הכנסה"
-        cashflow_heading = Paragraph(escape_for_paragraph(reshape_hebrew("ניתוח תזרים מזומנים - 25 שנה")), heading_style)
-        elements.append(cashflow_heading)
-        elements.append(Spacer(1, 0.08*inch))
-
-        # Calculate cash flow data
-        degradation_rate = 0.004
-        cumulative_cashflow = -total_price
-
-        # Build cash flow table data
-        cashflow_table_data = []
-        # Header row - LEASING: Removed "רווח נקי" column, only cumulative, client, investment, year
-        cashflow_table_data.append([
-            reshape_hebrew('תזרים מצטבר'),
-            reshape_hebrew('לקוח'),  # Changed from 'הכנסה' to 'לקוח'
-            reshape_hebrew('השקעה'),
-            reshape_hebrew('שנה')
-        ])
-
-        # Year 0 - LEASING: Investment set to '0', cumulative starts at 0
-        cashflow_table_data.append([
-            '0',  # LEASING: Cumulative starts at 0 since investment is 0
-            '-',
-            '0',  # LEASING: Set to 0 instead of showing actual investment
-            '0'
-        ])
-
-        total_revenue_sum = 0
-        total_net_profit_sum = 0
-
-        # Years 1-25
-        for year in range(1, 26):
-            yearly_degradation = 1 - (degradation_rate * (year - 1))
-            year_revenue = int(annual_revenue * yearly_degradation)
-            # LEASING: Customer gets 25% of revenue
-            year_customer = int(year_revenue * 0.25)
-            # LEASING: Net profit is 25% of revenue
-            year_net_profit = year_customer
-
-            total_revenue_sum += year_customer  # Track customer income
-            total_net_profit_sum += year_net_profit
-            # LEASING: Cumulative is just the sum of 25% income (no investment to subtract)
-            cumulative_cashflow = total_net_profit_sum
-
-            # Format cumulative cashflow
-            cumulative_display = f"₪{format_number(cumulative_cashflow)}"
-
-            # LEASING: Removed net profit column - only cumulative, client, investment, year
-            cashflow_table_data.append([
-                cumulative_display,
-                f"₪{format_number(year_customer)}",  # Customer column shows 25% of revenue
-                '-',
-                str(year)
-            ])
-
-        # Total row - LEASING: Removed net profit column - only cumulative, client total, investment, label
-        cashflow_table_data.append([
-            f"₪{format_number(cumulative_cashflow)}",
-            f"₪{format_number(total_revenue_sum)}",
-            '0',  # LEASING: Show 0 for total investment
-            reshape_hebrew('סה״כ')
-        ])
-
-        # Create cash flow table (smaller font to fit all rows) - LEASING: 4 columns (removed net profit)
-        cashflow_table = Table(cashflow_table_data, colWidths=[1.7*inch, 1.7*inch, 1.7*inch, 1.1*inch])
-        cashflow_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
-            ('TEXTCOLOR', (0, 1), (-1, -2), colors.white),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2d3748')),
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('FONTNAME', (0, 0), (-1, 0), FONT_NAME_BOLD),
-            ('FONTNAME', (0, 1), (-1, -1), FONT_NAME),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        elements.append(cashflow_table)
-        elements.append(Spacer(1, 0.08*inch))
-
-        # Assumptions note with detailed list
-        assumptions_heading = Paragraph(escape_for_paragraph(reshape_hebrew("הנחות יסוד לחישוב הכנסות:")), heading_style)
-        elements.append(assumptions_heading)
-        elements.append(Spacer(1, 0.04*inch))
-
-        # Detailed assumptions style
-        assumptions_style = ParagraphStyle(
-            'AssumptionsDetailed',
-            parent=normal_style,
-            fontSize=8,
-            textColor=colors.white,
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=5,  # Increased from 3 to 5 for better separation
-            leading=13,  # Slightly increased from 12 to 13 for readability
-            rightIndent=0,
-            leftIndent=0
-        )
-
-        # Assumption 1 (combined) - LEASING: Removed assumption 2 and technical details line
-        assumption1_text = '1.החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה לתעריף חברת החשמל לצרכן (64 אגורות לקוט״ש) בהתאם למסלול הנבחר,החישוב מניח תחזוקה נאותה של מערכת לאורך כל תקופת הפעולה.'
-        assumption1_para = Paragraph(escape_for_paragraph(reshape_hebrew(assumption1_text)), assumptions_style)
-        elements.append(assumption1_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Closing remarks
-        closing_heading = Paragraph(escape_for_paragraph(reshape_hebrew("סיכום")), heading_style)
-        elements.append(closing_heading)
-        elements.append(Spacer(1, 0.04*inch))
-
-        total_cashflow_25 = cumulative_cashflow
-        # Reshape for proper RTL display
-        closing_text = f'השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך. על פי החישובים, התזרים המצטבר ל-25 שנה הוא {format_number(total_cashflow_25)} ש״ח, מה שמעיד על רווחיות גבוהה. נשמח לעמוד לשירותכם בכל שאלה.'
-        closing_para = Paragraph(escape_for_paragraph(reshape_hebrew(closing_text)), normal_style)
-        elements.append(closing_para)
-        elements.append(Spacer(1, 0.1*inch))
-
-        # Disclaimer text
-        disclaimer_style = ParagraphStyle(
-            'Disclaimer',
-            parent=normal_style,
-            fontSize=8,  # Increased from 7 to 8 for better readability
-            textColor=colors.HexColor('#D9FF0D'),  # Yellow-green to match theme and stand out
-            alignment=TA_RIGHT,
-            fontName=FONT_NAME,
-            spaceAfter=10
-        )
-        disclaimer_text = '* כל הנתונים בהצעה משוערים ועשויים להשתנות בהתאם לאיזור וייקבעו לאחר ביצוע ההתקנה.'
-        disclaimer_para = Paragraph(escape_for_paragraph(reshape_hebrew(disclaimer_text)), disclaimer_style)
-        elements.append(disclaimer_para)
-
-        # Break to footer frame - this moves content to the footer frame positioned in yellow area
-        elements.append(FrameBreak())
-
-        # Footer text (will appear in footer frame positioned on yellow background)
-        # Using two-column layout: company info on right, signature on left
-        footer_style_right = ParagraphStyle(
-            'FooterRight',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.HexColor('#2d3748'),  # Dark gray text on yellow-green
-            alignment=TA_RIGHT,
-            leading=10,
-            fontName=FONT_NAME
-        )
-
-        footer_style_left = ParagraphStyle(
-            'FooterLeft',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.HexColor('#2d3748'),
-            alignment=TA_LEFT,
-            leading=10,
-            fontName=FONT_NAME
-        )
-
-        # Right column: Company information
-        right_lines = []
-        right_lines.append(f"<b>{escape_for_paragraph(company_name)}</b>")
-
-        if company_info:
-            if company_info.get('company_phone'):
-                # RTL: Phone number on left, label on right
-                right_lines.append(escape_for_paragraph(company_info['company_phone']) + ' :' + escape_for_paragraph(reshape_hebrew('טלפון')))
-            if company_info.get('company_email'):
-                # RTL: Email on left, label on right
-                right_lines.append(escape_for_paragraph(company_info['company_email']) + ' :' + escape_for_paragraph(reshape_hebrew('אימייל')))
-            if company_info.get('company_address'):
-                # RTL: Address on left, label on right
-                right_lines.append(escape_for_paragraph(reshape_hebrew(company_info['company_address'])) + ' :' + escape_for_paragraph(reshape_hebrew('כתובת')))
-
-        right_lines.append("")
-        right_lines.append(escape_for_paragraph(reshape_hebrew('זמינים לשירותכם בכל שאלה.')))
-
-        right_text = "<br/>".join(right_lines)
-        right_para = Paragraph(right_text, footer_style_right)
-
-        # Signature section: customer signature on left, company signature in middle, company info on right
-        # Try to load sign.png from multiple paths
-        sign_paths = [
-            os.path.join(cwd, 'sign.png'),
-            'sign.png',
-            os.path.join(script_dir, 'sign.png'),
-            os.path.join(cwd, 'static', 'images', 'sign.png'),
-            'static/images/sign.png',
-            os.path.join(script_dir, 'static', 'images', 'sign.png'),
-        ]
-
-        signature_img = None
-        for sign_path in sign_paths:
-            if os.path.exists(sign_path):
-                try:
-                    # Load signature image - smaller size
-                    signature_img = Image(sign_path, width=1.0*inch, height=0.4*inch, kind='proportional')
-                    print(f"[OK] Signature image loaded from: {sign_path}")
-                    break
-                except Exception as e:
-                    print(f"[ERROR] Error loading signature from {sign_path}: {e}")
-                    continue
-
-        # Left column: Customer signature - use actual signature if provided, otherwise placeholder
-        if customer_signature_path and os.path.exists(customer_signature_path):
-            try:
-                # Trim whitespace from signature for better display
-                trimmed_sig_path = trim_signature_whitespace(customer_signature_path)
-                # Load customer signature image - moderate size with aggressive trimming
-                customer_sig_img = Image(trimmed_sig_path, width=1.1*inch, height=0.5*inch, kind='proportional')
-                customer_sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח:')), footer_style_left)
-                customer_sig_data = [[customer_sig_img, customer_sig_label]]  # Signature first, label second
-                customer_sig_element = Table(customer_sig_data, colWidths=[1.1*inch, 0.75*inch])
-                customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Signature aligned left
-                    ('ALIGN', (1, 0), (1, 0), 'RIGHT'),    # Label aligned right (close to signature)
-                    ('VALIGN', (0, 0), (1, 0), 'BOTTOM'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 0),   # No gap - label touches signature
-                    ('RIGHTPADDING', (1, 0), (1, 0), 0),
-                    ('TOPPADDING', (0, 0), (-1, -1), 0),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                ]))
-                print(f"[OK] Customer signature loaded from: {customer_signature_path}")
-            except Exception as e:
-                print(f"[ERROR] Error loading customer signature from {customer_signature_path}: {e}")
-                # Fallback to placeholder
-                customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-                customer_sig_element = Table([[customer_sig_para]], colWidths=[1.85*inch])
-                customer_sig_element.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                    ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                    ('LEFTPADDING', (0, 0), (0, 0), 0),
-                    ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                    ('TOPPADDING', (0, 0), (0, 0), 0),
-                    ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-                ]))
-        else:
-            # Placeholder if no signature provided
-            customer_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת הלקוח: ______________')), footer_style_left)
-            customer_sig_element = Table([[customer_sig_para]], colWidths=[1.85*inch])
-            customer_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                ('TOPPADDING', (0, 0), (0, 0), 0),
-                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-            ]))
-
-        # Middle column: Company signature with label and image
-        if signature_img is not None:
-            # Create a table with signature label on right and image on left (RTL layout)
-            sig_label = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה:')), footer_style_left)
-            sig_table_data = [[signature_img, sig_label]]
-            company_sig_element = Table(sig_table_data, colWidths=[1.0*inch, 0.8*inch])
-            company_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'RIGHT'),  # Image aligned right (closer to label)
-                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),  # Label on right (RTL)
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Image aligned to bottom
-                ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Label aligned to bottom
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 2),   # Minimal padding between image and label
-                ('RIGHTPADDING', (1, 0), (1, 0), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ]))
-        else:
-            # Fallback to text if image not found
-            print("[WARNING] Signature image not found, using text signature line")
-            company_sig_para = Paragraph(escape_for_paragraph(reshape_hebrew('חתימת החברה: ______________')), footer_style_left)
-            company_sig_element = Table([[company_sig_para]], colWidths=[1.8*inch])
-            company_sig_element.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                ('TOPPADDING', (0, 0), (0, 0), 0),
-                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-            ]))
-
-        # Create three-column footer table: customer signature on left, company signature in middle, company info on right
-        footer_data = [[customer_sig_element, company_sig_element, right_para]]
-        footer_table = Table(footer_data, colWidths=[1.85*inch, 1.8*inch, 2.35*inch])
-        footer_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (0, 0), 'BOTTOM'),  # Customer signature at bottom
-            ('VALIGN', (1, 0), (1, 0), 'BOTTOM'),  # Company signature at bottom
-            ('VALIGN', (2, 0), (2, 0), 'TOP'),      # Company info at top
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),      # Customer signature left
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),    # Company signature center
-            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),     # Company info right
-            ('LEFTPADDING', (0, 0), (0, 0), 0),     # Remove left padding for customer signature
-            ('RIGHTPADDING', (2, 0), (2, 0), 0),    # Remove right padding to align with text margin
-        ]))
-
-        # Add footer table - FrameBreak above ensures it goes into footer frame on yellow background
-        elements.append(footer_table)
-
-        # Build PDF
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer
-
-    except Exception as e:
-        print(f"[ERROR] Error building leasing PDF: {e}")
-        traceback.print_exc()
-        raise
+    return generate_quote_pdf_base(
+        quote_data,
+        company_info=company_info,
+        customer_signature_path=customer_signature_path,
+        model_type="leasing",
+    )

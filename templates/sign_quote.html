@@ -267,20 +267,20 @@
         .pdf-preview-btn {
             display: inline-block;
             padding: 14px 28px;
-            background: #2B7EB4;
-            color: white;
+            background: #3AE478;
+            color: #14181F;
             text-decoration: none;
             border-radius: 10px;
             font-weight: 600;
             font-size: 16px;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(43, 126, 180, 0.3);
+            box-shadow: 0 6px 20px rgba(58, 228, 120, 0.35);
         }
 
         .pdf-preview-btn:hover {
-            background: #3B82F6;
+            background: #45f085;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(43, 126, 180, 0.5);
+            box-shadow: 0 10px 30px rgba(58, 228, 120, 0.5);
         }
 
         @media (max-width: 768px) {
@@ -336,7 +336,7 @@
 
             <!-- Customer Details -->
             <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
-                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטי לקוח</h3>
+                <h3 style="color: #3AE478; font-size: 16px; margin-bottom: 10px;">פרטי לקוח</h3>
                 <div class="detail-row">
                     <span class="detail-label">מספר הצעה:</span>
                     <span class="detail-value">{{ quote_number }}</span>
@@ -365,27 +365,15 @@
 
             <!-- System Details -->
             <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;">
-                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטי מערכת</h3>
+                <h3 style="color: #3AE478; font-size: 16px; margin-bottom: 10px;">פרטי מערכת</h3>
                 <div class="detail-row">
                     <span class="detail-label">גודל מערכת:</span>
                     <span class="detail-value">{{ system_size }} קוט״ש</span>
                 </div>
-                {% if panel_type %}
+                {% if roof_area %}
                 <div class="detail-row">
-                    <span class="detail-label">סוג פאנלים:</span>
-                    <span class="detail-value">{{ panel_type }}</span>
-                </div>
-                {% endif %}
-                {% if panel_count %}
-                <div class="detail-row">
-                    <span class="detail-label">מספר פאנלים:</span>
-                    <span class="detail-value">{{ panel_count }}</span>
-                </div>
-                {% endif %}
-                {% if inverter_type %}
-                <div class="detail-row">
-                    <span class="detail-label">סוג מהפך:</span>
-                    <span class="detail-value">{{ inverter_type }}</span>
+                    <span class="detail-label">שטח גג:</span>
+                    <span class="detail-value">{{ roof_area }} מ״ר</span>
                 </div>
                 {% endif %}
                 {% if annual_production %}
@@ -394,24 +382,30 @@
                     <span class="detail-value">{{ annual_production }} קוט״ש</span>
                 </div>
                 {% endif %}
-                {% if warranty_years %}
+                {% if maintenance %}
                 <div class="detail-row">
-                    <span class="detail-label">תקופת אחריות:</span>
-                    <span class="detail-value">{{ warranty_years }} שנים</span>
+                    <span class="detail-label">תחזוקה:</span>
+                    <span class="detail-value">{{ maintenance }}</span>
+                </div>
+                {% endif %}
+                {% if service %}
+                <div class="detail-row">
+                    <span class="detail-label">שירות:</span>
+                    <span class="detail-value">{{ service }}</span>
                 </div>
                 {% endif %}
             </div>
 
             <!-- Financial Details -->
             <div>
-                <h3 style="color: #00358A; font-size: 16px; margin-bottom: 10px;">פרטים פיננסיים</h3>
+                <h3 style="color: #3AE478; font-size: 16px; margin-bottom: 10px;">פרטים פיננסיים</h3>
                 <div class="detail-row">
                     <span class="detail-label">סוג הצעה:</span>
                     <span class="detail-value">{{ 'ליסינג' if model_type == 'leasing' else 'רכישה' }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">מחיר כולל:</span>
-                    <span class="detail-value" style="font-size: 18px; font-weight: 700; color: #00358A;">₪{{ total_price }}</span>
+                    <span class="detail-value" style="font-size: 18px; font-weight: 700; color: #3AE478;">₪{{ total_price }}</span>
                 </div>
                 {% if annual_revenue %}
                 <div class="detail-row">
@@ -419,10 +413,10 @@
                     <span class="detail-value">₪{{ annual_revenue }}</span>
                 </div>
                 {% endif %}
-                {% if payback_period %}
+                {% if system_value_after_25_years %}
                 <div class="detail-row">
-                    <span class="detail-label">תקופת החזר:</span>
-                    <span class="detail-value">{{ payback_period }} שנים</span>
+                    <span class="detail-label">שווי מערכת לאחר 25 שנה:</span>
+                    <span class="detail-value">₪{{ system_value_after_25_years }}</span>
                 </div>
                 {% endif %}
             </div>

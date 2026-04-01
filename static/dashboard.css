@@ -145,7 +145,8 @@ body::before {
 }
 
 .form-grid input,
-.form-grid select {
+.form-grid select,
+.form-grid textarea {
     padding: 14px 16px;
     border: 2px solid rgba(58, 228, 120, 0.3);
     border-radius: 10px;
@@ -156,11 +157,19 @@ body::before {
 }
 
 .form-grid input:focus,
-.form-grid select:focus {
+.form-grid select:focus,
+.form-grid textarea:focus {
     outline: none;
     border-color: #3AE478;
     background: rgba(20, 24, 31, 0.8);
     box-shadow: 0 0 0 4px rgba(58, 228, 120, 0.2);
+}
+
+.form-grid textarea {
+    min-height: 140px;
+    resize: vertical;
+    line-height: 1.6;
+    font-family: inherit;
 }
 
 .btn-calculate {

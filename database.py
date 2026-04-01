@@ -7,6 +7,7 @@ from typing import Optional
 import random
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from quote_defaults import get_legacy_quote_text_defaults
 
 # PostgreSQL database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -32,6 +33,7 @@ def get_cursor(conn):
 def init_database():
     """Initialize PostgreSQL database with tables"""
     print("[DB] Initializing PostgreSQL database...")
+    legacy_defaults = get_legacy_quote_text_defaults()
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -85,6 +87,13 @@ def init_database():
                 tilt_angle NUMERIC,
                 warranty_years INTEGER DEFAULT 25,
                 total_price NUMERIC NOT NULL,
+                maintenance TEXT,
+                service TEXT,
+                system_value_after_25_years NUMERIC,
+                basic_assumptions_text TEXT,
+                revenue_calculation_text TEXT,
+                summary_text TEXT,
+                environmental_impact_text TEXT,
                 annual_revenue NUMERIC NOT NULL,
                 payback_period NUMERIC NOT NULL,
                 status VARCHAR(50) DEFAULT 'DRAFT',
@@ -114,6 +123,10 @@ def init_database():
                 operating_cost_increase NUMERIC DEFAULT 0.02,
                 roof_area_per_kw NUMERIC DEFAULT 7.0,
                 leasing_payment_ratio NUMERIC DEFAULT 0.3,
+                basic_assumptions_default TEXT,
+                revenue_calculation_default TEXT,
+                summary_default TEXT,
+                environmental_impact_default TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -206,9 +219,23 @@ def init_database():
         if cursor.fetchone()[0] == 0:
             cursor.execute('''
                 INSERT INTO pricing_parameters
-                (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', (4300, 1360, 0.48, 0.05, 0.17))
+                (
+                    price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate,
+                    basic_assumptions_default, revenue_calculation_default, summary_default,
+                    environmental_impact_default
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                4300,
+                1360,
+                0.48,
+                0.05,
+                0.17,
+                legacy_defaults["basic_assumptions_default"],
+                legacy_defaults["revenue_calculation_default"],
+                legacy_defaults["summary_default"],
+                legacy_defaults["environmental_impact_default"],
+            ))
             conn.commit()
             print("[OK] Default pricing parameters created")
 
@@ -260,6 +287,15 @@ def init_database():
         print("[WARNING] database_migration_phase4.py not found - skipping Phase 4 migration")
     except Exception as e:
         print(f"[WARNING] Phase 4 migration failed: {e}")
+
+    # Run Phase 5 migration (Quote refresh fields)
+    try:
+        from database_migration_phase5_quote_refresh import migrate_phase5_quote_refresh
+        migrate_phase5_quote_refresh()
+    except ImportError:
+        print("[WARNING] database_migration_phase5_quote_refresh.py not found - skipping Phase 5 migration")
+    except Exception as e:
+        print(f"[WARNING] Phase 5 migration failed: {e}")
 
 def hash_password(password: str) -> str:
     """Hash password using bcrypt with SHA-256 pre-hash (handles any length)"""

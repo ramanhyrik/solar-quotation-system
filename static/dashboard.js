@@ -1,5 +1,261 @@
 let currentQuoteData = {};
 
+const quoteTemplateFieldMap = {
+    basicAssumptionsText: 'basic_assumptions_default',
+    revenueCalculationText: 'revenue_calculation_default',
+    summaryText: 'summary_default',
+    environmentalImpactText: 'environmental_impact_default'
+};
+
+function getDashboardPricingSettings() {
+    return window.dashboardPricingSettings || {};
+}
+
+function parseNumericInput(value) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatInteger(value) {
+    const parsed = Number(value || 0);
+    return Math.round(parsed).toLocaleString();
+}
+
+function renderTemplateString(template, context) {
+    if (!template) {
+        return '';
+    }
+
+    return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
+        const value = context[key];
+        return value === undefined || value === null ? '' : String(value);
+    });
+}
+
+function buildQuoteTemplateContext() {
+    const pricing = getDashboardPricingSettings();
+    const systemSize = parseNumericInput(document.getElementById('systemSize')?.value);
+    const roofArea = parseNumericInput(document.getElementById('roofArea')?.value);
+    const annualProduction = Number(currentQuoteData.annual_production || 0);
+    const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
+    const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
+    const systemValueAfter25Years = parseNumericInput(
+        document.getElementById('systemValueAfter25Years')?.value
+    );
+    const treesMultiplier = Number(pricing.trees_multiplier ?? 0.05);
+    const degradationRate = Number(pricing.degradation_rate ?? 0.004);
+    const operatingCostBase = Number(pricing.operating_cost_base ?? 0.005);
+    const operatingCostIncrease = Number(pricing.operating_cost_increase ?? 0.02);
+    const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.3);
+
+    let totalCashflow25 = -totalPrice;
+    const baseOperatingCost = totalPrice * operatingCostBase;
+    const isLeasing = (window.currentModel || 'purchase') === 'leasing';
+
+    for (let year = 0; year < 25; year += 1) {
+        const yearlyProductionFactor = Math.max(0, 1 - (degradationRate * year));
+        const yearlyRevenue = annualRevenue * yearlyProductionFactor;
+        if (isLeasing) {
+            totalCashflow25 += yearlyRevenue * leasingRatio;
+        } else {
+            const yearlyOperatingCost = baseOperatingCost * ((1 + operatingCostIncrease) ** year);
+            totalCashflow25 += yearlyRevenue - yearlyOperatingCost;
+        }
+    }
+
+    return {
+        system_size: systemSize !== null ? systemSize.toFixed(1).replace(/\.0$/, '') : '',
+        roof_area: roofArea !== null ? roofArea.toFixed(1).replace(/\.0$/, '') : '',
+        annual_production: formatInteger(annualProduction),
+        annual_revenue: formatInteger(annualRevenue),
+        total_price: formatInteger(totalPrice),
+        system_value_after_25_years: systemValueAfter25Years !== null
+            ? formatInteger(systemValueAfter25Years)
+            : '',
+        trees: formatInteger(annualProduction * treesMultiplier),
+        co2_saved: formatInteger(annualProduction * 0.5),
+        total_cashflow_25: formatInteger(totalCashflow25),
+        degradation_rate_percent: (degradationRate * 100).toFixed(1).replace(/\.0$/, ''),
+        operating_cost_base_percent: (operatingCostBase * 100).toFixed(1).replace(/\.0$/, ''),
+        operating_cost_increase_percent: (operatingCostIncrease * 100).toFixed(1).replace(/\.0$/, '')
+    };
+}
+
+function initializeQuoteTextDefaults() {
+    const pricing = getDashboardPricingSettings();
+
+    Object.entries(quoteTemplateFieldMap).forEach(([fieldId, pricingKey]) => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+            return;
+        }
+
+        const template = pricing[pricingKey] || '';
+        field.dataset.template = template;
+
+        if (!field.value.trim()) {
+            field.value = template;
+            field.dataset.autoFilled = 'true';
+        }
+    });
+}
+
+function refreshQuoteTextSections(force = false) {
+    const context = buildQuoteTemplateContext();
+
+    Object.entries(quoteTemplateFieldMap).forEach(([fieldId, pricingKey]) => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+            return;
+        }
+
+        const template = field.dataset.template || getDashboardPricingSettings()[pricingKey] || '';
+        field.dataset.template = template;
+
+        if (!template) {
+            return;
+        }
+
+        const shouldReplace = force || field.dataset.userEdited !== 'true' || !field.value.trim();
+        if (shouldReplace) {
+            field.value = renderTemplateString(template, context);
+            field.dataset.autoFilled = 'true';
+            field.dataset.userEdited = 'false';
+        }
+    });
+}
+
+function updateManualPriceDisplay() {
+    const totalPriceElement = document.getElementById('totalPrice');
+    if (!totalPriceElement) {
+        return;
+    }
+
+    const manualPrice = getFinalQuotePrice();
+    const fallbackPrice = Number(currentQuoteData.total_price || 0);
+    const priceToShow = manualPrice || fallbackPrice;
+    totalPriceElement.textContent = `₪${formatInteger(priceToShow)}`;
+}
+
+function maybePrefillSystemValue() {
+    const field = document.getElementById('systemValueAfter25Years');
+    if (!field) {
+        return;
+    }
+
+    const isEditable = field.dataset.userEdited === 'true' && field.value.trim();
+    if (!isEditable && currentQuoteData.annual_revenue) {
+        field.value = Math.round(Number(currentQuoteData.annual_revenue) * 25);
+        field.dataset.autoFilled = 'true';
+    }
+}
+
+function getFinalQuotePrice() {
+    const finalPriceField = document.getElementById('finalPrice');
+    return parseNumericInput(finalPriceField?.value);
+}
+
+function collectQuotePayload() {
+    const customerName = document.getElementById('customerName').value;
+    const systemSize = parseNumericInput(document.getElementById('systemSize').value);
+
+    if (!customerName || !systemSize) {
+        throw new Error('missing_required_fields');
+    }
+
+    if (!currentQuoteData.total_price) {
+        throw new Error('quote_not_calculated');
+    }
+
+    return {
+        customer_name: customerName,
+        customer_phone: document.getElementById('customerPhone').value,
+        customer_email: document.getElementById('customerEmail').value,
+        customer_address: document.getElementById('customerAddress').value,
+        system_size: systemSize,
+        roof_area: parseNumericInput(document.getElementById('roofArea').value),
+        annual_production: currentQuoteData.annual_production,
+        total_price: getFinalQuotePrice() || currentQuoteData.total_price,
+        maintenance: document.getElementById('maintenance').value || null,
+        service: document.getElementById('service').value || null,
+        system_value_after_25_years: parseNumericInput(
+            document.getElementById('systemValueAfter25Years').value
+        ),
+        basic_assumptions_text: document.getElementById('basicAssumptionsText').value,
+        revenue_calculation_text: document.getElementById('revenueCalculationText').value,
+        summary_text: document.getElementById('summaryText').value,
+        environmental_impact_text: document.getElementById('environmentalImpactText').value,
+        annual_revenue: currentQuoteData.annual_revenue,
+        payback_period: currentQuoteData.payback_period,
+        model_type: window.currentModel || 'purchase'
+    };
+}
+
+function resetQuoteForm() {
+    const formIds = [
+        'customerName',
+        'customerPhone',
+        'customerEmail',
+        'customerAddress',
+        'systemSize',
+        'roofArea',
+        'finalPrice',
+        'maintenance',
+        'service',
+        'systemValueAfter25Years',
+        'basicAssumptionsText',
+        'revenueCalculationText',
+        'summaryText',
+        'environmentalImpactText'
+    ];
+
+    formIds.forEach((id) => {
+        const field = document.getElementById(id);
+        if (!field) {
+            return;
+        }
+
+        field.value = '';
+        field.dataset.userEdited = 'false';
+        field.dataset.autoFilled = 'false';
+    });
+
+    document.getElementById('calculations').style.display = 'none';
+    currentQuoteData = {};
+    initializeQuoteTextDefaults();
+}
+
+function markFieldAsEdited(event) {
+    event.target.dataset.userEdited = 'true';
+    event.target.dataset.autoFilled = 'false';
+}
+
+function registerQuoteFieldListeners() {
+    [
+        'basicAssumptionsText',
+        'revenueCalculationText',
+        'summaryText',
+        'environmentalImpactText',
+        'finalPrice',
+        'systemValueAfter25Years'
+    ].forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+            return;
+        }
+
+        field.addEventListener('input', (event) => {
+            markFieldAsEdited(event);
+            if (fieldId === 'finalPrice') {
+                updateManualPriceDisplay();
+            }
+            if (fieldId === 'systemValueAfter25Years') {
+                refreshQuoteTextSections(false);
+            }
+        });
+    });
+}
+
 async function calculateQuote() {
     const systemSize = parseFloat(document.getElementById('systemSize').value);
 
@@ -19,7 +275,6 @@ async function calculateQuote() {
 
         const data = await response.json();
 
-        // שמירה לשימוש מאוחר יותר
         currentQuoteData = {
             total_price: data.total_price,
             annual_revenue: data.annual_revenue,
@@ -27,52 +282,38 @@ async function calculateQuote() {
             annual_production: data.annual_production
         };
 
-        // עדכון ממשק
-        document.getElementById('totalPrice').textContent = `₪${data.total_price.toLocaleString()}`;
-        document.getElementById('annualRevenue').textContent = `₪${data.annual_revenue.toLocaleString()}`;
-        document.getElementById('paybackPeriod').textContent = `${data.payback_period} שנים`;
+        const finalPriceField = document.getElementById('finalPrice');
+        if (finalPriceField && (!finalPriceField.value.trim() || finalPriceField.dataset.userEdited !== 'true')) {
+            finalPriceField.value = Math.round(data.total_price);
+            finalPriceField.dataset.autoFilled = 'true';
+            finalPriceField.dataset.userEdited = 'false';
+        }
 
+        maybePrefillSystemValue();
+        refreshQuoteTextSections(true);
+
+        document.getElementById('annualRevenue').textContent = `₪${formatInteger(data.annual_revenue)}`;
+        document.getElementById('annualProduction').textContent = `${formatInteger(data.annual_production)} קוט״ש`;
+        updateManualPriceDisplay();
         document.getElementById('calculations').style.display = 'grid';
-
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה בחישוב הצעה');
+        alert('שגיאה בחישוב ההצעה');
     }
 }
 
 async function saveQuote() {
-    const customerName = document.getElementById('customerName').value;
-    const systemSize = parseFloat(document.getElementById('systemSize').value);
-
-    if (!customerName || !systemSize) {
-        alert('נא למלא שדות חובה (שם לקוח וגודל מערכת)');
-        return;
-    }
-
-    if (!currentQuoteData.total_price) {
+    let quoteData;
+    try {
+        quoteData = collectQuotePayload();
+    } catch (error) {
+        if (error.message === 'missing_required_fields') {
+            alert('נא למלא שדות חובה (שם לקוח וגודל מערכת)');
+            return;
+        }
         alert('נא לחשב את ההצעה קודם');
         return;
     }
-
-    const quoteData = {
-        customer_name: customerName,
-        customer_phone: document.getElementById('customerPhone').value,
-        customer_email: document.getElementById('customerEmail').value,
-        customer_address: document.getElementById('customerAddress').value,
-        system_size: systemSize,
-        roof_area: parseFloat(document.getElementById('roofArea').value) || null,
-        annual_production: currentQuoteData.annual_production,
-        panel_type: document.getElementById('panelType').value,
-        panel_count: parseInt(document.getElementById('panelCount').value) || null,
-        inverter_type: document.getElementById('inverterType').value,
-        direction: document.getElementById('direction').value,
-        tilt_angle: parseFloat(document.getElementById('tiltAngle').value) || null,
-        warranty_years: parseInt(document.getElementById('warrantyYears').value) || 25,
-        total_price: currentQuoteData.total_price,
-        annual_revenue: currentQuoteData.annual_revenue,
-        payback_period: currentQuoteData.payback_period,
-        model_type: window.currentModel || 'purchase'
-    };
 
     try {
         const response = await fetch('/api/quotes', {
@@ -85,16 +326,76 @@ async function saveQuote() {
 
         if (response.ok) {
             alert('ההצעה נשמרה בהצלחה!');
-            // ניקוי טופס
-            document.querySelectorAll('input').forEach(input => input.value = '');
-            document.getElementById('calculations').style.display = 'none';
-            currentQuoteData = {};
+            resetQuoteForm();
         } else {
-            alert('שגיאה בשמירת הצעה');
+            alert('שגיאה בשמירת ההצעה');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה בשמירת הצעה');
+        alert('שגיאה בשמירת ההצעה');
+    }
+}
+
+function populateQuoteForm(quote) {
+    if (typeof setQuoteModel === 'function') {
+        setQuoteModel(quote.model_type || 'purchase');
+    } else {
+        window.currentModel = quote.model_type || 'purchase';
+    }
+
+    document.getElementById('customerName').value = quote.customer_name || '';
+    document.getElementById('customerPhone').value = quote.customer_phone || '';
+    document.getElementById('customerEmail').value = quote.customer_email || '';
+    document.getElementById('customerAddress').value = quote.customer_address || '';
+    document.getElementById('systemSize').value = quote.system_size || '';
+    document.getElementById('roofArea').value = quote.roof_area || '';
+    document.getElementById('finalPrice').value = quote.total_price || '';
+    document.getElementById('maintenance').value = quote.maintenance || '';
+    document.getElementById('service').value = quote.service || '';
+    document.getElementById('systemValueAfter25Years').value = quote.system_value_after_25_years || '';
+    document.getElementById('basicAssumptionsText').value = quote.basic_assumptions_text || '';
+    document.getElementById('revenueCalculationText').value = quote.revenue_calculation_text || '';
+    document.getElementById('summaryText').value = quote.summary_text || '';
+    document.getElementById('environmentalImpactText').value = quote.environmental_impact_text || '';
+
+    currentQuoteData = {
+        total_price: Number(quote.total_price || 0),
+        annual_revenue: Number(quote.annual_revenue || 0),
+        payback_period: Number(quote.payback_period || 0),
+        annual_production: Number(quote.annual_production || 0)
+    };
+
+    ['finalPrice', 'systemValueAfter25Years', 'basicAssumptionsText', 'revenueCalculationText', 'summaryText', 'environmentalImpactText']
+        .forEach((id) => {
+            const field = document.getElementById(id);
+            if (field) {
+                field.dataset.userEdited = 'true';
+                field.dataset.autoFilled = 'false';
+            }
+        });
+
+    updateManualPriceDisplay();
+    document.getElementById('annualRevenue').textContent = `₪${formatInteger(quote.annual_revenue || 0)}`;
+    document.getElementById('annualProduction').textContent = `${formatInteger(quote.annual_production || 0)} קוט״ש`;
+    document.getElementById('calculations').style.display = 'grid';
+}
+
+async function loadQuoteIntoForm(quoteId) {
+    try {
+        const response = await fetch(`/api/quotes/${quoteId}`);
+        if (!response.ok) {
+            throw new Error('Failed to load quote');
+        }
+
+        const quote = await response.json();
+        populateQuoteForm(quote);
+
+        if (typeof showSection === 'function') {
+            showSection('quote');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה בטעינת ההצעה');
     }
 }
 
@@ -106,17 +407,18 @@ async function loadQuoteHistory() {
         const tbody = document.querySelector('#quotesTable tbody');
         tbody.innerHTML = '';
 
-        data.quotes.forEach(quote => {
+        data.quotes.forEach((quote) => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong style="color: #00358A; font-size: 16px;">${quote.id}</strong></td>
                 <td>${quote.quote_number}</td>
                 <td>${quote.customer_name}</td>
                 <td>${quote.system_size} קוט״ש</td>
-                <td>₪${quote.total_price.toLocaleString()}</td>
+                <td>₪${Number(quote.total_price || 0).toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
                     <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+                        <button onclick="loadQuoteIntoForm(${quote.id})" style="background: #3AE478; color: #14181F; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">טען</button>
                         <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">קישור חתימה</button>
                         <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">ניתוח פיננסי</button>
                         <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">PDF</button>
@@ -126,10 +428,9 @@ async function loadQuoteHistory() {
             `;
             tbody.appendChild(row);
         });
-
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה בטעינת היסטוריית הצעות');
+        alert('שגיאה בטעינת היסטוריית ההצעות');
     }
 }
 
@@ -146,11 +447,11 @@ async function deleteQuote(id) {
         if (response.ok) {
             loadQuoteHistory();
         } else {
-            alert('שגיאה במחיקת הצעה');
+            alert('שגיאה במחיקת ההצעה');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה במחיקת הצעה');
+        alert('שגיאה במחיקת ההצעה');
     }
 }
 
@@ -169,33 +470,28 @@ async function generateSignatureLink(quoteId) {
         }
 
         const data = await response.json();
-
-        // Create a nice modal/alert with the link
         const modal = document.createElement('div');
         modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
 
         modal.innerHTML = `
             <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; direction: rtl;">
                 <h2 style="color: #00358A; margin-bottom: 20px;">קישור חתימה נוצר בהצלחה!</h2>
-
                 <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <strong style="display: block; margin-bottom: 10px; color: #2d3748;">פרטי הצעה:</strong>
+                    <strong style="display: block; margin-bottom: 10px; color: #2d3748;">פרטי ההצעה:</strong>
                     <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
-                        מספר הצעה: <strong>${data.quote_number}</strong><br>
+                        מספר ההצעה: <strong>${data.quote_number}</strong><br>
                         לקוח: <strong>${data.customer_name}</strong><br>
                         אימייל: <strong>${data.customer_email || 'לא צוין'}</strong>
                     </div>
                 </div>
-
                 <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #00358A;">
                     <strong style="display: block; margin-bottom: 10px; color: #00358A;">קישור לחתימה:</strong>
                     <input type="text" value="${data.full_url}" readonly
                            style="width: 100%; padding: 10px; border: 2px solid #00358A; border-radius: 6px; font-size: 13px; font-family: monospace;"
                            id="signatureLinkInput">
                 </div>
-
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="copySignatureLink()"
+                    <button onclick="copySignatureLink(event)"
                             style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         העתק קישור
                     </button>
@@ -204,7 +500,6 @@ async function generateSignatureLink(quoteId) {
                         סגור
                     </button>
                 </div>
-
                 <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; font-size: 13px; color: #856404;">
                     הקישור תקף ל-30 יום
                 </div>
@@ -212,27 +507,27 @@ async function generateSignatureLink(quoteId) {
         `;
 
         document.body.appendChild(modal);
-
-        // Store the modal reference for closing
         window.currentSignatureModal = modal;
 
-        // Auto-select the link text
         setTimeout(() => {
             document.getElementById('signatureLinkInput').select();
         }, 100);
-
     } catch (error) {
         console.error('Error:', error);
         alert('שגיאה ביצירת קישור חתימה');
     }
 }
 
-function copySignatureLink() {
+async function copySignatureLink(event) {
     const input = document.getElementById('signatureLinkInput');
-    input.select();
-    document.execCommand('copy');
 
-    // Show success message
+    try {
+        await navigator.clipboard.writeText(input.value);
+    } catch (error) {
+        input.select();
+        document.execCommand('copy');
+    }
+
     const btn = event.target;
     const originalText = btn.textContent;
     btn.textContent = 'הועתק!';
@@ -253,25 +548,20 @@ function closeSignatureModal() {
 
 async function viewQuoteAnalysis(quoteId) {
     try {
-        // Fetch the specific quote data
         const response = await fetch(`/api/quotes/${quoteId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch quote');
         }
 
         const quote = await response.json();
-
-        // Call the financial comparison function from dashboard.html
         if (typeof calculateFinancialComparison === 'function') {
             await calculateFinancialComparison(quote.system_size, quote.total_price);
-            // Switch to comparison section (defined in dashboard.html)
             if (typeof showSection === 'function') {
                 showSection('comparison');
             }
         } else {
             alert('פונקציית הניתוח הפיננסי לא זמינה');
         }
-
     } catch (error) {
         console.error('Error:', error);
         alert('שגיאה בטעינת ניתוח פיננסי');
@@ -279,42 +569,19 @@ async function viewQuoteAnalysis(quoteId) {
 }
 
 async function generatePDF() {
-    const customerName = document.getElementById('customerName').value;
-    const systemSize = parseFloat(document.getElementById('systemSize').value);
-
-    if (!customerName || !systemSize) {
-        alert('נא למלא שדות חובה (שם לקוח וגודל מערכת) ולחשב קודם');
-        return;
-    }
-
-    if (!currentQuoteData.total_price) {
+    let quoteData;
+    try {
+        quoteData = collectQuotePayload();
+    } catch (error) {
+        if (error.message === 'missing_required_fields') {
+            alert('נא למלא שדות חובה (שם לקוח וגודל מערכת) ולחשב קודם');
+            return;
+        }
         alert('נא לחשב את ההצעה קודם');
         return;
     }
 
-    // קודם, שמור את ההצעה
-    const quoteData = {
-        customer_name: customerName,
-        customer_phone: document.getElementById('customerPhone').value,
-        customer_email: document.getElementById('customerEmail').value,
-        customer_address: document.getElementById('customerAddress').value,
-        system_size: systemSize,
-        roof_area: parseFloat(document.getElementById('roofArea').value) || null,
-        annual_production: currentQuoteData.annual_production,
-        panel_type: document.getElementById('panelType').value,
-        panel_count: parseInt(document.getElementById('panelCount').value) || null,
-        inverter_type: document.getElementById('inverterType').value,
-        direction: document.getElementById('direction').value,
-        tilt_angle: parseFloat(document.getElementById('tiltAngle').value) || null,
-        warranty_years: parseInt(document.getElementById('warrantyYears').value) || 25,
-        total_price: currentQuoteData.total_price,
-        annual_revenue: currentQuoteData.annual_revenue,
-        payback_period: currentQuoteData.payback_period,
-        model_type: window.currentModel || 'purchase'
-    };
-
     try {
-        // שמירת הצעה קודם
         const response = await fetch('/api/quotes', {
             method: 'POST',
             headers: {
@@ -324,19 +591,19 @@ async function generatePDF() {
         });
 
         if (!response.ok) {
-            throw new Error('נכשל בשמירת הצעה');
+            throw new Error('Failed to save quote');
         }
 
         const result = await response.json();
-        const quoteId = result.quote_id;
-
-        // יצירת והורדת PDF
-        window.location.href = `/api/quotes/${quoteId}/pdf`;
-
+        window.location.href = `/api/quotes/${result.quote_id}/pdf`;
         alert('ה-PDF נוצר ומוריד!');
-
     } catch (error) {
         console.error('Error:', error);
         alert('שגיאה ביצירת PDF. נסה שוב.');
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    registerQuoteFieldListeners();
+    initializeQuoteTextDefaults();
+});

@@ -242,10 +242,6 @@
                     <div class="info-label">מודל</div>
                     <div class="info-value" id="infoModel">-</div>
                 </div>
-                <div class="info-item">
-                    <div class="info-label">כיוון התקנה</div>
-                    <div class="info-value" id="infoDirection">-</div>
-                </div>
             </div>
         </div>
 
@@ -298,8 +294,6 @@
             const roofArea = urlParams.get('roof_area');
             const systemSize = urlParams.get('system_size');
             const model = urlParams.get('model');
-            const roofType = urlParams.get('roof_type');
-            const direction = urlParams.get('direction');
 
             if (roofArea) {
                 // Show calculator info section
@@ -316,15 +310,6 @@
                 const modelText = model === 'leasing' ? 'ליסינג' : 'רכישה';
                 document.getElementById('infoModel').textContent = modelText;
                 document.getElementById('modelType').value = model || 'purchase';
-
-                // Translate direction
-                const directionMap = {
-                    'south': 'דרום',
-                    'southeast': 'דרום-מזרח',
-                    'southwest': 'דרום-מערב',
-                    'east_west': 'מזרח-מערב'
-                };
-                document.getElementById('infoDirection').textContent = directionMap[direction] || direction;
             }
         });
 

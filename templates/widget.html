@@ -543,28 +543,6 @@
             </div>
         </div>
 
-        <div class="direction-selector">
-            <span class="direction-label">כיוון התקנה</span>
-            <div class="direction-grid-4">
-                <button type="button" class="direction-btn active" onclick="setDirection('south')" id="dir-south">
-                    <span class="icon"><i data-lucide="arrow-down"></i></span>
-                    דרום
-                </button>
-                <button type="button" class="direction-btn" onclick="setDirection('southeast')" id="dir-southeast">
-                    <span class="icon"><i data-lucide="arrow-down-right"></i></span>
-                    דרום-מזרח
-                </button>
-                <button type="button" class="direction-btn" onclick="setDirection('southwest')" id="dir-southwest">
-                    <span class="icon"><i data-lucide="arrow-down-left"></i></span>
-                    דרום-מערב
-                </button>
-                <button type="button" class="direction-btn" onclick="setDirection('east_west')" id="dir-east_west">
-                    <span class="icon"><i data-lucide="move-horizontal"></i></span>
-                    מזרח-מערב
-                </button>
-            </div>
-        </div>
-
         <div class="shading-toggle">
             <span class="shading-label">
                 <span class="sun-icon"><i data-lucide="sun" style="width: 20px; height: 20px;"></i></span>
@@ -656,7 +634,6 @@
     <script>
         let currentModel = 'purchase';
         let currentRoofType = 'tiles';
-        let currentDirection = 'south';
         let noShading = true;
 
         // Initialize icons
@@ -689,16 +666,6 @@
             document.getElementById(`roof-${roofType}`).classList.add('active');
         }
 
-        function setDirection(direction) {
-            currentDirection = direction;
-            // Only remove active from direction buttons
-            document.getElementById('dir-south').classList.remove('active');
-            document.getElementById('dir-southeast').classList.remove('active');
-            document.getElementById('dir-southwest').classList.remove('active');
-            document.getElementById('dir-east_west').classList.remove('active');
-            document.getElementById(`dir-${direction}`).classList.add('active');
-        }
-
         function updateShading() {
             noShading = document.getElementById('noShading').checked;
         }
@@ -725,16 +692,7 @@
 
                 const data = await response.json();
 
-                // Direction efficiency factors
-                const directionFactors = {
-                    'south': 1.0,        // 100% - no reduction
-                    'southeast': 0.98,   // 98% - 2% reduction
-                    'southwest': 0.98,   // 98% - 2% reduction
-                    'east_west': 0.96    // 96% - 4% reduction
-                };
-
-                // Apply direction efficiency to annual revenue
-                const efficiencyFactor = directionFactors[currentDirection];
+                const efficiencyFactor = 1;
                 const adjustedAnnualRevenue = Math.round(data.annual_revenue * efficiencyFactor);
                 const adjustedTotalRevenue = adjustedAnnualRevenue * 25;
 
@@ -777,8 +735,7 @@
                 roof_area: roofArea,
                 system_size: systemSize,
                 model: currentModel,
-                roof_type: currentRoofType,
-                direction: currentDirection
+                roof_type: currentRoofType
             });
 
             // Navigate to contact page with parameters

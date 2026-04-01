@@ -18,6 +18,11 @@ import io
 import glob
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
+from quote_defaults import (
+    QUOTE_TEXT_FIELD_MAP,
+    get_legacy_quote_text_defaults,
+    render_quote_template,
+)
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
@@ -78,6 +83,113 @@ def sanitize_filename(filename: str) -> str:
     if not sanitized or sanitized == '.pdf':
         sanitized = 'Quote.pdf'
     return sanitized
+
+
+LEGACY_QUOTE_DEFAULTS = get_legacy_quote_text_defaults()
+QUOTE_RENDER_PRICING_FIELDS = (
+    "trees_multiplier",
+    "degradation_rate",
+    "operating_cost_base",
+    "operating_cost_increase",
+    "leasing_payment_ratio",
+    "basic_assumptions_default",
+    "revenue_calculation_default",
+    "summary_default",
+    "environmental_impact_default",
+)
+
+
+def format_template_number(value, decimals=0):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return ""
+
+    if decimals == 0:
+        return f"{int(round(number)):,}"
+
+    return f"{number:,.{decimals}f}".rstrip("0").rstrip(".")
+
+
+def get_latest_pricing(cursor):
+    cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
+    pricing = cursor.fetchone()
+    return convert_decimals_in_dict(dict(pricing)) if pricing else {}
+
+
+def calculate_quote_cashflow_25_years(quote_data: dict, pricing: dict) -> float:
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    total_price = float(quote_data.get("total_price") or 0)
+    degradation_rate = float(pricing.get("degradation_rate") or 0.004)
+    operating_cost_base = float(pricing.get("operating_cost_base") or 0.005)
+    operating_cost_increase = float(pricing.get("operating_cost_increase") or 0.02)
+    leasing_ratio = float(pricing.get("leasing_payment_ratio") or 0.25)
+    model_type = quote_data.get("model_type", "purchase")
+
+    total_cashflow = 0.0
+    if model_type == "leasing":
+        for year in range(25):
+            yearly_revenue = annual_revenue * max(0.0, 1 - (degradation_rate * year))
+            total_cashflow += yearly_revenue * leasing_ratio
+        return total_cashflow
+
+    base_operating_cost = total_price * operating_cost_base
+    total_cashflow = -total_price
+    for year in range(25):
+        yearly_revenue = annual_revenue * max(0.0, 1 - (degradation_rate * year))
+        yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** year)
+        total_cashflow += yearly_revenue - yearly_operating_cost
+    return total_cashflow
+
+
+def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
+    annual_production = float(quote_data.get("annual_production") or 0)
+    annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    total_price = float(quote_data.get("total_price") or 0)
+    trees_multiplier = float(pricing.get("trees_multiplier") or 0.05)
+    degradation_rate = float(pricing.get("degradation_rate") or 0.004)
+    operating_cost_base = float(pricing.get("operating_cost_base") or 0.005)
+    operating_cost_increase = float(pricing.get("operating_cost_increase") or 0.02)
+    cashflow_25 = calculate_quote_cashflow_25_years(quote_data, pricing)
+
+    return {
+        "system_size": format_template_number(quote_data.get("system_size"), 1),
+        "roof_area": format_template_number(quote_data.get("roof_area"), 1),
+        "annual_production": format_template_number(annual_production),
+        "annual_revenue": format_template_number(annual_revenue),
+        "total_price": format_template_number(total_price),
+        "system_value_after_25_years": format_template_number(
+            quote_data.get("system_value_after_25_years")
+        ),
+        "trees": format_template_number(annual_production * trees_multiplier),
+        "co2_saved": format_template_number(annual_production * 0.5),
+        "total_cashflow_25": format_template_number(cashflow_25),
+        "degradation_rate_percent": format_template_number(degradation_rate * 100, 1),
+        "operating_cost_base_percent": format_template_number(operating_cost_base * 100, 1),
+        "operating_cost_increase_percent": format_template_number(
+            operating_cost_increase * 100, 1
+        ),
+    }
+
+
+def enrich_quote_render_data(quote_data: dict, pricing: Optional[dict] = None) -> dict:
+    pricing = pricing or {}
+    enriched = dict(quote_data)
+
+    for field in QUOTE_RENDER_PRICING_FIELDS:
+        if field in pricing:
+            enriched[field] = pricing.get(field)
+
+    render_context = build_quote_render_context(enriched, pricing)
+    for quote_field, pricing_field in QUOTE_TEXT_FIELD_MAP.items():
+        template = (
+            enriched.get(quote_field)
+            or pricing.get(pricing_field)
+            or LEGACY_QUOTE_DEFAULTS[pricing_field]
+        )
+        enriched[quote_field] = render_quote_template(template, render_context).strip()
+
+    return enriched
 
 
 def resolve_visualization_path(stored_path: str) -> Optional[str]:
@@ -396,27 +508,29 @@ async def get_pricing():
     """Get current pricing parameters"""
     with get_db() as conn:
         cursor = get_cursor(conn)
-        cursor.execute("SELECT * FROM pricing_parameters ORDER BY id DESC LIMIT 1")
-        pricing = cursor.fetchone()
-        return convert_decimals_in_dict(dict(pricing)) if pricing else {}
+        return get_latest_pricing(cursor)
 
 @app.post("/api/pricing")
 async def update_pricing(
-    price_per_kwp: float = Form(...),
-    production_per_kwp: float = Form(...),
-    tariff_rate: float = Form(...),
-    trees_multiplier: float = Form(0.05),
-    vat_rate: float = Form(0.17),
-    direction_south: float = Form(1.0),
-    direction_southeast: float = Form(0.95),
-    direction_southwest: float = Form(0.95),
-    direction_east_west: float = Form(0.9),
-    shading_factor: float = Form(0.85),
-    degradation_rate: float = Form(0.004),
-    operating_cost_base: float = Form(0.005),
-    operating_cost_increase: float = Form(0.02),
-    roof_area_per_kw: float = Form(7.0),
-    leasing_payment_ratio: float = Form(0.3),
+    price_per_kwp: Optional[float] = Form(None),
+    production_per_kwp: Optional[float] = Form(None),
+    tariff_rate: Optional[float] = Form(None),
+    trees_multiplier: Optional[float] = Form(None),
+    vat_rate: Optional[float] = Form(None),
+    direction_south: Optional[float] = Form(None),
+    direction_southeast: Optional[float] = Form(None),
+    direction_southwest: Optional[float] = Form(None),
+    direction_east_west: Optional[float] = Form(None),
+    shading_factor: Optional[float] = Form(None),
+    degradation_rate: Optional[float] = Form(None),
+    operating_cost_base: Optional[float] = Form(None),
+    operating_cost_increase: Optional[float] = Form(None),
+    roof_area_per_kw: Optional[float] = Form(None),
+    leasing_payment_ratio: Optional[float] = Form(None),
+    basic_assumptions_default: Optional[str] = Form(None),
+    revenue_calculation_default: Optional[str] = Form(None),
+    summary_default: Optional[str] = Form(None),
+    environmental_impact_default: Optional[str] = Form(None),
     user=Depends(get_current_user)
 ):
     """Update pricing and calculator parameters"""
@@ -425,6 +539,113 @@ async def update_pricing(
 
     with get_db() as conn:
         cursor = get_cursor(conn)
+        current = get_latest_pricing(cursor)
+        if not current:
+            current = {
+                "price_per_kwp": 4300,
+                "production_per_kwp": 1360,
+                "tariff_rate": 0.48,
+                "trees_multiplier": 0.05,
+                "vat_rate": 0.17,
+                "direction_south": 1.0,
+                "direction_southeast": 0.95,
+                "direction_southwest": 0.95,
+                "direction_east_west": 0.9,
+                "shading_factor": 0.85,
+                "degradation_rate": 0.004,
+                "operating_cost_base": 0.005,
+                "operating_cost_increase": 0.02,
+                "roof_area_per_kw": 7.0,
+                "leasing_payment_ratio": 0.3,
+                **LEGACY_QUOTE_DEFAULTS,
+            }
+
+        merged = {
+            "price_per_kwp": current.get("price_per_kwp") if price_per_kwp is None else price_per_kwp,
+            "production_per_kwp": (
+                current.get("production_per_kwp")
+                if production_per_kwp is None
+                else production_per_kwp
+            ),
+            "tariff_rate": current.get("tariff_rate") if tariff_rate is None else tariff_rate,
+            "trees_multiplier": (
+                current.get("trees_multiplier")
+                if trees_multiplier is None
+                else trees_multiplier
+            ),
+            "vat_rate": current.get("vat_rate") if vat_rate is None else vat_rate,
+            "direction_south": (
+                current.get("direction_south")
+                if direction_south is None
+                else direction_south
+            ),
+            "direction_southeast": (
+                current.get("direction_southeast")
+                if direction_southeast is None
+                else direction_southeast
+            ),
+            "direction_southwest": (
+                current.get("direction_southwest")
+                if direction_southwest is None
+                else direction_southwest
+            ),
+            "direction_east_west": (
+                current.get("direction_east_west")
+                if direction_east_west is None
+                else direction_east_west
+            ),
+            "shading_factor": (
+                current.get("shading_factor")
+                if shading_factor is None
+                else shading_factor
+            ),
+            "degradation_rate": (
+                current.get("degradation_rate")
+                if degradation_rate is None
+                else degradation_rate
+            ),
+            "operating_cost_base": (
+                current.get("operating_cost_base")
+                if operating_cost_base is None
+                else operating_cost_base
+            ),
+            "operating_cost_increase": (
+                current.get("operating_cost_increase")
+                if operating_cost_increase is None
+                else operating_cost_increase
+            ),
+            "roof_area_per_kw": (
+                current.get("roof_area_per_kw")
+                if roof_area_per_kw is None
+                else roof_area_per_kw
+            ),
+            "leasing_payment_ratio": (
+                current.get("leasing_payment_ratio")
+                if leasing_payment_ratio is None
+                else leasing_payment_ratio
+            ),
+            "basic_assumptions_default": (
+                current.get("basic_assumptions_default")
+                if basic_assumptions_default is None
+                else basic_assumptions_default
+            ),
+            "revenue_calculation_default": (
+                current.get("revenue_calculation_default")
+                if revenue_calculation_default is None
+                else revenue_calculation_default
+            ),
+            "summary_default": (
+                current.get("summary_default")
+                if summary_default is None
+                else summary_default
+            ),
+            "environmental_impact_default": (
+                current.get("environmental_impact_default")
+                if environmental_impact_default is None
+                else environmental_impact_default
+            ),
+        }
+
         cursor.execute('''
             UPDATE pricing_parameters SET
             price_per_kwp = %s,
@@ -442,11 +663,32 @@ async def update_pricing(
             operating_cost_increase = %s,
             roof_area_per_kw = %s,
             leasing_payment_ratio = %s,
+            basic_assumptions_default = %s,
+            revenue_calculation_default = %s,
+            summary_default = %s,
+            environmental_impact_default = %s,
             updated_at = CURRENT_TIMESTAMP
-        ''', (price_per_kwp, production_per_kwp, tariff_rate, trees_multiplier, vat_rate,
-              direction_south, direction_southeast, direction_southwest, direction_east_west,
-              shading_factor, degradation_rate, operating_cost_base, operating_cost_increase,
-              roof_area_per_kw, leasing_payment_ratio))
+        ''', (
+            merged["price_per_kwp"],
+            merged["production_per_kwp"],
+            merged["tariff_rate"],
+            merged["trees_multiplier"],
+            merged["vat_rate"],
+            merged["direction_south"],
+            merged["direction_southeast"],
+            merged["direction_southwest"],
+            merged["direction_east_west"],
+            merged["shading_factor"],
+            merged["degradation_rate"],
+            merged["operating_cost_base"],
+            merged["operating_cost_increase"],
+            merged["roof_area_per_kw"],
+            merged["leasing_payment_ratio"],
+            merged["basic_assumptions_default"],
+            merged["revenue_calculation_default"],
+            merged["summary_default"],
+            merged["environmental_impact_default"],
+        ))
         conn.commit()
         return {"message": "Settings updated successfully"}
 
@@ -493,8 +735,13 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 quote_number, customer_name, customer_phone, customer_email, customer_address,
                 system_size, roof_area, annual_production, panel_type, panel_count,
                 inverter_type, direction, tilt_angle, warranty_years,
-                total_price, annual_revenue, payback_period, model_type, created_by
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                total_price, maintenance, service, system_value_after_25_years,
+                basic_assumptions_text, revenue_calculation_text, summary_text,
+                environmental_impact_text, annual_revenue, payback_period, model_type, created_by
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s
+            )
             RETURNING id
         ''', (
             generate_quote_number(),
@@ -512,6 +759,13 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("tilt_angle"),
             data.get("warranty_years", 25),
             data.get("total_price"),
+            data.get("maintenance"),
+            data.get("service"),
+            data.get("system_value_after_25_years"),
+            data.get("basic_assumptions_text"),
+            data.get("revenue_calculation_text"),
+            data.get("summary_text"),
+            data.get("environmental_impact_text"),
             data.get("annual_revenue"),
             data.get("payback_period"),
             data.get("model_type", "purchase"),
@@ -555,11 +809,13 @@ async def get_quote(quote_id: int, user=Depends(get_current_user)):
             WHERE q.id = %s
         ''', (quote_id,))
         quote = cursor.fetchone()
+        pricing = get_latest_pricing(cursor)
 
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
-    return convert_decimals_in_dict(dict(quote))
+    quote_data = convert_decimals_in_dict(dict(quote))
+    return enrich_quote_render_data(quote_data, pricing)
 
 @app.delete("/api/quotes/{quote_id}")
 async def delete_quote(quote_id: int, user=Depends(get_current_user)):
@@ -919,9 +1175,10 @@ async def generate_pdf(quote_id: int, user=Depends(get_current_user)):
             # Get company settings
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
+            pricing = get_latest_pricing(cursor)
 
             # Convert to dict and handle Decimals
-            quote_data = convert_decimals_in_dict(dict(quote))
+            quote_data = enrich_quote_render_data(convert_decimals_in_dict(dict(quote)), pricing)
             company_info = convert_decimals_in_dict(dict(company)) if company else None
 
         print(f"[PDF] Generating PDF for quote #{quote_data.get('quote_number')}")
@@ -1004,7 +1261,8 @@ async def send_quote_email(quote_id: int, user=Depends(get_current_user)):
             company = cursor.fetchone()
 
             # Convert to dict and handle Decimals
-            quote_data = convert_decimals_in_dict(dict(quote))
+            pricing = get_latest_pricing(cursor)
+            quote_data = enrich_quote_render_data(convert_decimals_in_dict(dict(quote)), pricing)
             company_info = convert_decimals_in_dict(dict(company)) if company else {}
 
         # Check if customer email exists
@@ -1387,40 +1645,40 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
                 <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #000080 0%, #000060 100%);">
-                            <h1 style="color: #D9FF0D; margin: 0; font-size: 28px; font-weight: bold;">הצעת מחיר - מערכת סולארית</h1>
+                        <td style="padding: 30px; text-align: center; background: linear-gradient(135deg, #14181F 0%, #1A1D22 100%);">
+                            <h1 style="color: #3AE478; margin: 0; font-size: 28px; font-weight: bold;">הצעת מחיר - מערכת סולארית</h1>
                         </td>
                     </tr>
 
                     <!-- Main content -->
                     <tr>
                         <td style="padding: 40px 30px;">
-                            <h2 style="color: #000080; margin: 0 0 20px 0; font-size: 22px; text-align: right;">שלום {customer_name},</h2>
+                            <h2 style="color: #3AE478; margin: 0 0 20px 0; font-size: 22px; text-align: right;">שלום {customer_name},</h2>
 
                             <p style="color: #333; font-size: 16px; line-height: 1.8; text-align: right; margin: 0 0 25px 0;">
                                 תודה שפניתם אלינו! מצורפת הצעת המחיר שלכם למערכת סולארית.
                             </p>
 
                             <!-- Quote details box -->
-                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 25px;">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border-radius: 8px; margin-bottom: 25px; border-right: 4px solid #3AE478;">
                                 <tr>
                                     <td style="padding: 25px;">
                                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                                             <tr>
                                                 <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
-                                                    <strong style="color: #000080;">מספר הצעה:</strong>
+                                                    <strong style="color: #14181F;">מספר הצעה:</strong>
                                                     <span style="color: #333; float: left;">{quote_number}</span>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
-                                                    <strong style="color: #000080;">סוג הצעה:</strong>
+                                                    <strong style="color: #14181F;">סוג הצעה:</strong>
                                                     <span style="color: #333; float: left;">{model_type_hebrew}</span>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td style="padding: 8px 0;">
-                                                    <strong style="color: #000080;">גודל מערכת:</strong>
+                                                    <strong style="color: #14181F;">גודל מערכת:</strong>
                                                     <span style="color: #333; float: left;">{quote_data.get('system_size', 'N/A')} קוט״ש</span>
                                                 </td>
                                             </tr>
@@ -1430,8 +1688,8 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
                             </table>
 
                             <!-- PDF attachment notice -->
-                            <div style="background-color: #e8f4f8; border-right: 4px solid #000080; padding: 20px; margin: 25px 0; text-align: right;">
-                                <p style="margin: 0 0 10px 0; color: #000080; font-size: 16px; font-weight: bold;">
+                            <div style="background-color: #f3fff8; border-right: 4px solid #3AE478; padding: 20px; margin: 25px 0; text-align: right;">
+                                <p style="margin: 0 0 10px 0; color: #14181F; font-size: 16px; font-weight: bold;">
                                     הצעת המחיר המלאה מצורפת
                                 </p>
                                 <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.6;">
@@ -1455,7 +1713,7 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
 
                     <!-- Footer -->
                     <tr>
-                        <td style="padding: 20px 30px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: center;">
+                        <td style="padding: 20px 30px; background-color: #f8fafc; border-top: 1px solid #d1d5db; text-align: center;">
                             <p style="margin: 0; color: #666; font-size: 13px;">
                                 זהו הודעה אוטומטית ממערכת הצעות המחיר לאנרגיה סולארית
                             </p>
@@ -1646,9 +1904,17 @@ async def signature_portal(token: str, request: Request):
                 ''', (datetime.now(), token))
                 conn.commit()
 
+            pricing = get_latest_pricing(cursor)
+            sig_data = enrich_quote_render_data(convert_decimals_in_dict(sig_data), pricing)
+
             # Format numbers for display
             total_price_formatted = f"{int(sig_data['total_price']):,}" if sig_data.get('total_price') else 'N/A'
             annual_revenue_formatted = f"{int(sig_data['annual_revenue']):,}" if sig_data.get('annual_revenue') else 'N/A'
+            system_value_formatted = (
+                f"{int(sig_data['system_value_after_25_years']):,}"
+                if sig_data.get('system_value_after_25_years')
+                else 'לא צוין'
+            )
 
             return templates.TemplateResponse("sign_quote.html", {
                 "request": request,
@@ -1660,13 +1926,16 @@ async def signature_portal(token: str, request: Request):
                 "customer_email": sig_data.get('customer_email'),
                 "customer_address": sig_data.get('customer_address'),
                 "system_size": sig_data.get('system_size'),
-                "panel_type": sig_data.get('panel_type'),
-                "panel_count": sig_data.get('panel_count'),
-                "inverter_type": sig_data.get('inverter_type'),
+                "roof_area": sig_data.get('roof_area'),
                 "annual_production": sig_data.get('annual_production'),
+                "maintenance": sig_data.get('maintenance'),
+                "service": sig_data.get('service'),
                 "annual_revenue": annual_revenue_formatted,
-                "payback_period": sig_data.get('payback_period'),
-                "warranty_years": sig_data.get('warranty_years'),
+                "system_value_after_25_years": system_value_formatted,
+                "basic_assumptions_text": sig_data.get('basic_assumptions_text'),
+                "revenue_calculation_text": sig_data.get('revenue_calculation_text'),
+                "summary_text": sig_data.get('summary_text'),
+                "environmental_impact_text": sig_data.get('environmental_impact_text'),
                 "total_price": total_price_formatted,
                 "model_type": sig_data.get('model_type', 'purchase')
             })
@@ -1708,6 +1977,8 @@ async def preview_quote_pdf(token: str):
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
             company_info = convert_decimals_in_dict(dict(company)) if company else None
+            pricing = get_latest_pricing(cursor)
+            sig_data = enrich_quote_render_data(sig_data, pricing)
 
         # Generate PDF (without customer signature since they haven't signed yet)
         model_type = sig_data.get('model_type', 'purchase')
@@ -1843,6 +2114,8 @@ async def submit_signature(token: str, signature: UploadFile = File(...), reques
             cursor.execute("SELECT * FROM company_settings ORDER BY id DESC LIMIT 1")
             company = cursor.fetchone()
             company_info = convert_decimals_in_dict(dict(company)) if company else {}
+            pricing = get_latest_pricing(cursor)
+            sig_data = enrich_quote_render_data(convert_decimals_in_dict(sig_data), pricing)
 
         # Generate signed PDF with customer signature
         model_type = sig_data.get('model_type', 'purchase')

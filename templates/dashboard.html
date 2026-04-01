@@ -388,6 +388,13 @@
             font-size: 18px;
         }
 
+        .quote-form label {
+            display: block;
+            color: #A0AEC0;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -395,7 +402,8 @@
         }
 
         .quote-form input,
-        .quote-form select {
+        .quote-form select,
+        .quote-form textarea {
             width: 100%;
             padding: 14px 16px;
             background: rgba(20, 24, 31, 0.85);
@@ -408,16 +416,25 @@
         }
 
         .quote-form input::placeholder,
-        .quote-form select::placeholder {
+        .quote-form select::placeholder,
+        .quote-form textarea::placeholder {
             color: #A0AEC0;
         }
 
         .quote-form input:focus,
-        .quote-form select:focus {
+        .quote-form select:focus,
+        .quote-form textarea:focus {
             outline: none;
             border-color: #3AE478;
             box-shadow: 0 0 0 3px rgba(58, 228, 120, 0.2);
             background: rgba(20, 24, 31, 0.9);
+        }
+
+        .quote-form textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.6;
+            font-family: inherit;
         }
 
         /* Keep filled/auto-filled inputs on dark background */
@@ -669,28 +686,6 @@
                 <small>כל 7 מ"ר גג = 1 קילוואט שיא</small>
             </div>
 
-            <div class="direction-selector">
-                <label>כיוון הגג</label>
-                <div class="direction-buttons">
-                    <button type="button" class="direction-btn active" onclick="setDirection('south')" id="dir-south">
-                        <span class="icon"><i data-lucide="arrow-down"></i></span>
-                        דרום
-                    </button>
-                    <button type="button" class="direction-btn" onclick="setDirection('southeast')" id="dir-southeast">
-                        <span class="icon"><i data-lucide="arrow-down-right"></i></span>
-                        דרום-מזרח
-                    </button>
-                    <button type="button" class="direction-btn" onclick="setDirection('southwest')" id="dir-southwest">
-                        <span class="icon"><i data-lucide="arrow-down-left"></i></span>
-                        דרום-מערב
-                    </button>
-                    <button type="button" class="direction-btn" onclick="setDirection('east_west')" id="dir-east_west">
-                        <span class="icon"><i data-lucide="move-horizontal"></i></span>
-                        מזרח-מערב
-                    </button>
-                </div>
-            </div>
-
             <div class="shading-toggle">
                 <span class="shading-label">
                     <span class="sun-icon"><i data-lucide="sun" style="width: 20px; height: 20px;"></i></span>
@@ -792,19 +787,48 @@
 
                 <h3>מפרט מערכת</h3>
                 <div class="form-grid">
-                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required oninput="autoCalculatePanelCount()">
+                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
                     <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
-                    <input type="text" id="panelType" placeholder="סוג פאנל (לדוגמה: Longi 550W)" oninput="autoCalculatePanelCount()">
-                    <input type="number" id="panelCount" placeholder="מספר פאנלים" readonly>
-                    <input type="text" id="inverterType" placeholder="סוג ממיר">
-                    <select id="direction">
-                        <option value="south">דרום</option>
-                        <option value="southwest">דרום-מערב</option>
-                        <option value="southeast">דרום-מזרח</option>
-                        <option value="east_west">מזרח-מערב</option>
-                    </select>
-                    <input type="number" id="tiltAngle" placeholder="זווית הטיה (°)" step="0.1">
-                    <input type="number" id="warrantyYears" placeholder="אחריות (שנים)" value="25">
+                </div>
+
+                <h3>עריכת הצעה</h3>
+                <div class="form-grid">
+                    <div>
+                        <label for="finalPrice">Final Quotation Price</label>
+                        <input type="number" id="finalPrice" placeholder="מחיר סופי להצעה" step="0.01">
+                    </div>
+                    <div>
+                        <label for="maintenance">תחזוקה</label>
+                        <input type="text" id="maintenance" placeholder="לדוגמה: תחזוקה שנתית לפי הצורך">
+                    </div>
+                    <div>
+                        <label for="service">שירות</label>
+                        <input type="text" id="service" placeholder="לדוגמה: שירות וליווי טכני">
+                    </div>
+                    <div>
+                        <label for="systemValueAfter25Years">שווי מערכת לאחר 25 שנה</label>
+                        <input type="number" id="systemValueAfter25Years" placeholder="שווי מערכת לאחר 25 שנה" step="0.01">
+                    </div>
+                </div>
+
+                <h3>תוכן להצעה</h3>
+                <div class="form-grid">
+                    <div>
+                        <label for="basicAssumptionsText">הנחות יסוד</label>
+                        <textarea id="basicAssumptionsText"></textarea>
+                    </div>
+                    <div>
+                        <label for="revenueCalculationText">חישוב הכנסות</label>
+                        <textarea id="revenueCalculationText"></textarea>
+                    </div>
+                    <div>
+                        <label for="summaryText">סיכום</label>
+                        <textarea id="summaryText"></textarea>
+                    </div>
+                    <div>
+                        <label for="environmentalImpactText">השפעה סביבתית</label>
+                        <textarea id="environmentalImpactText"></textarea>
+                    </div>
                 </div>
 
                 <button onclick="calculateQuote()" class="btn-calculate">חשב</button>
@@ -819,8 +843,8 @@
                         <div class="calc-value" id="annualRevenue">₪0</div>
                     </div>
                     <div class="calc-box info">
-                        <h4>תקופת החזר</h4>
-                        <div class="calc-value" id="paybackPeriod">0 שנים</div>
+                        <h4>ייצור שנתי</h4>
+                        <div class="calc-value" id="annualProduction">0 קוט״ש</div>
                     </div>
                 </div>
 
@@ -909,8 +933,8 @@
 
                     <div class="metrics-grid">
                         <div class="metric-row highlight">
-                            <div class="metric-label">עלות כוללת (כולל מע"מ)</div>
-                            <div class="metric-value" id="comp-total-with-vat">0</div>
+                            <div class="metric-label">עלות כוללת</div>
+                            <div class="metric-value" id="comp-total-cost">0</div>
                         </div>
                         <div class="metric-row highlight">
                             <div class="metric-label">מחיר לקילו-וואט</div>
@@ -949,54 +973,10 @@
     <script src="/static/dashboard.js"></script>
     <script>
         window.currentModel = 'purchase';
-        let currentDirection = 'south';
         let noShading = true;
 
-        // Function to automatically calculate panel count based on system size and panel type
-        function autoCalculatePanelCount() {
-            const systemSize = parseFloat(document.getElementById('systemSize').value);
-            const panelType = document.getElementById('panelType').value;
-
-            if (!systemSize || !panelType) {
-                return;
-            }
-
-            // Extract wattage from panel type (e.g., "Longi 550W" → 550 or "600W" → 600)
-            const wattageMatch = panelType.match(/(\d+)\s*W/i);
-
-            if (wattageMatch) {
-                const panelWattage = parseInt(wattageMatch[1]);
-                // Calculate panel count: system_size (kW) * 1000 / panel_wattage (W)
-                const panelCount = Math.round((systemSize * 1000) / panelWattage);
-                document.getElementById('panelCount').value = panelCount;
-            }
-        }
-
-        // Direction efficiency factors (south = 100%)
-        // Calculator settings (defaults; will be overwritten from server)
         let calculatorSettings = null;
         let calculatorSettingsLoaded = false;
-        const directionFactors = {
-            south: 1.0,
-            southeast: 0.95,
-            southwest: 0.95,
-            east_west: 0.9
-        };
-
-        function setDirection(direction) {
-            currentDirection = direction;
-
-            // Update button styles
-            document.querySelectorAll('.direction-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById('dir-' + direction).classList.add('active');
-
-            // Recalculate if results are visible
-            if (document.getElementById('calcResults').style.display !== 'none') {
-                calculateModel();
-            }
-        }
 
         function updateShading() {
             noShading = document.getElementById('noShading').checked;
@@ -1013,13 +993,11 @@
                 if (!response.ok) throw new Error('Failed to load settings');
                 const data = await response.json();
                 calculatorSettings = data || {};
+                window.dashboardPricingSettings = calculatorSettings;
                 calculatorSettingsLoaded = true;
-
-                // Update direction factors map for runtime use
-                directionFactors.south = Number(calculatorSettings.direction_south ?? directionFactors.south);
-                directionFactors.southeast = Number(calculatorSettings.direction_southeast ?? directionFactors.southeast);
-                directionFactors.southwest = Number(calculatorSettings.direction_southwest ?? directionFactors.southwest);
-                directionFactors.east_west = Number(calculatorSettings.direction_east_west ?? directionFactors.east_west);
+                if (typeof initializeQuoteTextDefaults === 'function') {
+                    initializeQuoteTextDefaults();
+                }
             } catch (error) {
                 console.error('Error loading calculator settings:', error);
                 alert('טעינת הגדרות המחשבון נכשלה');
@@ -1048,6 +1026,9 @@
             } else if (section === 'quote') {
                 document.getElementById('quoteSection').style.display = 'block';
                 document.getElementById('nav-quote').classList.add('active');
+                if (!calculatorSettingsLoaded) {
+                    loadCalculatorSettings();
+                }
             } else if (section === 'history') {
                 document.getElementById('historySection').style.display = 'block';
                 document.getElementById('nav-history').classList.add('active');
@@ -1099,6 +1080,10 @@
             } else {
                 document.getElementById('quote-tab-purchase').classList.add('active');
             }
+
+            if (typeof refreshQuoteTextSections === 'function') {
+                refreshQuoteTextSections(false);
+            }
         }
 
         async function calculateModel() {
@@ -1126,18 +1111,8 @@
 
                 const data = await response.json();
 
-                // Apply direction factor
-                const directionFactor = Number(
-                    calculatorSettings?.[`direction_${currentDirection}`] ??
-                    directionFactors[currentDirection] ??
-                    1
-                );
-
                 // Apply shading factor (configurable reduction if there's shading)
-                const shadingFactor = noShading ? 1.0 : shadingSetting;
-
-                // Combined efficiency factor
-                const efficiencyFactor = directionFactor * shadingFactor;
+                const efficiencyFactor = noShading ? 1.0 : shadingSetting;
 
                 let annualRevenue = Math.round(data.annual_revenue * efficiencyFactor);
                 let totalRevenue = annualRevenue * 25;
@@ -1200,10 +1175,7 @@
 
         async function calculateFinancialComparison(systemSize, totalPrice) {
             // Basic calculations
-            const pricePerKwp = (totalPrice / 1.18) / systemSize; // Price per kWp before VAT
-            const systemPriceBeforeVAT = totalPrice / 1.18;
-            const operationalCost = 0; // As shown in image
-            const totalWithVAT = totalPrice;
+            const pricePerKwp = totalPrice / systemSize;
 
             // Calculate annual revenue using existing API
             const formData = new FormData();
@@ -1225,7 +1197,7 @@
             const irr = roa; // Simplified IRR calculation
 
             // Update metrics panel
-            document.getElementById('comp-total-with-vat').textContent = `₪${(totalWithVAT / 1000).toFixed(1)}K`;
+            document.getElementById('comp-total-cost').textContent = `₪${(totalPrice / 1000).toFixed(1)}K`;
             document.getElementById('comp-price-per-kwp').textContent = `₪${(pricePerKwp / 1000).toFixed(2)}K`;
             document.getElementById('comp-roa').textContent = roa + '%';
             document.getElementById('comp-payback-years').textContent = paybackYears;
@@ -1246,9 +1218,10 @@
             tbody.appendChild(row0);
 
             // Annual degradation rate (~0.4% per year for production)
-            const degradationRate = 0.004;
+            const degradationRate = Number(calculatorSettings?.degradation_rate || 0.004);
             // Operating cost: starts at 0.5% of system cost, increases 2% yearly
-            const baseOperatingCost = totalPrice * 0.005;
+            const baseOperatingCost = totalPrice * Number(calculatorSettings?.operating_cost_base || 0.005);
+            const operatingCostIncrease = Number(calculatorSettings?.operating_cost_increase || 0.02);
 
             let cumulativeCashflow = -totalPrice;
             let totalRevenue = 0;
@@ -1259,7 +1232,7 @@
             for (let year = 1; year <= 25; year++) {
                 const yearlyDegradation = 1 - (degradationRate * (year - 1));
                 const yearRevenue = Math.round(annualRevenue * yearlyDegradation);
-                const yearOperatingCost = Math.round(baseOperatingCost * Math.pow(1.02, year - 1));
+                const yearOperatingCost = Math.round(baseOperatingCost * Math.pow(1 + operatingCostIncrease, year - 1));
                 const yearNetProfit = yearRevenue - yearOperatingCost;
 
                 totalRevenue += yearRevenue;
