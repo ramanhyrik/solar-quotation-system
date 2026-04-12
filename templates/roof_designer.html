@@ -1522,6 +1522,16 @@
                             data-tooltip="סגור מצולע">
                         <i data-lucide="check-circle"></i>
                     </button>
+
+                    <button class="icon-btn danger" id="deleteSelectedBtn" onclick="deleteSelectedObject()" disabled
+                            data-tooltip="Delete selected area">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+
+                    <button class="icon-btn" id="clearImageBtn" onclick="clearImage()" disabled
+                            data-tooltip="Clear image and reset canvas">
+                        <i data-lucide="image-off"></i>
+                    </button>
                 </div>
 
                 <div class="toolbar-divider"></div>
@@ -1869,6 +1879,7 @@
         let canvasZoom = 1;
         let isPanning = false;
         let panStartPoint = null;
+        let spacePanMode = false;
         let viewportTransform = [1, 0, 0, 1, 0, 0];
         const MIN_ZOOM = 0.5;
         const MAX_ZOOM = 5;
@@ -1877,6 +1888,7 @@
         let editMode = false;
         let editingPolygon = null;
         let vertexCircles = [];
+        let selectedEditableObject = null;
 
         // AI detection
         let detectedCandidates = [];
@@ -1886,6 +1898,7 @@
         let highlightedCandidatePolygon = null;
         let drawingUndoStack = [];
         let drawingRedoStack = [];
+        let globalCanvasShortcutsBound = false;
         const closePolygonBtn = document.getElementById('closePolygonBtn');
         const defaultCloseTooltip = closePolygonBtn ? closePolygonBtn.getAttribute('data-tooltip') || 'סגור מצולע' : 'סגור מצולע';
 
@@ -2276,6 +2289,7 @@
             showingCandidates = false;
             selectedCandidateIndex = null;
             highlightedCandidatePolygon = null;
+            updateSelectionTools();
         }
 
         class Command {
@@ -2418,14 +2432,74 @@
         }
 
         // Edit mode functions
+        function isEditablePolygon(obj) {
+            return !!obj && (obj.polygonType === 'roof' || obj.polygonType === 'exclusion');
+        }
+
+        function updateSelectionTools() {
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            if (deleteBtn) {
+                deleteBtn.disabled = !selectedEditableObject;
+            }
+
+            const clearImageBtn = document.getElementById('clearImageBtn');
+            if (clearImageBtn) {
+                clearImageBtn.disabled = !uploadedImage;
+            }
+        }
+
+        function clearCalculatedLayout() {
+            panels = [];
+            document.getElementById('saveBtn').disabled = true;
+
+            if (!canvas) return;
+
+            canvas.getObjects().forEach(obj => {
+                if (obj.objectType === 'panel') {
+                    canvas.remove(obj);
+                }
+            });
+
+            if (sunIndicator) {
+                canvas.remove(sunIndicator);
+                sunIndicator = null;
+            }
+
+            canvas.renderAll();
+        }
+
+        function invalidateCalculatedLayout() {
+            clearCalculatedLayout();
+            closeResultsModal();
+        }
+
+        function selectEditableObject(obj) {
+            if (!isEditablePolygon(obj)) {
+                selectedEditableObject = null;
+                exitEditMode();
+                updateSelectionTools();
+                return;
+            }
+
+            selectedEditableObject = obj;
+            enableEditMode(obj);
+            canvas.setActiveObject(obj);
+            updateSelectionTools();
+        }
+
         function toggleEditMode() {
-            // Edit mode removed for simplicity
+            if (selectedEditableObject) {
+                enableEditMode(selectedEditableObject);
+            }
         }
 
         function exitEditMode() {
             vertexCircles.forEach(circle => canvas.remove(circle));
             vertexCircles = [];
             editingPolygon = null;
+            if (canvas) {
+                canvas.discardActiveObject();
+            }
             if (canvas) canvas.renderAll();
         }
 
@@ -2441,6 +2515,8 @@
         function enableEditMode(polygon) {
             exitEditMode();
             editingPolygon = polygon;
+            selectedEditableObject = polygon;
+            updateSelectionTools();
 
             // Use the actual stored points array (roofPolygonPoints) for correct positioning
             // Don't rely on polygon's internal transformed points
@@ -2485,6 +2561,8 @@
                     const updatedPoints = this.isRoofPoint ? roofPolygonPoints :
                                          exclusionZones.find(z => z.polygon === poly)?.points;
                     poly.set({ points: updatedPoints });
+                    poly.setCoords();
+                    invalidateCalculatedLayout();
                     canvas.renderAll();
                 });
 
@@ -2495,17 +2573,46 @@
             canvas.renderAll();
         }
 
+        function deleteSelectedObject() {
+            if (!canvas || !selectedEditableObject) return;
+
+            const selected = selectedEditableObject;
+            selectedEditableObject = null;
+            exitEditMode();
+
+            if (selected.polygonType === 'roof') {
+                canvas.remove(selected);
+                roofPolygonObject = null;
+                roofPolygonPoints = [];
+                exclusionZones.forEach(zone => canvas.remove(zone.polygon));
+                exclusionZones = [];
+                currentExclusionPoints = [];
+                disablePanelConfig();
+            } else if (selected.polygonType === 'exclusion') {
+                canvas.remove(selected);
+                exclusionZones = exclusionZones.filter(zone => zone.polygon !== selected);
+            }
+
+            invalidateCalculatedLayout();
+            updateClosePolygonButton(false);
+            updateSelectionTools();
+            canvas.renderAll();
+        }
+
         // Drawing functions
         function startDrawingRoof() {
             if (!canvas) return;
 
             drawingMode = 'roof';
             clearCandidatePolygons();
+            selectedEditableObject = null;
             exitEditMode();
+            invalidateCalculatedLayout();
             resetDrawingUndoRedo();
             document.getElementById('drawRoofBtn').classList.add('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
             updateClosePolygonButton(true);
+            updateSelectionTools();
             updateDrawingInstruction();
         }
 
@@ -2515,11 +2622,14 @@
             drawingMode = 'exclusion';
             currentExclusionPoints = [];
             clearCandidatePolygons();
+            selectedEditableObject = null;
             exitEditMode();
+            invalidateCalculatedLayout();
             resetDrawingUndoRedo();
             document.getElementById('drawExclusionBtn').classList.add('active');
             document.getElementById('drawRoofBtn').classList.remove('active');
             updateClosePolygonButton(true);
+            updateSelectionTools();
             updateDrawingInstruction();
         }
 
@@ -2563,11 +2673,17 @@
                     stroke: '#2563eb',
                     strokeWidth: 3,
                     selectable: true,
+                    hasControls: false,
+                    hasBorders: false,
+                    lockMovementX: true,
+                    lockMovementY: true,
                     objectCaching: false,
                     polygonType: 'roof'
                 });
 
                 canvas.add(roofPolygonObject);
+                invalidateCalculatedLayout();
+                selectEditableObject(roofPolygonObject);
                 canvas.renderAll();
 
                 drawingMode = null;
@@ -2584,6 +2700,10 @@
                     stroke: '#ef4444',
                     strokeWidth: 2,
                     selectable: true,
+                    hasControls: false,
+                    hasBorders: false,
+                    lockMovementX: true,
+                    lockMovementY: true,
                     objectCaching: false,
                     polygonType: 'exclusion'
                 });
@@ -2594,6 +2714,8 @@
                 });
 
                 canvas.add(exclusionPoly);
+                invalidateCalculatedLayout();
+                selectEditableObject(exclusionPoly);
                 canvas.renderAll();
 
                 currentExclusionPoints = [];
@@ -2614,7 +2736,10 @@
                 'Clear All',
                 'Are you sure you want to clear all drawings? This cannot be undone.',
                 () => {
+                    drawingMode = null;
+                    selectedEditableObject = null;
                     exitEditMode();
+                    clearCalculatedLayout();
                     clearPreviewObjects();
                     canvas.getObjects().forEach(obj => {
                         if (obj.polygonType === 'roof' || obj.polygonType === 'exclusion') {
@@ -2626,6 +2751,8 @@
                     roofPolygonObject = null;
                     exclusionZones = [];
                     currentExclusionPoints = [];
+                    document.getElementById('drawRoofBtn').classList.remove('active');
+                    document.getElementById('drawExclusionBtn').classList.remove('active');
                     exitEditMode();
                     canvas.renderAll();
 
@@ -2636,6 +2763,7 @@
                     clearCandidatePolygons();
                     updateClosePolygonButton(false);
                     resetDrawingUndoRedo();
+                    updateSelectionTools();
                     // Instruction removed
                 }
             );
@@ -2653,6 +2781,8 @@
 
                     uploadedImage = null;
                     designId = null;
+                    drawingMode = null;
+                    selectedEditableObject = null;
                     roofPolygonPoints = [];
                     roofPolygonObject = null;
                     exclusionZones = [];
@@ -2670,6 +2800,7 @@
                     commandHistory.redoStack = [];
                     updateUndoRedoButtons();
                     resetDrawingUndoRedo();
+                    updateSelectionTools();
                 }
             );
         }
@@ -2690,10 +2821,12 @@
             document.getElementById('drawRoofBtn').disabled = false;
             document.getElementById('drawExclusionBtn').disabled = false;
             document.getElementById('clearAllBtn').disabled = false;
+            document.getElementById('clearImageBtn').disabled = false;
             document.getElementById('pixelsPerMeter').disabled = false;
             document.getElementById('shortcutsBtn').disabled = false;
             updateClosePolygonButton(false);
             setZoomButtonsEnabled(true);
+            updateSelectionTools();
         }
 
         function disableDrawingTools() {
@@ -2701,6 +2834,8 @@
             document.getElementById('drawRoofBtn').disabled = true;
             document.getElementById('drawExclusionBtn').disabled = true;
             document.getElementById('clearAllBtn').disabled = true;
+            document.getElementById('clearImageBtn').disabled = true;
+            document.getElementById('deleteSelectedBtn').disabled = true;
             document.getElementById('pixelsPerMeter').disabled = true;
             document.getElementById('shortcutsBtn').disabled = true;
             updateClosePolygonButton(false);
@@ -3286,7 +3421,9 @@
 
             // Clear any ongoing drawing and reset state before AI detection
             drawingMode = null;
+            selectedEditableObject = null;
             exitEditMode();
+            invalidateCalculatedLayout();
             document.getElementById('drawRoofBtn').classList.remove('active');
             document.getElementById('drawExclusionBtn').classList.remove('active');
 
@@ -3300,6 +3437,7 @@
             clearCandidatePolygons();
             updateClosePolygonButton(false);
             resetDrawingUndoRedo();
+            updateSelectionTools();
 
             showLoading('בודק עם בינה מלאכותית את הגג שלך…');
 
@@ -3505,6 +3643,10 @@
                 stroke: '#2563eb',
                 strokeWidth: 3,
                 selectable: true,
+                hasControls: false,
+                hasBorders: false,
+                lockMovementX: true,
+                lockMovementY: true,
                 objectCaching: false,
                 polygonType: 'roof'
             });
@@ -3520,6 +3662,8 @@
 
             // Add to canvas
             canvas.add(roofPolygonObject);
+            invalidateCalculatedLayout();
+            selectEditableObject(roofPolygonObject);
             canvas.renderAll();
 
             // Enable panel configuration
@@ -3785,6 +3929,7 @@
         }
 
         async function loadImageOnCanvas(imageUrl) {
+            selectedEditableObject = null;
             roofPolygonPoints = [];
             roofPolygonObject = null;
             exclusionZones = [];
@@ -3853,6 +3998,7 @@
                     enableDrawingTools();
                     setZoomButtonsEnabled(true);
                     updateZoomDisplay();
+                    updateSelectionTools();
                     // Instruction removed
                     // Don't auto-activate manual mode - let user choose AI or manual
                     // startDrawingRoof();
@@ -3865,8 +4011,9 @@
         function setupCanvasEvents() {
             canvas.on('mouse:down', function(opt) {
                 const evt = opt.e;
+                const target = opt.target || canvas.findTarget(opt.e);
 
-                if (evt.spaceKey || isPanning) {
+                if (spacePanMode || isPanning) {
                     isPanning = true;
                     canvas.selection = false;
                     panStartPoint = { x: evt.clientX, y: evt.clientY };
@@ -3876,7 +4023,6 @@
                 // When showing AI candidates, allow highlighting on click
                 // Prevent any drawing or other interactions
                 if (showingCandidates) {
-                    const target = canvas.findTarget(opt.e);
                     if (target && target.polygonType === 'candidate') {
                         highlightCandidate(target.candidateIndex);
                     }
@@ -3884,7 +4030,26 @@
                     return;
                 }
 
-                if (!drawingMode) return;
+                if (!drawingMode) {
+                    if (target && target.parentPolygon && isEditablePolygon(target.parentPolygon)) {
+                        selectedEditableObject = target.parentPolygon;
+                        updateSelectionTools();
+                        return;
+                    }
+
+                    if (isEditablePolygon(target)) {
+                        selectEditableObject(target);
+                        return;
+                    }
+
+                    if (!target || target === uploadedImage) {
+                        selectedEditableObject = null;
+                        exitEditMode();
+                        updateSelectionTools();
+                    }
+
+                    return;
+                }
 
                 const pointer = canvas.getPointer(opt.e);
 
@@ -3915,7 +4080,7 @@
 
             canvas.on('mouse:up', function() {
                 isPanning = false;
-                canvas.selection = true;
+                canvas.selection = false;
             });
 
             canvas.on('mouse:wheel', function(opt) {
@@ -3936,28 +4101,40 @@
                 }
             });
 
-            document.addEventListener('keydown', function(e) {
-                if (e.key === ' ') {
-                    e.preventDefault();
-                    e.spaceKey = true;
-                } else if (e.ctrlKey && e.key === 'z') {
-                    e.preventDefault();
-                    undo();
-                } else if (e.ctrlKey && e.key === 'y') {
-                    e.preventDefault();
-                    redo();
-                } else if (e.ctrlKey && e.key === '0') {
-                    e.preventDefault();
-                    resetZoom();
-                }
-            });
+            if (!globalCanvasShortcutsBound) {
+                document.addEventListener('keydown', function(e) {
+                    const tagName = document.activeElement?.tagName || '';
+                    const isTypingTarget =
+                        ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName) ||
+                        document.activeElement?.isContentEditable;
 
-            document.addEventListener('keyup', function(e) {
-                if (e.key === ' ') {
-                    e.spaceKey = false;
-                    isPanning = false;
-                }
-            });
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        spacePanMode = true;
+                    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !isTypingTarget) {
+                        e.preventDefault();
+                        deleteSelectedObject();
+                    } else if (e.ctrlKey && e.key === 'z') {
+                        e.preventDefault();
+                        undo();
+                    } else if (e.ctrlKey && e.key === 'y') {
+                        e.preventDefault();
+                        redo();
+                    } else if (e.ctrlKey && e.key === '0') {
+                        e.preventDefault();
+                        resetZoom();
+                    }
+                });
+
+                document.addEventListener('keyup', function(e) {
+                    if (e.key === ' ') {
+                        spacePanMode = false;
+                        isPanning = false;
+                    }
+                });
+
+                globalCanvasShortcutsBound = true;
+            }
         }
 
         function drawPolygonPreview(points, fillColor, strokeColor) {

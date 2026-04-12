@@ -115,6 +115,23 @@ def trim_signature_whitespace(image_path):
         return image_path
 
 
+def create_white_signature_variant(image_path):
+    try:
+        img = PILImage.open(image_path)
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+
+        alpha = img.getchannel("A")
+        white_signature = PILImage.new("RGBA", img.size, (255, 255, 255, 0))
+        white_signature.putalpha(alpha)
+
+        variant_path = image_path.replace(".png", "_white.png")
+        white_signature.save(variant_path, "PNG")
+        return variant_path
+    except Exception:
+        return image_path
+
+
 def register_hebrew_font():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     bundled_font_dir = os.path.join(script_dir, "fonts")
@@ -646,6 +663,8 @@ def build_header(elements, quote_data, title_text, title_style):
 
     logo_path = find_first_existing_path(
         [
+            os.path.join(cwd, "static", "images", "לוגו .png"),
+            os.path.join(script_dir, "static", "images", "לוגו .png"),
             os.path.join(cwd, "static", "images", "logo2.png"),
             os.path.join(script_dir, "static", "images", "logo2.png"),
             os.path.join(cwd, "logo2.png"),
@@ -691,10 +710,23 @@ def build_header(elements, quote_data, title_text, title_style):
     return cwd, script_dir
 
 
-def build_signature_element(label_text, image_path, style, image_width, image_height):
+def build_signature_element(
+    label_text,
+    image_path,
+    style,
+    image_width,
+    image_height,
+    make_white=False,
+):
     if image_path and os.path.exists(image_path):
         try:
-            trimmed_path = trim_signature_whitespace(image_path)
+            should_make_white = make_white or os.path.basename(image_path).lower() == "sign.png"
+            source_path = (
+                create_white_signature_variant(image_path)
+                if should_make_white
+                else image_path
+            )
+            trimmed_path = trim_signature_whitespace(source_path)
             signature_image = Image(
                 trimmed_path,
                 width=image_width,
