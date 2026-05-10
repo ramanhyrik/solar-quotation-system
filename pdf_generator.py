@@ -467,11 +467,11 @@ def calculate_leasing_cashflow_total(quote_data):
     return int(round(total_cashflow))
 
 
-def build_specs_rows(quote_data, not_specified):
+def build_specs_rows(quote_data, not_specified, model_type="purchase"):
     system_size = quote_data.get("system_size", 0) or 0
     roof_area = quote_data.get("roof_area")
     annual_prod = quote_data.get("annual_production", 0) or 0
-    return [
+    rows = [
         [f"{reshape_hebrew('קוט״ש')} {format_number(system_size)}", reshape_hebrew("גודל מערכת:")],
         [f"{reshape_hebrew('מ״ר')} {format_number(roof_area)}" if roof_area else not_specified, reshape_hebrew("שטח גג:")],
         [
@@ -479,8 +479,12 @@ def build_specs_rows(quote_data, not_specified):
             reshape_hebrew("ייצור שנתי:"),
         ],
         [reshape_hebrew(safe_get(quote_data, "maintenance")) or not_specified, reshape_hebrew("תחזוקה:")],
-        [reshape_hebrew(safe_get(quote_data, "service")) or not_specified, reshape_hebrew("שירות:")],
     ]
+    if model_type != "leasing":
+        rows.append(
+            [reshape_hebrew(safe_get(quote_data, "service")) or not_specified, reshape_hebrew("שירות:")]
+        )
+    return rows
 
 
 def build_purchase_financial_rows(quote_data):
@@ -537,18 +541,14 @@ def build_purchase_metrics_rows(quote_data):
 
 def build_leasing_metrics_rows(quote_data):
     total_price = float(quote_data.get("total_price") or 0)
-    system_size = float(quote_data.get("system_size") or 0)
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
     _, _, _, leasing_ratio = get_assumption_values(quote_data)
-    price_per_kwp = total_price / system_size if system_size else 0
     annual_customer_income = annual_revenue * leasing_ratio
     total_cashflow = calculate_leasing_cashflow_total(quote_data)
     return [
         [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
         [format_currency(total_price), reshape_hebrew("שווי המערכת")],
-        [format_currency(price_per_kwp), reshape_hebrew("מחיר לקילו-וואט")],
         [format_currency(annual_customer_income), reshape_hebrew("הכנסה שנתית ללקוח")],
-        [f"{leasing_ratio * 100:.0f}%", reshape_hebrew("חלק הלקוח מההכנסה")],
         [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר 25 שנה")],
     ]
 
@@ -879,7 +879,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
     elements.append(Spacer(1, 0.04 * inch))
     elements.append(
         build_info_table(
-            build_specs_rows(quote_data, not_specified),
+            build_specs_rows(quote_data, not_specified, model_type),
             [3.8 * inch, 2.2 * inch],
             boxed=True,
         )
