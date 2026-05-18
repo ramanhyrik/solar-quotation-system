@@ -540,20 +540,23 @@ def build_purchase_metrics_rows(quote_data):
 
 
 def build_leasing_metrics_rows(quote_data):
-    total_price = float(quote_data.get("total_price") or 0)
     system_size = float(quote_data.get("system_size") or 0)
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
     annual_production = float(quote_data.get("annual_production") or 0)
+    stored_system_value = quote_data.get("system_value_after_25_years")
     _, _, _, leasing_ratio = get_assumption_values(quote_data)
 
     production_per_kwp = annual_production / system_size if system_size else 0
     tariff_rate = annual_revenue / annual_production if annual_production else 0
-    price_per_kwp = total_price / system_size if system_size else 0
 
     income_per_kwp = production_per_kwp * tariff_rate * leasing_ratio
     annual_income = annual_revenue * leasing_ratio
     total_cashflow = calculate_leasing_cashflow_total(quote_data)
-    system_value = price_per_kwp * system_size
+    system_value = (
+        float(stored_system_value)
+        if stored_system_value not in (None, "")
+        else float(quote_data.get("total_price") or 0)
+    )
     total_revenue = system_value + total_cashflow
 
     income_formula = (

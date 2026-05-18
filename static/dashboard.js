@@ -137,17 +137,46 @@ function updateManualPriceDisplay() {
     totalPriceElement.textContent = `₪${formatInteger(priceToShow)}`;
 }
 
-function maybePrefillSystemValue() {
-    const field = document.getElementById('systemValueAfter25Years');
+function getQuotePricePerKw() {
+    const field = document.getElementById('pricePerKw');
+    return parseNumericInput(field?.value);
+}
+
+function getQuoteSystemSize() {
+    return parseNumericInput(document.getElementById('systemSize')?.value);
+}
+
+function getQuoteSystemValue() {
+    const pricePerKw = getQuotePricePerKw();
+    const systemSize = getQuoteSystemSize();
+    if (!pricePerKw || !systemSize) {
+        return null;
+    }
+    return Math.round(pricePerKw * systemSize);
+}
+
+function updateSystemValueDisplay() {
+    const display = document.getElementById('systemValueDisplay');
+    if (!display) {
+        return;
+    }
+    const value = getQuoteSystemValue();
+    display.textContent = value ? `₪${formatInteger(value)}` : '₪0';
+}
+
+function maybePrefillPricePerKw() {
+    const field = document.getElementById('pricePerKw');
     if (!field) {
         return;
     }
 
     const isEditable = field.dataset.userEdited === 'true' && field.value.trim();
-    if (!isEditable && currentQuoteData.annual_revenue) {
-        field.value = Math.round(Number(currentQuoteData.annual_revenue) * 25);
+    const systemSize = getQuoteSystemSize();
+    if (!isEditable && currentQuoteData.total_price && systemSize) {
+        field.value = (Number(currentQuoteData.total_price) / systemSize).toFixed(2);
         field.dataset.autoFilled = 'true';
     }
+    updateSystemValueDisplay();
 }
 
 function getFinalQuotePrice() {
@@ -178,9 +207,8 @@ function collectQuotePayload() {
         total_price: getFinalQuotePrice() || currentQuoteData.total_price,
         maintenance: document.getElementById('maintenance').value || null,
         service: document.getElementById('service').value || null,
-        system_value_after_25_years: parseNumericInput(
-            document.getElementById('systemValueAfter25Years').value
-        ),
+        system_value_after_25_years: getQuoteSystemValue(),
+        price_per_kwp_quote: getQuotePricePerKw(),
         basic_assumptions_text: document.getElementById('basicAssumptionsText').value,
         revenue_calculation_text: document.getElementById('revenueCalculationText').value,
         summary_text: document.getElementById('summaryText').value,
@@ -202,7 +230,7 @@ function resetQuoteForm() {
         'finalPrice',
         'maintenance',
         'service',
-        'systemValueAfter25Years',
+        'pricePerKw',
         'basicAssumptionsText',
         'revenueCalculationText',
         'summaryText',
@@ -237,7 +265,7 @@ function registerQuoteFieldListeners() {
         'summaryText',
         'environmentalImpactText',
         'finalPrice',
-        'systemValueAfter25Years'
+        'pricePerKw'
     ].forEach((fieldId) => {
         const field = document.getElementById(fieldId);
         if (!field) {
@@ -249,11 +277,17 @@ function registerQuoteFieldListeners() {
             if (fieldId === 'finalPrice') {
                 updateManualPriceDisplay();
             }
-            if (fieldId === 'systemValueAfter25Years') {
+            if (fieldId === 'pricePerKw') {
+                updateSystemValueDisplay();
                 refreshQuoteTextSections(false);
             }
         });
     });
+
+    const systemSizeField = document.getElementById('systemSize');
+    if (systemSizeField) {
+        systemSizeField.addEventListener('input', updateSystemValueDisplay);
+    }
 }
 
 async function calculateQuote() {
@@ -289,7 +323,7 @@ async function calculateQuote() {
             finalPriceField.dataset.userEdited = 'false';
         }
 
-        maybePrefillSystemValue();
+        maybePrefillPricePerKw();
         refreshQuoteTextSections(true);
 
         document.getElementById('annualRevenue').textContent = `₪${formatInteger(data.annual_revenue)}`;
@@ -353,7 +387,19 @@ function populateQuoteForm(quote) {
     if (finalPriceField) finalPriceField.value = quote.total_price || '';
     document.getElementById('maintenance').value = quote.maintenance || '';
     document.getElementById('service').value = quote.service || '';
-    document.getElementById('systemValueAfter25Years').value = quote.system_value_after_25_years || '';
+    const pricePerKwField = document.getElementById('pricePerKw');
+    if (pricePerKwField) {
+        const storedSystemSize = Number(quote.system_size || 0);
+        const storedSystemValue = Number(quote.system_value_after_25_years || 0);
+        if (quote.price_per_kwp_quote) {
+            pricePerKwField.value = quote.price_per_kwp_quote;
+        } else if (storedSystemValue && storedSystemSize) {
+            pricePerKwField.value = (storedSystemValue / storedSystemSize).toFixed(2);
+        } else {
+            pricePerKwField.value = '';
+        }
+        updateSystemValueDisplay();
+    }
     document.getElementById('basicAssumptionsText').value = quote.basic_assumptions_text || '';
     document.getElementById('revenueCalculationText').value = quote.revenue_calculation_text || '';
     document.getElementById('summaryText').value = quote.summary_text || '';
@@ -366,7 +412,7 @@ function populateQuoteForm(quote) {
         annual_production: Number(quote.annual_production || 0)
     };
 
-    ['finalPrice', 'systemValueAfter25Years', 'basicAssumptionsText', 'revenueCalculationText', 'summaryText', 'environmentalImpactText']
+    ['finalPrice', 'pricePerKw', 'basicAssumptionsText', 'revenueCalculationText', 'summaryText', 'environmentalImpactText']
         .forEach((id) => {
             const field = document.getElementById(id);
             if (field) {
