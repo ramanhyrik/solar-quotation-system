@@ -45,8 +45,12 @@
             <form id="pricingForm">
                 <div class="form-grid">
                     <div>
-                        <label>מחיר לקוט״ש (₪)</label>
-                        <input type="number" id="pricePerKwp" step="0.01" required>
+                        <label>חישוב הכנסה</label>
+                        <div id="incomeCalculation" style="padding: 10px; border: 2px solid rgba(58, 228, 120, 0.3); border-radius: 8px; background: rgba(20, 24, 31, 0.6); color: #ffffff; font-size: 14px; line-height: 1.6;">
+                            <span id="incomeCalcFormula">Production per kW (1500) × Tariff (0.48) × 0.25</span>
+                            =
+                            <strong id="incomeCalcResult">—</strong>
+                        </div>
                     </div>
                     <div>
                         <label>ייצור לקוט״ש (קוט״ש/שנה)</label>
@@ -242,10 +246,10 @@
             const pricingResponse = await fetch('/api/pricing');
             const pricing = await pricingResponse.json();
 
-            document.getElementById('pricePerKwp').value = pricing.price_per_kwp;
             document.getElementById('productionPerKwp').value = pricing.production_per_kwp;
             document.getElementById('tariffRate').value = pricing.tariff_rate;
             document.getElementById('treesMultiplier').value = pricing.trees_multiplier;
+            updateIncomeCalculation(pricing);
             document.getElementById('basicAssumptionsDefault').value = pricing.basic_assumptions_default || '';
             document.getElementById('revenueCalculationDefault').value = pricing.revenue_calculation_default || '';
             document.getElementById('summaryDefault').value = pricing.summary_default || '';
@@ -280,12 +284,45 @@
             }
         }
 
+        function updateIncomeCalculation(pricing) {
+            const production = Number(
+                (pricing && pricing.production_per_kwp) ??
+                document.getElementById('productionPerKwp').value
+            );
+            const tariff = Number(
+                (pricing && pricing.tariff_rate) ??
+                document.getElementById('tariffRate').value
+            );
+            const leasingRatio = Number(
+                (pricing && pricing.leasing_payment_ratio) ??
+                document.getElementById('leasingPaymentRatio').value ??
+                0.25
+            );
+
+            const formulaEl = document.getElementById('incomeCalcFormula');
+            const resultEl = document.getElementById('incomeCalcResult');
+            if (!formulaEl || !resultEl) return;
+
+            if (Number.isFinite(production) && Number.isFinite(tariff) && Number.isFinite(leasingRatio)) {
+                formulaEl.textContent =
+                    `Production per kW (${production}) × Tariff (${tariff}) × ${leasingRatio}`;
+                const result = production * tariff * leasingRatio;
+                resultEl.textContent = `₪${result.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            } else {
+                resultEl.textContent = '—';
+            }
+        }
+
+        ['productionPerKwp', 'tariffRate', 'leasingPaymentRatio'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', () => updateIncomeCalculation());
+        });
+
         // עדכון תמחור
         document.getElementById('pricingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const formData = new FormData();
-            formData.append('price_per_kwp', document.getElementById('pricePerKwp').value);
             formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
             formData.append('tariff_rate', document.getElementById('tariffRate').value);
             formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);

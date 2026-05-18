@@ -675,11 +675,6 @@
         <div id="calculatorSection" style="display: none;">
             <h1>מחשבון אנרגיה סולארית</h1>
 
-            <div class="model-tabs">
-                <button class="model-tab" onclick="setModel('leasing')" id="tab-leasing">מודל ליסינג</button>
-                <button class="model-tab active" onclick="setModel('purchase')" id="tab-purchase">מודל רכישה</button>
-            </div>
-
             <div class="calculator-input">
                 <label for="calcRoofArea">שטח הגג (מ"ר)</label>
 <input type="number" id="calcRoofArea" step="1" placeholder="הזן שטח גג (לדוגמה: 135)" value="135">
@@ -771,11 +766,6 @@
         <div id="quoteSection" class="quote-form-section" style="display: none;">
             <h1>יצירת הצעה חדשה</h1>
 
-            <div class="model-tabs">
-                <button class="model-tab" onclick="setQuoteModel('leasing')" id="quote-tab-leasing">מודל ליסינג</button>
-                <button class="model-tab active" onclick="setQuoteModel('purchase')" id="quote-tab-purchase">מודל רכישה</button>
-            </div>
-
             <div class="quote-form">
                 <h3>פרטי לקוח</h3>
                 <div class="form-grid">
@@ -793,10 +783,6 @@
 
                 <h3>עריכת הצעה</h3>
                 <div class="form-grid">
-                    <div>
-                        <label for="finalPrice">Final Quotation Price</label>
-                        <input type="number" id="finalPrice" placeholder="מחיר סופי להצעה" step="0.01">
-                    </div>
                     <div>
                         <label for="maintenance">תחזוקה</label>
                         <input type="text" id="maintenance" placeholder="לדוגמה: תחזוקה שנתית לפי הצורך">
@@ -1046,23 +1032,20 @@
         function setModel(model) {
             window.currentModel = model;
 
-            // Update tab styles
-            document.getElementById('tab-leasing').classList.remove('active');
-            document.getElementById('tab-purchase').classList.remove('active');
+            const purchaseDetails = document.getElementById('purchaseDetails');
+            const leasingDetails = document.getElementById('leasingDetails');
+            const modelDescription = document.getElementById('modelDescription');
 
             if (model === 'leasing') {
-                document.getElementById('tab-leasing').classList.add('active');
-                document.getElementById('modelDescription').textContent = 'מודל ליסינג - ללא עלות התקנה';
-                document.getElementById('purchaseDetails').style.display = 'none';
-                document.getElementById('leasingDetails').style.display = 'block';
+                if (modelDescription) modelDescription.textContent = 'מודל ליסינג - ללא עלות התקנה';
+                if (purchaseDetails) purchaseDetails.style.display = 'none';
+                if (leasingDetails) leasingDetails.style.display = 'block';
             } else {
-                document.getElementById('tab-purchase').classList.add('active');
-                document.getElementById('modelDescription').textContent = 'מודל רכישה - בעלות מלאה על המערכת';
-                document.getElementById('purchaseDetails').style.display = 'block';
-                document.getElementById('leasingDetails').style.display = 'none';
+                if (modelDescription) modelDescription.textContent = 'מודל רכישה - בעלות מלאה על המערכת';
+                if (purchaseDetails) purchaseDetails.style.display = 'block';
+                if (leasingDetails) leasingDetails.style.display = 'none';
             }
 
-            // Recalculate if results are visible
             if (document.getElementById('calcResults').style.display !== 'none') {
                 calculateModel();
             }
@@ -1070,17 +1053,6 @@
 
         function setQuoteModel(model) {
             window.currentModel = model;
-
-            // Update tab styles for quote section
-            document.getElementById('quote-tab-leasing').classList.remove('active');
-            document.getElementById('quote-tab-purchase').classList.remove('active');
-
-            if (model === 'leasing') {
-                document.getElementById('quote-tab-leasing').classList.add('active');
-            } else {
-                document.getElementById('quote-tab-purchase').classList.add('active');
-            }
-
             if (typeof refreshQuoteTextSections === 'function') {
                 refreshQuoteTextSections(false);
             }

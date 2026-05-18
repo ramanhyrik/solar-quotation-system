@@ -349,7 +349,8 @@ function populateQuoteForm(quote) {
     document.getElementById('customerAddress').value = quote.customer_address || '';
     document.getElementById('systemSize').value = quote.system_size || '';
     document.getElementById('roofArea').value = quote.roof_area || '';
-    document.getElementById('finalPrice').value = quote.total_price || '';
+    const finalPriceField = document.getElementById('finalPrice');
+    if (finalPriceField) finalPriceField.value = quote.total_price || '';
     document.getElementById('maintenance').value = quote.maintenance || '';
     document.getElementById('service').value = quote.service || '';
     document.getElementById('systemValueAfter25Years').value = quote.system_value_after_25_years || '';

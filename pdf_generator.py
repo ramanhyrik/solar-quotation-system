@@ -541,15 +541,33 @@ def build_purchase_metrics_rows(quote_data):
 
 def build_leasing_metrics_rows(quote_data):
     total_price = float(quote_data.get("total_price") or 0)
+    system_size = float(quote_data.get("system_size") or 0)
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
+    annual_production = float(quote_data.get("annual_production") or 0)
     _, _, _, leasing_ratio = get_assumption_values(quote_data)
-    annual_customer_income = annual_revenue * leasing_ratio
+
+    production_per_kwp = annual_production / system_size if system_size else 0
+    tariff_rate = annual_revenue / annual_production if annual_production else 0
+    price_per_kwp = total_price / system_size if system_size else 0
+
+    income_per_kwp = production_per_kwp * tariff_rate * leasing_ratio
+    annual_income = annual_revenue * leasing_ratio
     total_cashflow = calculate_leasing_cashflow_total(quote_data)
+    system_value = price_per_kwp * system_size
+    total_revenue = system_value + total_cashflow
+
+    income_formula = (
+        f"{format_number(production_per_kwp)} × {format_number(tariff_rate)} × "
+        f"{format_number(leasing_ratio)} = {format_currency(income_per_kwp)}"
+    )
+
     return [
         [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
-        [format_currency(total_price), reshape_hebrew("שווי המערכת")],
-        [format_currency(annual_customer_income), reshape_hebrew("הכנסה שנתית ללקוח")],
-        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר 25 שנה")],
+        [income_formula, reshape_hebrew("חישוב הכנסה")],
+        [format_currency(annual_income), reshape_hebrew("הכנסה שנתית")],
+        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
+        [format_currency(system_value), reshape_hebrew("שווי מערכת לאחר 25 שנה")],
+        [format_currency(total_revenue), reshape_hebrew("סך הכנסה כוללת")],
     ]
 
 
@@ -849,7 +867,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
         if company_info
         else "Solar Energy Solutions"
     )
-    title_text = "הצעת מחיר ליסינג" if model_type == "leasing" else "הצעת מחיר"
+    title_text = "הצעת מחיר"
     cwd, script_dir = build_header(elements, quote_data, title_text, styles["title"])
 
     today = datetime.now()
@@ -899,17 +917,14 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
         except Exception:
             traceback.print_exc()
 
-    elements.append(Paragraph(rtl("סיכום פיננסי"), styles["heading"]))
-    elements.append(Spacer(1, 0.04 * inch))
-    financial_rows = (
-        build_leasing_financial_rows(quote_data)
-        if model_type == "leasing"
-        else build_purchase_financial_rows(quote_data)
-    )
-    financial_table = Table(financial_rows, colWidths=[2.4 * inch, 3.6 * inch])
-    apply_standard_table_style(financial_table)
-    elements.append(financial_table)
-    elements.append(Spacer(1, 0.06 * inch))
+    if model_type != "leasing":
+        elements.append(Paragraph(rtl("סיכום פיננסי"), styles["heading"]))
+        elements.append(Spacer(1, 0.04 * inch))
+        financial_rows = build_purchase_financial_rows(quote_data)
+        financial_table = Table(financial_rows, colWidths=[2.4 * inch, 3.6 * inch])
+        apply_standard_table_style(financial_table)
+        elements.append(financial_table)
+        elements.append(Spacer(1, 0.06 * inch))
 
     elements.append(Paragraph(rtl("מדדים פיננסיים"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
