@@ -928,15 +928,6 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
         except Exception:
             traceback.print_exc()
 
-    if model_type != "leasing":
-        elements.append(Paragraph(rtl("סיכום פיננסי"), styles["heading"]))
-        elements.append(Spacer(1, 0.04 * inch))
-        financial_rows = build_purchase_financial_rows(quote_data)
-        financial_table = Table(financial_rows, colWidths=[2.4 * inch, 3.6 * inch])
-        apply_standard_table_style(financial_table)
-        elements.append(financial_table)
-        elements.append(Spacer(1, 0.06 * inch))
-
     elements.append(Paragraph(rtl("מדדים פיננסיים"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
     metrics_rows = (
