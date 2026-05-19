@@ -28,6 +28,9 @@ def migrate_phase5_quote_refresh():
         "environmental_impact_text": (
             "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS environmental_impact_text TEXT"
         ),
+        "offer_image_path": (
+            "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS offer_image_path TEXT"
+        ),
     }
 
     pricing_columns = {

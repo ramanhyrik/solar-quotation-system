@@ -1,4 +1,60 @@
 let currentQuoteData = {};
+let currentOfferImageUrl = null;
+
+function setOfferImagePreview(url) {
+    currentOfferImageUrl = url || null;
+    const wrap = document.getElementById('offerImagePreviewWrap');
+    const img = document.getElementById('offerImagePreview');
+    if (!wrap || !img) return;
+    if (currentOfferImageUrl) {
+        img.src = currentOfferImageUrl;
+        wrap.style.display = 'block';
+    } else {
+        img.src = '';
+        wrap.style.display = 'none';
+    }
+}
+
+async function uploadOfferImage(file) {
+    const status = document.getElementById('offerImageStatus');
+    if (status) status.textContent = 'מעלה תמונה...';
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const response = await fetch('/api/quote-image/upload', { method: 'POST', body: formData });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Upload failed');
+        }
+        const data = await response.json();
+        setOfferImagePreview(data.image_url);
+        if (status) status.textContent = 'התמונה הועלתה בהצלחה';
+    } catch (error) {
+        console.error('[offer-image] upload failed', error);
+        if (status) status.textContent = `שגיאה בהעלאת התמונה: ${error.message}`;
+    }
+}
+
+function registerOfferImageHandlers() {
+    const fileInput = document.getElementById('offerImageFile');
+    const removeBtn = document.getElementById('offerImageRemoveBtn');
+    if (fileInput) {
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (file) uploadOfferImage(file);
+        });
+    }
+    if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            setOfferImagePreview(null);
+            if (fileInput) fileInput.value = '';
+            const status = document.getElementById('offerImageStatus');
+            if (status) status.textContent = '';
+        });
+    }
+}
 
 const quoteTemplateFieldMap = {
     basicAssumptionsText: 'basic_assumptions_default',
@@ -209,6 +265,7 @@ function collectQuotePayload() {
         service: document.getElementById('service').value || null,
         system_value_after_25_years: getQuoteSystemValue(),
         price_per_kwp_quote: getQuotePricePerKw(),
+        offer_image_path: currentOfferImageUrl,
         basic_assumptions_text: document.getElementById('basicAssumptionsText').value,
         revenue_calculation_text: document.getElementById('revenueCalculationText').value,
         summary_text: document.getElementById('summaryText').value,
@@ -250,6 +307,11 @@ function resetQuoteForm() {
 
     document.getElementById('calculations').style.display = 'none';
     currentQuoteData = {};
+    setOfferImagePreview(null);
+    const offerImageFile = document.getElementById('offerImageFile');
+    if (offerImageFile) offerImageFile.value = '';
+    const offerImageStatus = document.getElementById('offerImageStatus');
+    if (offerImageStatus) offerImageStatus.textContent = '';
     initializeQuoteTextDefaults();
 }
 
@@ -404,6 +466,9 @@ function populateQuoteForm(quote) {
     document.getElementById('revenueCalculationText').value = quote.revenue_calculation_text || '';
     document.getElementById('summaryText').value = quote.summary_text || '';
     document.getElementById('environmentalImpactText').value = quote.environmental_impact_text || '';
+    setOfferImagePreview(quote.offer_image_path || null);
+    const offerImageFile = document.getElementById('offerImageFile');
+    if (offerImageFile) offerImageFile.value = '';
 
     currentQuoteData = {
         total_price: Number(quote.total_price || 0),
@@ -652,5 +717,6 @@ async function generatePDF() {
 
 document.addEventListener('DOMContentLoaded', () => {
     registerQuoteFieldListeners();
+    registerOfferImageHandlers();
     initializeQuoteTextDefaults();
 });

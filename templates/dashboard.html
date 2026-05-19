@@ -818,6 +818,15 @@
                         <label for="environmentalImpactText">השפעה סביבתית</label>
                         <textarea id="environmentalImpactText"></textarea>
                     </div>
+                    <div>
+                        <label for="offerImageFile">תמונה להצעה</label>
+                        <input type="file" id="offerImageFile" accept="image/png,image/jpeg,image/jpg">
+                        <div id="offerImagePreviewWrap" style="margin-top: 10px; display: none; text-align: center;">
+                            <img id="offerImagePreview" src="" alt="תמונת הצעה" style="max-width: 100%; max-height: 200px; border: 1px solid rgba(58, 228, 120, 0.3); border-radius: 8px;">
+                            <button type="button" id="offerImageRemoveBtn" class="btn-calculate" style="margin-top: 8px; background: #dc3545;">הסר תמונה</button>
+                        </div>
+                        <small id="offerImageStatus" style="display: block; margin-top: 6px; color: #A0AEC0;"></small>
+                    </div>
                 </div>
 
                 <button onclick="calculateQuote()" class="btn-calculate">חשב</button>

@@ -666,6 +666,26 @@ def find_first_existing_path(paths):
     return None
 
 
+def resolve_offer_image_path(stored_path):
+    if not stored_path:
+        return None
+    if os.path.exists(stored_path):
+        return stored_path
+
+    filename = os.path.basename(stored_path)
+    if not filename:
+        return None
+
+    render_uploads = "/opt/render/project/src/uploads"
+    candidates = [
+        os.path.join(render_uploads, "quote_images", filename),
+        os.path.join("static", "quote_images", filename),
+        os.path.join(render_uploads, filename),
+        os.path.join("static", filename),
+    ]
+    return find_first_existing_path(candidates)
+
+
 def build_header(elements, quote_data, title_text, title_style):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     cwd = os.getcwd()
@@ -937,6 +957,21 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
         styles["body"],
         spacing=0.06 * inch,
     )
+
+    offer_image_fs_path = resolve_offer_image_path(quote_data.get("offer_image_path"))
+    if offer_image_fs_path:
+        try:
+            offer_image = Image(
+                offer_image_fs_path,
+                width=6.3 * inch,
+                height=4.0 * inch,
+                kind="proportional",
+            )
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(offer_image)
+            elements.append(Spacer(1, 0.06 * inch))
+        except Exception:
+            traceback.print_exc()
 
     elements.append(NextPageTemplate("last_page"))
     elements.append(PageBreak())

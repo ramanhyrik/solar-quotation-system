@@ -42,6 +42,7 @@ ROOF_IMAGES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_images")
 ROOF_VISUALIZATIONS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "roof_visualizations")
 SIGNATURES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "quote_signatures")
 SIGNED_PDFS_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "signed_pdfs")
+QUOTE_IMAGES_DIR = os.path.join(PERSISTENT_UPLOADS_DIR, "quote_images")
 
 # Detection job store for async SAM processing
 # Format: {job_id: {"status": "pending|running|completed|failed", "result": {...}, "error": str}}
@@ -352,7 +353,7 @@ app.add_middleware(
 )
 
 # Ensure upload directories exist before mounting (required at import time)
-for directory in [UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR]:
+for directory in [UPLOADS_DIR, ROOF_IMAGES_DIR, ROOF_VISUALIZATIONS_DIR, SIGNATURES_DIR, SIGNED_PDFS_DIR, QUOTE_IMAGES_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 # Mount static files (CSS, JS, logos from app code)
@@ -556,7 +557,7 @@ async def update_pricing(
                 "operating_cost_base": 0.005,
                 "operating_cost_increase": 0.02,
                 "roof_area_per_kw": 7.0,
-                "leasing_payment_ratio": 0.3,
+                "leasing_payment_ratio": 0.25,
                 **LEGACY_QUOTE_DEFAULTS,
             }
 
@@ -737,10 +738,11 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 inverter_type, direction, tilt_angle, warranty_years,
                 total_price, maintenance, service, system_value_after_25_years,
                 basic_assumptions_text, revenue_calculation_text, summary_text,
-                environmental_impact_text, annual_revenue, payback_period, model_type, created_by
+                environmental_impact_text, offer_image_path,
+                annual_revenue, payback_period, model_type, created_by
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             RETURNING id
         ''', (
@@ -766,6 +768,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("revenue_calculation_text"),
             data.get("summary_text"),
             data.get("environmental_impact_text"),
+            data.get("offer_image_path"),
             data.get("annual_revenue"),
             data.get("payback_period"),
             data.get("model_type", "purchase"),
@@ -940,6 +943,34 @@ async def delete_logo(user=Depends(get_current_user)):
         conn.commit()
 
     return {"message": "Logo deleted successfully"}
+
+@app.post("/api/quote-image/upload")
+async def upload_quote_image(image: UploadFile = File(...), user=Depends(get_current_user)):
+    """Upload an image to attach to the quote PDF (below the environmental impact section)."""
+    if not user:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    allowed_types = ["image/png", "image/jpeg", "image/jpg"]
+    if image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PNG and JPG are allowed.")
+
+    content = await image.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
+
+    file_extension = image.filename.rsplit('.', 1)[-1].lower() if '.' in image.filename else 'png'
+    filename = f"quote_image_{user['user_id']}_{int(datetime.now().timestamp())}.{file_extension}"
+    file_path = os.path.join(QUOTE_IMAGES_DIR, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    image_url = (
+        f"/uploads/quote_images/{filename}"
+        if os.getenv("RENDER")
+        else f"/static/quote_images/{filename}"
+    )
+    return {"image_url": image_url, "image_path": file_path}
 
 @app.get("/api/users")
 async def get_users(user=Depends(get_current_user)):
