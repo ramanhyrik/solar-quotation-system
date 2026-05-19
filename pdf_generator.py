@@ -908,7 +908,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
     elements.append(Spacer(1, 0.04 * inch))
     elements.append(
         build_info_table(
-            build_specs_rows(quote_data, not_specified, model_type),
+            build_specs_rows(quote_data, not_specified, "leasing"),
             [3.8 * inch, 2.2 * inch],
             boxed=True,
         )
@@ -930,11 +930,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
 
     elements.append(Paragraph(rtl("מדדים פיננסיים"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
-    metrics_rows = (
-        build_leasing_metrics_rows(quote_data)
-        if model_type == "leasing"
-        else build_purchase_metrics_rows(quote_data)
-    )
+    metrics_rows = build_leasing_metrics_rows(quote_data)
     metrics_table = Table(metrics_rows, colWidths=[2.1 * inch, 3.9 * inch])
     apply_standard_table_style(metrics_table)
     elements.append(metrics_table)
@@ -969,16 +965,8 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
 
     elements.append(Paragraph(rtl("ניתוח תזרים מזומנים - 25 שנה"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
-    cashflow_rows = (
-        build_leasing_cashflow_rows(quote_data)
-        if model_type == "leasing"
-        else build_purchase_cashflow_rows(quote_data)
-    )
-    cashflow_widths = (
-        [1.7 * inch, 1.7 * inch, 1.7 * inch, 1.1 * inch]
-        if model_type == "leasing"
-        else [1.35 * inch, 1.35 * inch, 1.35 * inch, 1.35 * inch, 0.8 * inch]
-    )
+    cashflow_rows = build_leasing_cashflow_rows(quote_data)
+    cashflow_widths = [1.7 * inch, 1.7 * inch, 1.7 * inch, 1.1 * inch]
     cashflow_table = Table(cashflow_rows, colWidths=cashflow_widths)
     apply_cashflow_table_style(cashflow_table)
     elements.append(cashflow_table)
