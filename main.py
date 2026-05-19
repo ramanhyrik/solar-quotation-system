@@ -316,6 +316,25 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
         print(f"[ERROR] Error finding customer signature: {e}")
         return None
 
+def ensure_offer_image_column():
+    """Idempotently ensure the quotes.offer_image_path column exists.
+
+    Runs after init_database() as a belt-and-suspenders safeguard so a
+    silent failure in the phase-5 migration never breaks quote creation.
+    Uses ADD COLUMN IF NOT EXISTS so repeated invocations are no-ops.
+    """
+    try:
+        with get_db() as conn:
+            cursor = get_cursor(conn)
+            cursor.execute(
+                "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS offer_image_path TEXT"
+            )
+            conn.commit()
+            print("[OK] Verified quotes.offer_image_path column exists")
+    except Exception as e:
+        print(f"[WARNING] Failed to verify offer_image_path column: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler"""
@@ -323,6 +342,7 @@ async def lifespan(app: FastAPI):
     print(f"[OK] Using uploads directory: {PERSISTENT_UPLOADS_DIR}")
 
     init_database()
+    ensure_offer_image_column()
 
     # Cleanup expired sessions on startup
     cleanup_expired_sessions_db()
