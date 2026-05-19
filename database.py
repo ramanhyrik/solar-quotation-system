@@ -122,7 +122,7 @@ def init_database():
                 operating_cost_base NUMERIC DEFAULT 0.005,
                 operating_cost_increase NUMERIC DEFAULT 0.02,
                 roof_area_per_kw NUMERIC DEFAULT 7.0,
-                leasing_payment_ratio NUMERIC DEFAULT 0.3,
+                leasing_payment_ratio NUMERIC DEFAULT 0.25,
                 basic_assumptions_default TEXT,
                 revenue_calculation_default TEXT,
                 summary_default TEXT,

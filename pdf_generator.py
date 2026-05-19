@@ -540,16 +540,10 @@ def build_purchase_metrics_rows(quote_data):
 
 
 def build_leasing_metrics_rows(quote_data):
-    system_size = float(quote_data.get("system_size") or 0)
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    annual_production = float(quote_data.get("annual_production") or 0)
     stored_system_value = quote_data.get("system_value_after_25_years")
     _, _, _, leasing_ratio = get_assumption_values(quote_data)
 
-    production_per_kwp = annual_production / system_size if system_size else 0
-    tariff_rate = annual_revenue / annual_production if annual_production else 0
-
-    income_per_kwp = production_per_kwp * tariff_rate * leasing_ratio
     annual_income = annual_revenue * leasing_ratio
     total_cashflow = calculate_leasing_cashflow_total(quote_data)
     system_value = (
@@ -559,18 +553,12 @@ def build_leasing_metrics_rows(quote_data):
     )
     total_revenue = system_value + total_cashflow
 
-    income_formula = (
-        f"{format_number(production_per_kwp)} × {format_number(tariff_rate)} × "
-        f"{format_number(leasing_ratio)} = {format_currency(income_per_kwp)}"
-    )
-
     return [
         [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
-        [income_formula, reshape_hebrew("חישוב הכנסה")],
         [format_currency(annual_income), reshape_hebrew("הכנסה שנתית")],
         [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
         [format_currency(system_value), reshape_hebrew("שווי מערכת לאחר 25 שנה")],
-        [format_currency(total_revenue), reshape_hebrew("סך הכנסה כוללת")],
+        [format_currency(total_revenue), reshape_hebrew("סך הכנסה")],
     ]
 
 

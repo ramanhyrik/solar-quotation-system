@@ -261,7 +261,7 @@
             document.getElementById('operatingCostBase').value = pricing.operating_cost_base || 0.005;
             document.getElementById('operatingCostIncrease').value = pricing.operating_cost_increase || 0.02;
             document.getElementById('roofAreaPerKw').value = pricing.roof_area_per_kw || 7.0;
-            document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio || 0.3;
+            document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio || 0.25;
 
             const companyResponse = await fetch('/api/company');
             const company = await companyResponse.json();

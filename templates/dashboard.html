@@ -1065,7 +1065,7 @@
             const roofArea = parseFloat(document.getElementById('calcRoofArea').value);
             const roofAreaPerKw = Number(calculatorSettings?.roof_area_per_kw || 7);
             const shadingSetting = Number(calculatorSettings?.shading_factor || 0.85);
-            const leasingRatio = Number(calculatorSettings?.leasing_payment_ratio || 0.3);
+            const leasingRatio = Number(calculatorSettings?.leasing_payment_ratio || 0.25);
 
             if (!roofArea || roofArea <= 0) {
                 alert('נא להזין שטח גג תקין');

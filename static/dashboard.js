@@ -46,7 +46,7 @@ function buildQuoteTemplateContext() {
     const degradationRate = Number(pricing.degradation_rate ?? 0.004);
     const operatingCostBase = Number(pricing.operating_cost_base ?? 0.005);
     const operatingCostIncrease = Number(pricing.operating_cost_increase ?? 0.02);
-    const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.3);
+    const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.25);
 
     let totalCashflow25 = -totalPrice;
     const baseOperatingCost = totalPrice * operatingCostBase;
