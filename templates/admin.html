@@ -64,6 +64,11 @@
                         <label>מכפיל עצים</label>
                         <input type="number" id="treesMultiplier" step="0.01" value="0.05">
                     </div>
+                    <div>
+                        <label>מקדם ליסינג (חלק הלקוח מההכנסה)</label>
+                        <input type="number" id="leasingPaymentRatio" step="0.01" min="0" max="1" value="0.25" required>
+                        <small>0.25 = 25% מההכנסה השנתית</small>
+                    </div>
                 </div>
                 <div class="form-grid" style="margin-top: 20px;">
                     <div>
@@ -148,11 +153,6 @@
                         <label>מ"ר גג לכל קילוואט</label>
                         <input type="number" id="roofAreaPerKw" step="0.1" min="1" max="20" value="7.0" required>
                         <small>7 מ"ר = 1 קילוואט</small>
-                    </div>
-                    <div>
-                        <label>אחוז תשלום חודשי בליסינג</label>
-                        <input type="number" id="leasingPaymentRatio" step="0.01" min="0" max="1" value="0.3" required>
-                        <small>0.3 = 30% מהכנסה שנתית</small>
                     </div>
                 </div>
 
@@ -326,6 +326,7 @@
             formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
             formData.append('tariff_rate', document.getElementById('tariffRate').value);
             formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
+            formData.append('leasing_payment_ratio', document.getElementById('leasingPaymentRatio').value);
             formData.append('basic_assumptions_default', document.getElementById('basicAssumptionsDefault').value);
             formData.append('revenue_calculation_default', document.getElementById('revenueCalculationDefault').value);
             formData.append('summary_default', document.getElementById('summaryDefault').value);
@@ -359,7 +360,6 @@
             formData.append('operating_cost_base', document.getElementById('operatingCostBase').value);
             formData.append('operating_cost_increase', document.getElementById('operatingCostIncrease').value);
             formData.append('roof_area_per_kw', document.getElementById('roofAreaPerKw').value);
-            formData.append('leasing_payment_ratio', document.getElementById('leasingPaymentRatio').value);
 
             try {
                 const response = await fetch('/api/pricing', {
