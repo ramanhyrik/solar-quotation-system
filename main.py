@@ -317,7 +317,7 @@ def find_customer_signature(customer_phone: str = None, customer_email: str = No
         return None
 
 def ensure_offer_image_column():
-    """Idempotently ensure the quotes.offer_image_path column exists.
+    """Idempotently ensure quote-customization columns exist.
 
     Runs after init_database() as a belt-and-suspenders safeguard so a
     silent failure in the phase-5 migration never breaks quote creation.
@@ -329,10 +329,13 @@ def ensure_offer_image_column():
             cursor.execute(
                 "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS offer_image_path TEXT"
             )
+            cursor.execute(
+                "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS financial_metrics_overrides TEXT"
+            )
             conn.commit()
-            print("[OK] Verified quotes.offer_image_path column exists")
+            print("[OK] Verified quotes.offer_image_path and financial_metrics_overrides columns exist")
     except Exception as e:
-        print(f"[WARNING] Failed to verify offer_image_path column: {e}")
+        print(f"[WARNING] Failed to verify quote-customization columns: {e}")
 
 
 @asynccontextmanager
@@ -758,11 +761,11 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 inverter_type, direction, tilt_angle, warranty_years,
                 total_price, maintenance, service, system_value_after_25_years,
                 basic_assumptions_text, revenue_calculation_text, summary_text,
-                environmental_impact_text, offer_image_path,
+                environmental_impact_text, offer_image_path, financial_metrics_overrides,
                 annual_revenue, payback_period, model_type, created_by
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             RETURNING id
         ''', (
@@ -789,6 +792,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("summary_text"),
             data.get("environmental_impact_text"),
             data.get("offer_image_path"),
+            json.dumps(data.get("financial_metrics_overrides")) if data.get("financial_metrics_overrides") else None,
             data.get("annual_revenue"),
             data.get("payback_period"),
             data.get("model_type", "purchase"),

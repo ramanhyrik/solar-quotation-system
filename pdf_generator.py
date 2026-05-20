@@ -1,3 +1,4 @@
+import json
 import os
 import traceback
 from datetime import datetime, timedelta
@@ -539,6 +540,31 @@ def build_purchase_metrics_rows(quote_data):
     ]
 
 
+def _parse_metric_overrides(quote_data):
+    raw = quote_data.get("financial_metrics_overrides")
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(raw, list):
+        return None
+    cleaned = []
+    for entry in raw[:4]:
+        if not isinstance(entry, dict):
+            cleaned.append(None)
+            continue
+        label = (entry.get("label") or "").strip()
+        value = (entry.get("value") or "").strip() if isinstance(entry.get("value"), str) else entry.get("value")
+        if label or (value not in (None, "")):
+            cleaned.append({"label": label, "value": value})
+        else:
+            cleaned.append(None)
+    return cleaned if any(cleaned) else None
+
+
 def build_leasing_metrics_rows(quote_data):
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
     stored_system_value = quote_data.get("system_value_after_25_years")
@@ -553,13 +579,29 @@ def build_leasing_metrics_rows(quote_data):
     )
     total_revenue = system_value + total_cashflow
 
-    return [
-        [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
-        [format_currency(annual_income), reshape_hebrew("הכנסה שנתית")],
-        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
-        [format_currency(system_value), reshape_hebrew("שווי מערכת לאחר 25 שנה")],
-        [format_currency(total_revenue), reshape_hebrew("סך הכנסה")],
+    default_rows = [
+        (format_currency(annual_income), "הכנסה שנתית"),
+        (format_currency(total_cashflow), "תזרים מצטבר ל-25 שנה"),
+        (format_currency(system_value), "שווי מערכת לאחר 25 שנה"),
+        (format_currency(total_revenue), "סך הכנסה"),
     ]
+
+    overrides = _parse_metric_overrides(quote_data) or []
+    rows = [[reshape_hebrew("ערך"), reshape_hebrew("מדד")]]
+    for index, (default_value, default_label) in enumerate(default_rows):
+        override = overrides[index] if index < len(overrides) else None
+        if override:
+            label = override.get("label") or default_label
+            raw_value = override.get("value")
+            if raw_value in (None, ""):
+                value_text = default_value
+            else:
+                value_text = str(raw_value)
+        else:
+            label = default_label
+            value_text = default_value
+        rows.append([reshape_hebrew(value_text), reshape_hebrew(label)])
+    return rows
 
 
 def build_purchase_cashflow_rows(quote_data):

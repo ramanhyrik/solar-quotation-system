@@ -95,6 +95,7 @@ def init_database():
                 summary_text TEXT,
                 environmental_impact_text TEXT,
                 offer_image_path TEXT,
+                financial_metrics_overrides TEXT,
                 annual_revenue NUMERIC NOT NULL,
                 payback_period NUMERIC NOT NULL,
                 status VARCHAR(50) DEFAULT 'DRAFT',

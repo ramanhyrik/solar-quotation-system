@@ -31,6 +31,9 @@ def migrate_phase5_quote_refresh():
         "offer_image_path": (
             "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS offer_image_path TEXT"
         ),
+        "financial_metrics_overrides": (
+            "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS financial_metrics_overrides TEXT"
+        ),
     }
 
     pricing_columns = {

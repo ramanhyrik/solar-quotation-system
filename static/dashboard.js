@@ -240,6 +240,99 @@ function getFinalQuotePrice() {
     return parseNumericInput(finalPriceField?.value);
 }
 
+const METRIC_ROW_IDS = [1, 2, 3, 4];
+const DEFAULT_METRIC_LABELS = {
+    1: 'הכנסה שנתית',
+    2: 'תזרים מצטבר ל-25 שנה',
+    3: 'שווי מערכת לאחר 25 שנה',
+    4: 'סך הכנסה'
+};
+
+function formatCurrencyValue(value) {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num)) return '';
+    return `₪${Math.round(num).toLocaleString()}`;
+}
+
+function computeDefaultMetricValues() {
+    const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
+    const leasingRatio = Number(
+        (getDashboardPricingSettings()).leasing_payment_ratio ?? 0.25
+    );
+    const degradationRate = Number(
+        (getDashboardPricingSettings()).degradation_rate ?? 0.004
+    );
+    const systemValue = getQuoteSystemValue() || 0;
+
+    let cashflow25 = 0;
+    for (let year = 0; year < 25; year++) {
+        const factor = Math.max(0, 1 - (degradationRate * year));
+        cashflow25 += annualRevenue * factor * leasingRatio;
+    }
+    cashflow25 = Math.round(cashflow25);
+
+    const annualIncome = Math.round(annualRevenue * leasingRatio);
+    const totalRevenue = systemValue + cashflow25;
+
+    return {
+        1: formatCurrencyValue(annualIncome),
+        2: formatCurrencyValue(cashflow25),
+        3: formatCurrencyValue(systemValue),
+        4: formatCurrencyValue(totalRevenue)
+    };
+}
+
+function autoFillMetricRow(rowId, defaults) {
+    const labelEl = document.getElementById(`metric${rowId}Label`);
+    const valueEl = document.getElementById(`metric${rowId}Value`);
+    if (labelEl && !labelEl.value.trim()) {
+        labelEl.value = DEFAULT_METRIC_LABELS[rowId];
+    }
+    if (valueEl && (!valueEl.value.trim() || valueEl.dataset.userEdited !== 'true')) {
+        valueEl.value = defaults[rowId] || '';
+        valueEl.dataset.autoFilled = 'true';
+        valueEl.dataset.userEdited = 'false';
+    }
+}
+
+function refreshMetricDefaults() {
+    const defaults = computeDefaultMetricValues();
+    METRIC_ROW_IDS.forEach((id) => autoFillMetricRow(id, defaults));
+}
+
+function collectMetricOverrides() {
+    const rows = METRIC_ROW_IDS.map((id) => {
+        const labelEl = document.getElementById(`metric${id}Label`);
+        const valueEl = document.getElementById(`metric${id}Value`);
+        return {
+            label: (labelEl?.value || '').trim() || DEFAULT_METRIC_LABELS[id],
+            value: (valueEl?.value || '').trim()
+        };
+    });
+    if (rows.every((row) => !row.value)) {
+        return null;
+    }
+    return rows;
+}
+
+function populateMetricOverrides(saved) {
+    let rows = saved;
+    if (typeof rows === 'string') {
+        try { rows = JSON.parse(rows); } catch (_) { rows = null; }
+    }
+    METRIC_ROW_IDS.forEach((id, index) => {
+        const labelEl = document.getElementById(`metric${id}Label`);
+        const valueEl = document.getElementById(`metric${id}Value`);
+        const row = rows && rows[index];
+        if (labelEl) labelEl.value = (row && row.label) || DEFAULT_METRIC_LABELS[id];
+        if (valueEl) {
+            valueEl.value = (row && row.value) || '';
+            valueEl.dataset.userEdited = row && row.value ? 'true' : 'false';
+            valueEl.dataset.autoFilled = 'false';
+        }
+    });
+}
+
 function collectQuotePayload() {
     const customerName = document.getElementById('customerName').value;
     const systemSize = parseNumericInput(document.getElementById('systemSize').value);
@@ -266,6 +359,7 @@ function collectQuotePayload() {
         system_value_after_25_years: getQuoteSystemValue(),
         price_per_kwp_quote: getQuotePricePerKw(),
         offer_image_path: currentOfferImageUrl,
+        financial_metrics_overrides: collectMetricOverrides(),
         basic_assumptions_text: document.getElementById('basicAssumptionsText').value,
         revenue_calculation_text: document.getElementById('revenueCalculationText').value,
         summary_text: document.getElementById('summaryText').value,
@@ -307,6 +401,16 @@ function resetQuoteForm() {
 
     document.getElementById('calculations').style.display = 'none';
     currentQuoteData = {};
+    METRIC_ROW_IDS.forEach((id) => {
+        const labelEl = document.getElementById(`metric${id}Label`);
+        const valueEl = document.getElementById(`metric${id}Value`);
+        if (labelEl) labelEl.value = '';
+        if (valueEl) {
+            valueEl.value = '';
+            valueEl.dataset.userEdited = 'false';
+            valueEl.dataset.autoFilled = 'false';
+        }
+    });
     setOfferImagePreview(null);
     const offerImageFile = document.getElementById('offerImageFile');
     if (offerImageFile) offerImageFile.value = '';
@@ -350,6 +454,13 @@ function registerQuoteFieldListeners() {
     if (systemSizeField) {
         systemSizeField.addEventListener('input', updateSystemValueDisplay);
     }
+
+    METRIC_ROW_IDS.forEach((id) => {
+        const valueEl = document.getElementById(`metric${id}Value`);
+        if (valueEl) {
+            valueEl.addEventListener('input', markFieldAsEdited);
+        }
+    });
 }
 
 async function calculateQuote() {
@@ -386,6 +497,7 @@ async function calculateQuote() {
         }
 
         maybePrefillPricePerKw();
+        refreshMetricDefaults();
         refreshQuoteTextSections(true);
 
         document.getElementById('annualRevenue').textContent = `₪${formatInteger(data.annual_revenue)}`;
@@ -469,6 +581,7 @@ function populateQuoteForm(quote) {
     setOfferImagePreview(quote.offer_image_path || null);
     const offerImageFile = document.getElementById('offerImageFile');
     if (offerImageFile) offerImageFile.value = '';
+    populateMetricOverrides(quote.financial_metrics_overrides);
 
     currentQuoteData = {
         total_price: Number(quote.total_price || 0),
