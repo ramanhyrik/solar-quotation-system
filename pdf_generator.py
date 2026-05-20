@@ -438,24 +438,6 @@ def get_assumption_values(quote_data):
     )
 
 
-def calculate_purchase_cashflow_total(quote_data):
-    total_price = float(quote_data.get("total_price") or 0)
-    annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    degradation_rate, operating_cost_base, operating_cost_increase, _ = get_assumption_values(
-        quote_data
-    )
-    base_operating_cost = total_price * operating_cost_base
-    total_cashflow = -total_price
-
-    for year in range(25):
-        production_factor = max(0.0, 1 - (degradation_rate * year))
-        yearly_revenue = annual_revenue * production_factor
-        yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** year)
-        total_cashflow += yearly_revenue - yearly_operating_cost
-
-    return int(round(total_cashflow))
-
-
 def calculate_leasing_cashflow_total(quote_data):
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
     degradation_rate, _, _, leasing_ratio = get_assumption_values(quote_data)
@@ -486,58 +468,6 @@ def build_specs_rows(quote_data, not_specified, model_type="purchase"):
             [reshape_hebrew(safe_get(quote_data, "service")) or not_specified, reshape_hebrew("שירות:")]
         )
     return rows
-
-
-def build_purchase_financial_rows(quote_data):
-    total_price = quote_data.get("total_price", 0) or 0
-    annual_revenue = quote_data.get("annual_revenue", 0) or 0
-    system_value = quote_data.get("system_value_after_25_years")
-    total_cashflow = calculate_purchase_cashflow_total(quote_data)
-    return [
-        [reshape_hebrew("סכום"), reshape_hebrew("תיאור")],
-        [format_currency(total_price), reshape_hebrew("סך ההשקעה")],
-        [format_currency(annual_revenue), reshape_hebrew("הכנסה שנתית משוערת")],
-        [
-            format_currency(system_value) if system_value is not None else reshape_hebrew("לא צוין"),
-            reshape_hebrew("שווי מערכת לאחר 25 שנה"),
-        ],
-        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
-    ]
-
-
-def build_leasing_financial_rows(quote_data):
-    total_price = quote_data.get("total_price", 0) or 0
-    annual_revenue = quote_data.get("annual_revenue", 0) or 0
-    _, _, _, leasing_ratio = get_assumption_values(quote_data)
-    annual_customer_income = int(round(annual_revenue * leasing_ratio))
-    system_value = quote_data.get("system_value_after_25_years")
-    total_cashflow = calculate_leasing_cashflow_total(quote_data)
-    return [
-        [reshape_hebrew("סכום"), reshape_hebrew("תיאור")],
-        [format_currency(total_price), reshape_hebrew("שווי המערכת")],
-        [format_currency(annual_customer_income), reshape_hebrew("הכנסה שנתית ללקוח")],
-        [
-            format_currency(system_value) if system_value is not None else reshape_hebrew("לא צוין"),
-            reshape_hebrew("שווי מערכת לאחר 25 שנה"),
-        ],
-        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר ל-25 שנה")],
-    ]
-
-
-def build_purchase_metrics_rows(quote_data):
-    total_price = float(quote_data.get("total_price") or 0)
-    system_size = float(quote_data.get("system_size") or 0)
-    annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    price_per_kwp = total_price / system_size if system_size else 0
-    roa = (annual_revenue / total_price) * 100 if total_price else 0
-    total_cashflow = calculate_purchase_cashflow_total(quote_data)
-    return [
-        [reshape_hebrew("ערך"), reshape_hebrew("מדד")],
-        [format_currency(total_price), reshape_hebrew("עלות כוללת")],
-        [format_currency(price_per_kwp), reshape_hebrew("מחיר לקילו-וואט")],
-        [f"{roa:.1f}%", reshape_hebrew("תשואה שנתית (ROA)")],
-        [format_currency(total_cashflow), reshape_hebrew("תזרים מצטבר 25 שנה")],
-    ]
 
 
 def _parse_metric_overrides(quote_data):
@@ -601,61 +531,6 @@ def build_leasing_metrics_rows(quote_data):
             label = default_label
             value_text = default_value
         rows.append([reshape_hebrew(value_text), reshape_hebrew(label)])
-    return rows
-
-
-def build_purchase_cashflow_rows(quote_data):
-    total_price = float(quote_data.get("total_price") or 0)
-    annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    degradation_rate, operating_cost_base, operating_cost_increase, _ = get_assumption_values(
-        quote_data
-    )
-    base_operating_cost = total_price * operating_cost_base
-
-    rows = [
-        [
-            reshape_hebrew("תזרים מצטבר"),
-            reshape_hebrew("רווח נקי"),
-            reshape_hebrew("הכנסה"),
-            reshape_hebrew("השקעה"),
-            reshape_hebrew("שנה"),
-        ],
-        [format_signed_currency(-total_price), "-", "-", format_currency(total_price), "0"],
-    ]
-
-    total_revenue = 0
-    total_net = 0
-    cumulative = -total_price
-
-    for year in range(1, 26):
-        production_factor = max(0.0, 1 - (degradation_rate * (year - 1)))
-        year_revenue = int(round(annual_revenue * production_factor))
-        year_operating_cost = int(
-            round(base_operating_cost * ((1 + operating_cost_increase) ** (year - 1)))
-        )
-        year_net = year_revenue - year_operating_cost
-        total_revenue += year_revenue
-        total_net += year_net
-        cumulative += year_net
-        rows.append(
-            [
-                format_signed_currency(cumulative),
-                format_currency(year_net),
-                format_currency(year_revenue),
-                "-",
-                str(year),
-            ]
-        )
-
-    rows.append(
-        [
-            format_signed_currency(cumulative),
-            format_currency(total_net),
-            format_currency(total_revenue),
-            format_currency(total_price),
-            reshape_hebrew("סה״כ"),
-        ]
-    )
     return rows
 
 
