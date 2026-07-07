@@ -144,7 +144,7 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.set_xlabel(reshape_text_for_chart("חודש"), fontsize=10, fontweight="700", labelpad=10, color=CHART_TEXT)
     ax.set_ylabel(reshape_text_for_chart("ייצור (קוט״ש)"), fontsize=10, fontweight="700", labelpad=10, color=CHART_TEXT)
 
-    title_text = f"ייצור סולארי חודשי - מערכת {system_kwp} קוט״ש"
+    title_text = f"ייצור סולארי חודשי - מערכת {system_kwp} קילוואט"
     ax.set_title(reshape_text_for_chart(title_text), fontsize=12, fontweight="bold", pad=15, color=CHART_TEXT)
 
     ax.set_xticks(range(12))
@@ -230,7 +230,7 @@ def generate_directional_production_chart(system_kwp: float, annual_production: 
     ax.spines["polar"].set_edgecolor(CHART_GRID)
     ax.spines["polar"].set_linewidth(1.0)
 
-    title_text = f"ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קוט״ש"
+    title_text = f"ייצור שנתי לפי כיוון גג\nמערכת {system_kwp} קילוואט"
     ax.set_title(reshape_text_for_chart(title_text), fontsize=14, fontweight="bold", pad=20, y=1.08, color=CHART_TEXT)
 
     center_text = f"דרום\n{int(annual_production):,}\nקוט״ש/שנה"

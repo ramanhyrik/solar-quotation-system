@@ -95,6 +95,21 @@ def migrate_phase5_quote_refresh():
                         (value,),
                     )
 
+                # Upgrade the original hardcoded tariff wording to the
+                # dynamic placeholder without overwriting custom templates.
+                cursor.execute(
+                    """
+                    UPDATE pricing_parameters
+                    SET basic_assumptions_default = REPLACE(
+                        basic_assumptions_default,
+                        '(64 אגורות לקוט״ש)',
+                        '({tariff_agorot} אגורות לקוט״ש)'
+                    )
+                    WHERE basic_assumptions_default LIKE %s
+                    """,
+                    ("%(64 אגורות לקוט״ש)%",),
+                )
+
             conn.commit()
             print("[MIGRATION] Phase 5 migration completed successfully!")
             return True

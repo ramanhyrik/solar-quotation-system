@@ -26,7 +26,14 @@ from reportlab.platypus.doctemplate import BaseDocTemplate, PageTemplate
 from reportlab.platypus.frames import Frame
 
 from chart_generator import generate_monthly_production_chart
-from quote_defaults import QUOTE_ACCENT, QUOTE_BACKGROUND, QUOTE_MUTED, QUOTE_SURFACE, QUOTE_TEXT
+from quote_defaults import (
+    QUOTE_ACCENT,
+    QUOTE_BACKGROUND,
+    QUOTE_MUTED,
+    QUOTE_SURFACE,
+    QUOTE_TEXT,
+    calculate_annual_income,
+)
 
 
 try:
@@ -438,14 +445,21 @@ def get_assumption_values(quote_data):
     )
 
 
-def calculate_leasing_cashflow_total(quote_data):
+def calculate_quote_cashflow_total(quote_data, model_type="leasing"):
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    degradation_rate, _, _, leasing_ratio = get_assumption_values(quote_data)
-    total_cashflow = 0.0
+    total_price = float(quote_data.get("total_price") or 0)
+    degradation_rate, operating_cost_base, operating_cost_increase, leasing_ratio = get_assumption_values(quote_data)
+    total_cashflow = 0.0 if model_type == "leasing" else -total_price
+    base_operating_cost = total_price * operating_cost_base
 
     for year in range(25):
         production_factor = max(0.0, 1 - (degradation_rate * year))
-        total_cashflow += annual_revenue * production_factor * leasing_ratio
+        yearly_revenue = annual_revenue * production_factor
+        if model_type == "leasing":
+            total_cashflow += yearly_revenue * leasing_ratio
+        else:
+            yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** year)
+            total_cashflow += yearly_revenue - yearly_operating_cost
 
     return int(round(total_cashflow))
 
@@ -455,7 +469,7 @@ def build_specs_rows(quote_data, not_specified, model_type="purchase"):
     roof_area = quote_data.get("roof_area")
     annual_prod = quote_data.get("annual_production", 0) or 0
     rows = [
-        [f"{reshape_hebrew('קוט״ש')} {format_number(system_size)}", reshape_hebrew("גודל מערכת:")],
+        [f"{reshape_hebrew('קילוואט')} {format_number(system_size)}", reshape_hebrew("גודל מערכת:")],
         [f"{reshape_hebrew('מ״ר')} {format_number(roof_area)}" if roof_area else not_specified, reshape_hebrew("שטח גג:")],
         [
             f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified,
@@ -495,13 +509,28 @@ def _parse_metric_overrides(quote_data):
     return cleaned if any(cleaned) else None
 
 
-def build_leasing_metrics_rows(quote_data):
+def _parse_metric_number(value):
+    if value in (None, ""):
+        return None
+    cleaned = "".join(char for char in str(value) if char.isdigit() or char in ".-")
+    try:
+        return float(cleaned)
+    except (TypeError, ValueError):
+        return None
+
+
+def build_leasing_metrics_rows(quote_data, model_type="leasing"):
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
     stored_system_value = quote_data.get("system_value_after_25_years")
     _, _, _, leasing_ratio = get_assumption_values(quote_data)
 
-    annual_income = annual_revenue * leasing_ratio
-    total_cashflow = calculate_leasing_cashflow_total(quote_data)
+    revenue_share = leasing_ratio if model_type == "leasing" else 1.0
+    annual_income = calculate_annual_income(
+        annual_revenue,
+        stored_system_value,
+        revenue_share,
+    )
+    total_cashflow = calculate_quote_cashflow_total(quote_data, model_type)
     system_value = (
         float(stored_system_value)
         if stored_system_value not in (None, "")
@@ -520,6 +549,17 @@ def build_leasing_metrics_rows(quote_data):
     rows = [[reshape_hebrew("ערך"), reshape_hebrew("מדד")]]
     for index, (default_value, default_label) in enumerate(default_rows):
         override = overrides[index] if index < len(overrides) else None
+        # Old quotes saved the former auto-filled annual income as if it were
+        # a manual override. Upgrade only that exact legacy value; preserve a
+        # genuinely customized row value.
+        if index == 0 and override:
+            override_number = _parse_metric_number(override.get("value"))
+            legacy_annual_income = annual_revenue * revenue_share
+            if (
+                override_number is not None
+                and abs(override_number - round(legacy_annual_income)) < 0.01
+            ):
+                override = None
         if override:
             label = override.get("label") or default_label
             raw_value = override.get("value")
@@ -534,9 +574,13 @@ def build_leasing_metrics_rows(quote_data):
     return rows
 
 
-def build_leasing_cashflow_rows(quote_data):
+def build_leasing_cashflow_rows(quote_data, model_type="leasing"):
     annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    degradation_rate, _, _, leasing_ratio = get_assumption_values(quote_data)
+    total_price = float(quote_data.get("total_price") or 0)
+    degradation_rate, operating_cost_base, operating_cost_increase, leasing_ratio = get_assumption_values(quote_data)
+    is_leasing = model_type == "leasing"
+    initial_investment = 0.0 if is_leasing else total_price
+    base_operating_cost = total_price * operating_cost_base
 
     rows = [
         [
@@ -545,21 +589,26 @@ def build_leasing_cashflow_rows(quote_data):
             reshape_hebrew("השקעה"),
             reshape_hebrew("שנה"),
         ],
-        ["0", "-", "0", "0"],
+        [format_signed_currency(-initial_investment), "-", format_currency(initial_investment), "0"],
     ]
 
-    total_customer_income = 0
-    cumulative = 0
+    total_customer_income = 0.0
+    cumulative = -initial_investment
 
     for year in range(1, 26):
         production_factor = max(0.0, 1 - (degradation_rate * (year - 1)))
-        year_customer_income = int(round(annual_revenue * production_factor * leasing_ratio))
+        yearly_revenue = annual_revenue * production_factor
+        if is_leasing:
+            year_customer_income = yearly_revenue * leasing_ratio
+        else:
+            yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** (year - 1))
+            year_customer_income = yearly_revenue - yearly_operating_cost
         total_customer_income += year_customer_income
         cumulative += year_customer_income
         rows.append(
             [
-                format_currency(cumulative),
-                format_currency(year_customer_income),
+                format_currency(round(cumulative)),
+                format_currency(round(year_customer_income)),
                 "-",
                 str(year),
             ]
@@ -567,9 +616,9 @@ def build_leasing_cashflow_rows(quote_data):
 
     rows.append(
         [
-            format_currency(cumulative),
-            format_currency(total_customer_income),
-            "0",
+            format_currency(round(cumulative)),
+            format_currency(round(total_customer_income)),
+            format_currency(initial_investment),
             reshape_hebrew("סה״כ"),
         ]
     )
@@ -847,7 +896,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
 
     elements.append(Paragraph(rtl("מדדים פיננסיים"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
-    metrics_rows = build_leasing_metrics_rows(quote_data)
+    metrics_rows = build_leasing_metrics_rows(quote_data, model_type)
     metrics_table = Table(metrics_rows, colWidths=[2.1 * inch, 3.9 * inch])
     apply_standard_table_style(metrics_table)
     elements.append(metrics_table)
@@ -877,12 +926,13 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
         except Exception:
             traceback.print_exc()
 
+    # Continue into the available area after the roof image. The cashflow
+    # table can split by row, which avoids leaving most of page two empty.
     elements.append(NextPageTemplate("last_page"))
-    elements.append(PageBreak())
 
     elements.append(Paragraph(rtl("ניתוח תזרים מזומנים - 25 שנה"), styles["heading"]))
     elements.append(Spacer(1, 0.04 * inch))
-    cashflow_rows = build_leasing_cashflow_rows(quote_data)
+    cashflow_rows = build_leasing_cashflow_rows(quote_data, model_type)
     cashflow_widths = [1.7 * inch, 1.7 * inch, 1.7 * inch, 1.1 * inch]
     cashflow_table = Table(cashflow_rows, colWidths=cashflow_widths)
     apply_cashflow_table_style(cashflow_table)

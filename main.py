@@ -20,6 +20,8 @@ from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from quote_defaults import (
     QUOTE_TEXT_FIELD_MAP,
+    calculate_annual_income,
+    get_effective_tariff_rate,
     get_legacy_quote_text_defaults,
     render_quote_template,
 )
@@ -151,13 +153,27 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
     degradation_rate = float(pricing.get("degradation_rate") or 0.004)
     operating_cost_base = float(pricing.get("operating_cost_base") or 0.005)
     operating_cost_increase = float(pricing.get("operating_cost_increase") or 0.02)
+    tariff_rate = get_effective_tariff_rate(
+        quote_data.get("system_size"),
+        pricing.get("tariff_rate"),
+    )
+    leasing_ratio = float(pricing.get("leasing_payment_ratio") or 0.25)
+    revenue_share = leasing_ratio if quote_data.get("model_type") == "leasing" else 1.0
+    annual_income = calculate_annual_income(
+        annual_revenue,
+        quote_data.get("system_value_after_25_years"),
+        revenue_share,
+    )
     cashflow_25 = calculate_quote_cashflow_25_years(quote_data, pricing)
 
     return {
         "system_size": format_template_number(quote_data.get("system_size"), 1),
         "roof_area": format_template_number(quote_data.get("roof_area"), 1),
         "annual_production": format_template_number(annual_production),
-        "annual_revenue": format_template_number(annual_revenue),
+        # The quotation calls this value "annual income". Keep the legacy
+        # placeholder name so existing administrator templates stay valid.
+        "annual_revenue": format_template_number(annual_income),
+        "gross_annual_revenue": format_template_number(annual_revenue),
         "total_price": format_template_number(total_price),
         "system_value_after_25_years": format_template_number(
             quote_data.get("system_value_after_25_years")
@@ -165,6 +181,8 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         "trees": format_template_number(annual_production * trees_multiplier),
         "co2_saved": format_template_number(annual_production * 0.5),
         "total_cashflow_25": format_template_number(cashflow_25),
+        "tariff_rate": format_template_number(tariff_rate, 2),
+        "tariff_agorot": format_template_number(tariff_rate * 100),
         "degradation_rate_percent": format_template_number(degradation_rate * 100, 1),
         "operating_cost_base_percent": format_template_number(operating_cost_base * 100, 1),
         "operating_cost_increase_percent": format_template_number(
@@ -182,12 +200,36 @@ def enrich_quote_render_data(quote_data: dict, pricing: Optional[dict] = None) -
             enriched[field] = pricing.get(field)
 
     render_context = build_quote_render_context(enriched, pricing)
+    enriched["annual_income"] = render_context["annual_revenue"]
     for quote_field, pricing_field in QUOTE_TEXT_FIELD_MAP.items():
         template = (
             enriched.get(quote_field)
             or pricing.get(pricing_field)
             or LEGACY_QUOTE_DEFAULTS[pricing_field]
         )
+        # Older quotes stored already-rendered default prose, so their numbers
+        # became permanently stale. Recognize those stock sections and render
+        # them again from the current template/context. Truly custom prose is
+        # still preserved as entered.
+        legacy_auto_prefixes = {
+            "basic_assumptions_text": "1. החישוב מתבסס לפי חישוב של 1500 שעות שמש בשנה",
+            "revenue_calculation_text": "חישוב ההכנסות מבוסס על ייצור שנתי של",
+            "summary_text": "השקעה במערכת סולארית היא השקעה חכמה לטווח ארוך.",
+            "environmental_impact_text": "המערכת הסולארית שלך תייצר כ-",
+        }
+        auto_prefix = legacy_auto_prefixes.get(quote_field)
+        if (
+            auto_prefix
+            and isinstance(template, str)
+            and template.strip().startswith(auto_prefix)
+            and "{" not in template
+        ):
+            configured_template = pricing.get(pricing_field) or ""
+            template = (
+                configured_template
+                if "{" in configured_template
+                else LEGACY_QUOTE_DEFAULTS[pricing_field]
+            )
         enriched[quote_field] = render_quote_template(template, render_context).strip()
 
     return enriched
@@ -728,7 +770,8 @@ async def calculate_quote(
 
     total_price = system_size * params["price_per_kwp"]
     annual_production = system_size * params["production_per_kwp"]
-    annual_revenue = annual_production * params["tariff_rate"]
+    tariff_rate = get_effective_tariff_rate(system_size, params["tariff_rate"])
+    annual_revenue = annual_production * tariff_rate
     payback_period = round(total_price / annual_revenue, 2) if annual_revenue > 0 else 0
     trees = int(annual_production * params["trees_multiplier"])
     co2_saved = int(annual_production * 0.5)
@@ -737,6 +780,7 @@ async def calculate_quote(
         "total_price": total_price,
         "annual_production": annual_production,
         "annual_revenue": annual_revenue,
+        "tariff_rate": tariff_rate,
         "payback_period": payback_period,
         "environmental_impact": {
             "trees": trees,
@@ -1734,7 +1778,7 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
                                             <tr>
                                                 <td style="padding: 8px 0;">
                                                     <strong style="color: #14181F;">גודל מערכת:</strong>
-                                                    <span style="color: #333; float: left;">{quote_data.get('system_size', 'N/A')} קוט״ש</span>
+                                                    <span style="color: #333; float: left;">{quote_data.get('system_size', 'N/A')} קילוואט</span>
                                                 </td>
                                             </tr>
                                         </table>
@@ -1792,7 +1836,7 @@ def send_quote_pdf_email(quote_data: dict, company_info: dict, pdf_buffer, custo
 --------------
 מספר הצעה: {quote_number}
 סוג הצעה: {model_type_hebrew}
-גודל מערכת: {quote_data.get('system_size', 'N/A')} קוט״ש
+גודל מערכת: {quote_data.get('system_size', 'N/A')} קילוואט
 
 ההצעה המלאה מצורפת לאימייל זה וכוללת את כל הפרטים הטכניים והחישובים הפיננסיים.
 
@@ -1964,7 +2008,7 @@ async def signature_portal(token: str, request: Request):
 
             # Format numbers for display
             total_price_formatted = f"{int(sig_data['total_price']):,}" if sig_data.get('total_price') else 'N/A'
-            annual_revenue_formatted = f"{int(sig_data['annual_revenue']):,}" if sig_data.get('annual_revenue') else 'N/A'
+            annual_revenue_formatted = sig_data.get("annual_income") or 'N/A'
             system_value_formatted = (
                 f"{int(sig_data['system_value_after_25_years']):,}"
                 if sig_data.get('system_value_after_25_years')

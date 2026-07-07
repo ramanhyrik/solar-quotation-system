@@ -777,7 +777,7 @@
 
                 <h3>מפרט מערכת</h3>
                 <div class="form-grid">
-                    <input type="number" id="systemSize" placeholder="גודל מערכת (קוט״ש) *" step="0.1" required>
+                    <input type="number" id="systemSize" placeholder="גודל מערכת (קילוואט) *" step="0.1" required>
                     <input type="number" id="roofArea" placeholder="שטח גג (מ״ר)" step="0.1">
                 </div>
 
@@ -792,8 +792,8 @@
                         <input type="text" id="service" placeholder="לדוגמה: שירות וליווי טכני">
                     </div>
                     <div>
-                        <label for="pricePerKw">מחיר לקוט״ש (₪)</label>
-                        <input type="number" id="pricePerKw" placeholder="מחיר לקוט״ש להצעה" step="0.01">
+                        <label for="pricePerKw">מחיר לקילוואט (₪)</label>
+                        <input type="number" id="pricePerKw" placeholder="מחיר לקילוואט להצעה" step="0.01">
                         <small style="display: block; margin-top: 6px; color: #A0AEC0;">
                             שווי מערכת לאחר 25 שנה: <strong id="systemValueDisplay">₪0</strong>
                         </small>
@@ -1104,8 +1104,11 @@
 
         function setQuoteModel(model) {
             window.currentModel = model;
+            if (typeof refreshMetricDefaults === 'function') {
+                refreshMetricDefaults();
+            }
             if (typeof refreshQuoteTextSections === 'function') {
-                refreshQuoteTextSections(false);
+                refreshQuoteTextSections(true);
             }
         }
 

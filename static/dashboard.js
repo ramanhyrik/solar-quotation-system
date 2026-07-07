@@ -1,5 +1,6 @@
 let currentQuoteData = {};
 let currentOfferImageUrl = null;
+const SYSTEM_VALUE_AMORTIZATION_YEARS = 25;
 
 function setOfferImagePreview(url) {
     currentOfferImageUrl = url || null;
@@ -93,44 +94,34 @@ function buildQuoteTemplateContext() {
     const systemSize = parseNumericInput(document.getElementById('systemSize')?.value);
     const roofArea = parseNumericInput(document.getElementById('roofArea')?.value);
     const annualProduction = Number(currentQuoteData.annual_production || 0);
-    const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
+    const grossAnnualRevenue = Number(currentQuoteData.annual_revenue || 0);
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
-    const systemValueAfter25Years = parseNumericInput(
-        document.getElementById('systemValueAfter25Years')?.value
-    );
+    const metricValues = computeDefaultMetricNumbers();
+    const systemValueAfter25Years = metricValues.systemValue;
     const treesMultiplier = Number(pricing.trees_multiplier ?? 0.05);
     const degradationRate = Number(pricing.degradation_rate ?? 0.004);
     const operatingCostBase = Number(pricing.operating_cost_base ?? 0.005);
     const operatingCostIncrease = Number(pricing.operating_cost_increase ?? 0.02);
-    const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.25);
-
-    let totalCashflow25 = -totalPrice;
-    const baseOperatingCost = totalPrice * operatingCostBase;
-    const isLeasing = (window.currentModel || 'purchase') === 'leasing';
-
-    for (let year = 0; year < 25; year += 1) {
-        const yearlyProductionFactor = Math.max(0, 1 - (degradationRate * year));
-        const yearlyRevenue = annualRevenue * yearlyProductionFactor;
-        if (isLeasing) {
-            totalCashflow25 += yearlyRevenue * leasingRatio;
-        } else {
-            const yearlyOperatingCost = baseOperatingCost * ((1 + operatingCostIncrease) ** year);
-            totalCashflow25 += yearlyRevenue - yearlyOperatingCost;
-        }
-    }
+    const configuredTariff = Number(pricing.tariff_rate ?? 0.48);
+    const tariffRate = (systemSize || 0) > 22 ? 0.38 : configuredTariff;
 
     return {
         system_size: systemSize !== null ? systemSize.toFixed(1).replace(/\.0$/, '') : '',
         roof_area: roofArea !== null ? roofArea.toFixed(1).replace(/\.0$/, '') : '',
         annual_production: formatInteger(annualProduction),
-        annual_revenue: formatInteger(annualRevenue),
+        // Keep the legacy placeholder name used by saved templates, but bind
+        // it to the same annual-income value shown in financial metric row 1.
+        annual_revenue: getMetricTemplateValue(1, metricValues.annualIncome),
+        gross_annual_revenue: formatInteger(grossAnnualRevenue),
         total_price: formatInteger(totalPrice),
         system_value_after_25_years: systemValueAfter25Years !== null
             ? formatInteger(systemValueAfter25Years)
             : '',
         trees: formatInteger(annualProduction * treesMultiplier),
         co2_saved: formatInteger(annualProduction * 0.5),
-        total_cashflow_25: formatInteger(totalCashflow25),
+        total_cashflow_25: getMetricTemplateValue(2, metricValues.cashflow25),
+        tariff_rate: tariffRate.toFixed(2),
+        tariff_agorot: formatInteger(tariffRate * 100),
         degradation_rate_percent: (degradationRate * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_base_percent: (operatingCostBase * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_increase_percent: (operatingCostIncrease * 100).toFixed(1).replace(/\.0$/, '')
@@ -254,7 +245,16 @@ function formatCurrencyValue(value) {
     return `₪${Math.round(num).toLocaleString()}`;
 }
 
-function computeDefaultMetricValues() {
+function getMetricTemplateValue(rowId, fallbackValue) {
+    const field = document.getElementById(`metric${rowId}Value`);
+    const rawValue = (field?.value || '').trim();
+    if (!rawValue) {
+        return formatInteger(fallbackValue);
+    }
+    return rawValue.replace(/^\s*₪\s*/, '');
+}
+
+function computeDefaultMetricNumbers() {
     const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
     const leasingRatio = Number(
         (getDashboardPricingSettings()).leasing_payment_ratio ?? 0.25
@@ -262,23 +262,52 @@ function computeDefaultMetricValues() {
     const degradationRate = Number(
         (getDashboardPricingSettings()).degradation_rate ?? 0.004
     );
+    const operatingCostBase = Number(
+        (getDashboardPricingSettings()).operating_cost_base ?? 0.005
+    );
+    const operatingCostIncrease = Number(
+        (getDashboardPricingSettings()).operating_cost_increase ?? 0.02
+    );
     const systemValue = getQuoteSystemValue() || 0;
+    const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
+    const isLeasing = (window.currentModel || 'purchase') === 'leasing';
+    const revenueShare = isLeasing ? leasingRatio : 1;
 
-    let cashflow25 = 0;
+    let cashflow25 = isLeasing ? 0 : -totalPrice;
+    const baseOperatingCost = totalPrice * operatingCostBase;
     for (let year = 0; year < 25; year++) {
         const factor = Math.max(0, 1 - (degradationRate * year));
-        cashflow25 += annualRevenue * factor * leasingRatio;
+        const yearlyRevenue = annualRevenue * factor;
+        if (isLeasing) {
+            cashflow25 += yearlyRevenue * leasingRatio;
+        } else {
+            const yearlyOperatingCost = baseOperatingCost * ((1 + operatingCostIncrease) ** year);
+            cashflow25 += yearlyRevenue - yearlyOperatingCost;
+        }
     }
     cashflow25 = Math.round(cashflow25);
 
-    const annualIncome = Math.round(annualRevenue * leasingRatio);
+    const annualIncome = Math.round(
+        (annualRevenue * revenueShare)
+        + (systemValue / SYSTEM_VALUE_AMORTIZATION_YEARS)
+    );
     const totalRevenue = systemValue + cashflow25;
 
     return {
-        1: formatCurrencyValue(annualIncome),
-        2: formatCurrencyValue(cashflow25),
-        3: formatCurrencyValue(systemValue),
-        4: formatCurrencyValue(totalRevenue)
+        annualIncome,
+        cashflow25,
+        systemValue,
+        totalRevenue
+    };
+}
+
+function computeDefaultMetricValues() {
+    const values = computeDefaultMetricNumbers();
+    return {
+        1: formatCurrencyValue(values.annualIncome),
+        2: formatCurrencyValue(values.cashflow25),
+        3: formatCurrencyValue(values.systemValue),
+        4: formatCurrencyValue(values.totalRevenue)
     };
 }
 
@@ -344,6 +373,10 @@ function collectQuotePayload() {
     if (!currentQuoteData.total_price) {
         throw new Error('quote_not_calculated');
     }
+
+    // Persist the current synchronized values, including metric edits made
+    // immediately before saving.
+    refreshQuoteTextSections(true);
 
     return {
         customer_name: customerName,
@@ -445,20 +478,28 @@ function registerQuoteFieldListeners() {
             }
             if (fieldId === 'pricePerKw') {
                 updateSystemValueDisplay();
-                refreshQuoteTextSections(false);
+                refreshMetricDefaults();
+                refreshQuoteTextSections(true);
             }
         });
     });
 
     const systemSizeField = document.getElementById('systemSize');
     if (systemSizeField) {
-        systemSizeField.addEventListener('input', updateSystemValueDisplay);
+        systemSizeField.addEventListener('input', () => {
+            updateSystemValueDisplay();
+            refreshMetricDefaults();
+            refreshQuoteTextSections(true);
+        });
     }
 
     METRIC_ROW_IDS.forEach((id) => {
         const valueEl = document.getElementById(`metric${id}Value`);
         if (valueEl) {
-            valueEl.addEventListener('input', markFieldAsEdited);
+            valueEl.addEventListener('input', (event) => {
+                markFieldAsEdited(event);
+                refreshQuoteTextSections(true);
+            });
         }
     });
 }
@@ -485,6 +526,7 @@ async function calculateQuote() {
         currentQuoteData = {
             total_price: data.total_price,
             annual_revenue: data.annual_revenue,
+            tariff_rate: data.tariff_rate,
             payback_period: data.payback_period,
             annual_production: data.annual_production
         };
@@ -581,14 +623,33 @@ function populateQuoteForm(quote) {
     setOfferImagePreview(quote.offer_image_path || null);
     const offerImageFile = document.getElementById('offerImageFile');
     if (offerImageFile) offerImageFile.value = '';
-    populateMetricOverrides(quote.financial_metrics_overrides);
-
     currentQuoteData = {
         total_price: Number(quote.total_price || 0),
         annual_revenue: Number(quote.annual_revenue || 0),
+        tariff_rate: Number(
+            quote.tariff_rate
+            || (Number(quote.system_size || 0) > 22 ? 0.38 : getDashboardPricingSettings().tariff_rate)
+            || 0.48
+        ),
         payback_period: Number(quote.payback_period || 0),
         annual_production: Number(quote.annual_production || 0)
     };
+    populateMetricOverrides(quote.financial_metrics_overrides);
+
+    // Phase-5 quotes saved auto-filled metric values as overrides. Upgrade
+    // the former row-1 formula when it exactly matches the old calculation.
+    const metric1Value = document.getElementById('metric1Value');
+    if (metric1Value && getQuoteSystemValue()) {
+        const storedValue = Number(metric1Value.value.replace(/[^\d.-]/g, ''));
+        const leasingRatio = Number(getDashboardPricingSettings().leasing_payment_ratio ?? 0.25);
+        const revenueShare = (window.currentModel || 'purchase') === 'leasing' ? leasingRatio : 1;
+        const legacyAnnualIncome = Math.round(currentQuoteData.annual_revenue * revenueShare);
+        if (Number.isFinite(storedValue) && storedValue === legacyAnnualIncome) {
+            metric1Value.dataset.userEdited = 'false';
+            refreshMetricDefaults();
+            refreshQuoteTextSections(true);
+        }
+    }
 
     ['finalPrice', 'pricePerKw', 'basicAssumptionsText', 'revenueCalculationText', 'summaryText', 'environmentalImpactText']
         .forEach((id) => {
@@ -638,7 +699,7 @@ async function loadQuoteHistory() {
                 <td><strong style="color: #00358A; font-size: 16px;">${quote.id}</strong></td>
                 <td>${quote.quote_number}</td>
                 <td>${quote.customer_name}</td>
-                <td>${quote.system_size} קוט״ש</td>
+                <td>${quote.system_size} קילוואט</td>
                 <td>₪${Number(quote.total_price || 0).toLocaleString()}</td>
                 <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
                 <td>
