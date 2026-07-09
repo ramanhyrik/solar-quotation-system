@@ -74,14 +74,23 @@ def calculate_annual_income(
     system_value_after_25_years=0,
     revenue_share=1.0,
 ):
-    """Calculate displayed annual income, including annualized system value."""
+    """Calculate displayed annual income (revenue share only).
+
+    Note: ``system_value_after_25_years`` is retained for backward
+    compatibility with existing callers but is intentionally NOT added to the
+    annual income. The 25-year system value is instead surfaced separately in
+    the ``ערך רבעוני משוער`` (estimated quarterly value) cube via
+    :func:`calculate_quarterly_value`.
+    """
     revenue = float(annual_revenue or 0)
-    system_value = float(system_value_after_25_years or 0)
     share = float(revenue_share if revenue_share is not None else 1.0)
-    return (
-        revenue * share
-        + (system_value / SYSTEM_VALUE_AMORTIZATION_YEARS)
-    )
+    return revenue * share
+
+
+def calculate_quarterly_value(total_income_after_25_years):
+    """Estimated quarterly value = total 25-year income / 25 / 4."""
+    total = float(total_income_after_25_years or 0)
+    return total / SYSTEM_VALUE_AMORTIZATION_YEARS / 4
 
 
 def get_legacy_quote_text_defaults():

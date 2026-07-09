@@ -407,6 +407,12 @@
                     <span class="detail-value">₪{{ annual_revenue }}</span>
                 </div>
                 {% endif %}
+                {% if quarterly_value and quarterly_value != 'N/A' %}
+                <div class="detail-row">
+                    <span class="detail-label">ערך רבעוני משוער:</span>
+                    <span class="detail-value">₪{{ quarterly_value }}</span>
+                </div>
+                {% endif %}
                 {% if system_value_after_25_years %}
                 <div class="detail-row">
                     <span class="detail-label">שווי מערכת לאחר 25 שנה:</span>

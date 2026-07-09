@@ -21,6 +21,7 @@ from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from quote_defaults import (
     QUOTE_TEXT_FIELD_MAP,
     calculate_annual_income,
+    calculate_quarterly_value,
     get_effective_tariff_rate,
     get_legacy_quote_text_defaults,
     render_quote_template,
@@ -165,6 +166,14 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         revenue_share,
     )
     cashflow_25 = calculate_quote_cashflow_25_years(quote_data, pricing)
+    # "Total income" cube (סך הכנסה) = residual system value + 25-year cash flow.
+    # The estimated quarterly value is that total spread over 25 years / 4.
+    system_value_for_total = float(
+        quote_data.get("system_value_after_25_years")
+        or quote_data.get("total_price")
+        or 0
+    )
+    quarterly_value = calculate_quarterly_value(system_value_for_total + cashflow_25)
 
     return {
         "system_size": format_template_number(quote_data.get("system_size"), 1),
@@ -181,6 +190,7 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         "trees": format_template_number(annual_production * trees_multiplier),
         "co2_saved": format_template_number(annual_production * 0.5),
         "total_cashflow_25": format_template_number(cashflow_25),
+        "quarterly_value": format_template_number(quarterly_value),
         "tariff_rate": format_template_number(tariff_rate, 2),
         "tariff_agorot": format_template_number(tariff_rate * 100),
         "degradation_rate_percent": format_template_number(degradation_rate * 100, 1),
@@ -195,12 +205,19 @@ def enrich_quote_render_data(quote_data: dict, pricing: Optional[dict] = None) -
     pricing = pricing or {}
     enriched = dict(quote_data)
 
+    # Business rule: every quote is presented leasing-style (no client
+    # investment; income is the leasing revenue share). Forcing the model here
+    # keeps the PDF, sign page, dashboard and render context perfectly in sync
+    # regardless of how the quote was originally saved.
+    enriched["model_type"] = "leasing"
+
     for field in QUOTE_RENDER_PRICING_FIELDS:
         if field in pricing:
             enriched[field] = pricing.get(field)
 
     render_context = build_quote_render_context(enriched, pricing)
     enriched["annual_income"] = render_context["annual_revenue"]
+    enriched["quarterly_value"] = render_context["quarterly_value"]
     for quote_field, pricing_field in QUOTE_TEXT_FIELD_MAP.items():
         template = (
             enriched.get(quote_field)
@@ -392,11 +409,11 @@ async def lifespan(app: FastAPI):
     # Cleanup expired sessions on startup
     cleanup_expired_sessions_db()
 
-    # AI detection via HuggingFace Space (100% FREE)
-    print("[*] AI roof detection: SAM 3 (Hiera-Small) on HuggingFace Spaces")
+    # AI detection via HuggingFace Space with local fallback
+    print("[*] AI roof detection: HuggingFace SAM space with local contour fallback")
     print("[*] HF Space: https://huggingface.co/spaces/ramankamran/mobilesam-roof-api")
-    print("[*] Model: SAM 3 - Latest & Best Segment Anything Model")
-    print("[*] No API keys required - completely FREE!")
+    print("[*] Remote model: SAM 3 roof detector on HuggingFace Spaces")
+    print("[*] Fallback: local OpenCV contour detector when the remote space is unavailable")
 
     print("[*] Solar Quotation System started with SAM 3 AI roof detection!")
     print("[*] Database: PostgreSQL (Neon) - Persistence ENABLED")
@@ -2009,6 +2026,7 @@ async def signature_portal(token: str, request: Request):
             # Format numbers for display
             total_price_formatted = f"{int(sig_data['total_price']):,}" if sig_data.get('total_price') else 'N/A'
             annual_revenue_formatted = sig_data.get("annual_income") or 'N/A'
+            quarterly_value_formatted = sig_data.get("quarterly_value") or 'N/A'
             system_value_formatted = (
                 f"{int(sig_data['system_value_after_25_years']):,}"
                 if sig_data.get('system_value_after_25_years')
@@ -2030,6 +2048,7 @@ async def signature_portal(token: str, request: Request):
                 "maintenance": sig_data.get('maintenance'),
                 "service": sig_data.get('service'),
                 "annual_revenue": annual_revenue_formatted,
+                "quarterly_value": quarterly_value_formatted,
                 "system_value_after_25_years": system_value_formatted,
                 "basic_assumptions_text": sig_data.get('basic_assumptions_text'),
                 "revenue_calculation_text": sig_data.get('revenue_calculation_text'),
@@ -2554,7 +2573,9 @@ def run_sam_detection_sync(job_id: str, image_path: str):
                 "success": True,
                 "candidates": candidates,
                 "total_found": detection_result.get('total_found', len(candidates)),
-                "message": detection_result.get('message', f"Found {len(candidates)} roof candidates")
+                "message": detection_result.get('message', f"Found {len(candidates)} roof candidates"),
+                "strategy_used": detection_result.get('strategy_used'),
+                "remote_error": detection_result.get('remote_error'),
             }
         else:
             error_msg = detection_result.get('error', 'Detection failed')

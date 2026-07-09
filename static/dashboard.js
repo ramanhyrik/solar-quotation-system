@@ -270,10 +270,12 @@ function computeDefaultMetricNumbers() {
     );
     const systemValue = getQuoteSystemValue() || 0;
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
-    const isLeasing = (window.currentModel || 'purchase') === 'leasing';
-    const revenueShare = isLeasing ? leasingRatio : 1;
+    // Business rule: every quote is presented leasing-style (no client
+    // investment; income is the leasing revenue share).
+    const isLeasing = true;
+    const revenueShare = leasingRatio;
 
-    let cashflow25 = isLeasing ? 0 : -totalPrice;
+    let cashflow25 = 0;
     const baseOperatingCost = totalPrice * operatingCostBase;
     for (let year = 0; year < 25; year++) {
         const factor = Math.max(0, 1 - (degradationRate * year));
@@ -287,17 +289,19 @@ function computeDefaultMetricNumbers() {
     }
     cashflow25 = Math.round(cashflow25);
 
-    const annualIncome = Math.round(
-        (annualRevenue * revenueShare)
-        + (systemValue / SYSTEM_VALUE_AMORTIZATION_YEARS)
-    );
+    // Annual income is the revenue share only. The 25-year system value is no
+    // longer folded in here — it feeds the separate quarterly-value cube below.
+    const annualIncome = Math.round(annualRevenue * revenueShare);
     const totalRevenue = systemValue + cashflow25;
+    // Estimated quarterly value = total income (סך הכנסה) / 25 / 4.
+    const quarterlyValue = Math.round(totalRevenue / SYSTEM_VALUE_AMORTIZATION_YEARS / 4);
 
     return {
         annualIncome,
         cashflow25,
         systemValue,
-        totalRevenue
+        totalRevenue,
+        quarterlyValue
     };
 }
 
@@ -327,6 +331,12 @@ function autoFillMetricRow(rowId, defaults) {
 function refreshMetricDefaults() {
     const defaults = computeDefaultMetricValues();
     METRIC_ROW_IDS.forEach((id) => autoFillMetricRow(id, defaults));
+
+    // The estimated quarterly value cube is always auto-computed (read-only).
+    const quarterlyEl = document.getElementById('metricQuarterlyValue');
+    if (quarterlyEl) {
+        quarterlyEl.value = formatCurrencyValue(computeDefaultMetricNumbers().quarterlyValue);
+    }
 }
 
 function collectMetricOverrides() {
@@ -542,7 +552,7 @@ async function calculateQuote() {
         refreshMetricDefaults();
         refreshQuoteTextSections(true);
 
-        document.getElementById('annualRevenue').textContent = `₪${formatInteger(data.annual_revenue)}`;
+        document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeDefaultMetricNumbers().annualIncome)}`;
         document.getElementById('annualProduction').textContent = `${formatInteger(data.annual_production)} קוט״ש`;
         updateManualPriceDisplay();
         document.getElementById('calculations').style.display = 'grid';
@@ -661,7 +671,7 @@ function populateQuoteForm(quote) {
         });
 
     updateManualPriceDisplay();
-    document.getElementById('annualRevenue').textContent = `₪${formatInteger(quote.annual_revenue || 0)}`;
+    document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeDefaultMetricNumbers().annualIncome)}`;
     document.getElementById('annualProduction').textContent = `${formatInteger(quote.annual_production || 0)} קוט״ש`;
     document.getElementById('calculations').style.display = 'grid';
 }
@@ -685,35 +695,74 @@ async function loadQuoteIntoForm(quoteId) {
     }
 }
 
+let allQuotes = [];
+
+function formatQuoteDateTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    return date.toLocaleString('he-IL', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function renderQuoteHistory(quotes) {
+    const tbody = document.querySelector('#quotesTable tbody');
+    tbody.innerHTML = '';
+
+    quotes.forEach((quote) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong style="color: #00358A; font-size: 16px;">${quote.id}</strong></td>
+            <td>${quote.quote_number}</td>
+            <td>${quote.customer_name}</td>
+            <td>${quote.system_size} קילוואט</td>
+            <td>₪${Number(quote.total_price || 0).toLocaleString()}</td>
+            <td>${formatQuoteDateTime(quote.created_at)}</td>
+            <td>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+                    <button onclick="loadQuoteIntoForm(${quote.id})" style="background: #3AE478; color: #14181F; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">טען</button>
+                    <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">קישור חתימה</button>
+                    <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">ניתוח פיננסי</button>
+                    <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">PDF</button>
+                    <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">מחק</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function filterQuoteHistory() {
+    const input = document.getElementById('quoteSearchInput');
+    const term = (input ? input.value : '').trim().toLowerCase();
+
+    if (!term) {
+        renderQuoteHistory(allQuotes);
+        return;
+    }
+
+    const filtered = allQuotes.filter((quote) => {
+        const haystack = [
+            quote.quote_number,
+            quote.customer_name,
+            quote.system_size,
+            quote.id
+        ].map((v) => String(v == null ? '' : v).toLowerCase());
+        return haystack.some((v) => v.includes(term));
+    });
+
+    renderQuoteHistory(filtered);
+}
+
 async function loadQuoteHistory() {
     try {
         const response = await fetch('/api/quotes');
         const data = await response.json();
 
-        const tbody = document.querySelector('#quotesTable tbody');
-        tbody.innerHTML = '';
-
-        data.quotes.forEach((quote) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><strong style="color: #00358A; font-size: 16px;">${quote.id}</strong></td>
-                <td>${quote.quote_number}</td>
-                <td>${quote.customer_name}</td>
-                <td>${quote.system_size} קילוואט</td>
-                <td>₪${Number(quote.total_price || 0).toLocaleString()}</td>
-                <td>${new Date(quote.created_at).toLocaleDateString('he-IL')}</td>
-                <td>
-                    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
-                        <button onclick="loadQuoteIntoForm(${quote.id})" style="background: #3AE478; color: #14181F; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">טען</button>
-                        <button onclick="generateSignatureLink(${quote.id})" style="background: #28a745; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">קישור חתימה</button>
-                        <button onclick="viewQuoteAnalysis(${quote.id})" style="background: #D9FF0D; color: #00358A; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">ניתוח פיננסי</button>
-                        <button onclick="downloadPDF(${quote.id})" style="background: #00358A; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">PDF</button>
-                        <button onclick="deleteQuote(${quote.id})" style="background: #dc2626; color: white; padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap;">מחק</button>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        allQuotes = data.quotes || [];
+        filterQuoteHistory();
     } catch (error) {
         console.error('Error:', error);
         alert('שגיאה בטעינת היסטוריית ההצעות');

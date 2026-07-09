@@ -843,6 +843,14 @@
                         <input type="text" id="metric1Value" placeholder="לדוגמה: ₪10,800">
                     </div>
                     <div>
+                        <label for="metricQuarterlyLabel">ערך רבעוני משוער — תווית</label>
+                        <input type="text" id="metricQuarterlyLabel" value="ערך רבעוני משוער" readonly>
+                    </div>
+                    <div>
+                        <label for="metricQuarterlyValue">ערך רבעוני משוער — ערך</label>
+                        <input type="text" id="metricQuarterlyValue" readonly placeholder="מחושב אוטומטית (סך הכנסה ÷ 25 ÷ 4)">
+                    </div>
+                    <div>
                         <label for="metric2Label">שורה 2 — תווית</label>
                         <input type="text" id="metric2Label" placeholder="לדוגמה: תזרים מצטבר ל-25 שנה">
                     </div>
@@ -896,6 +904,11 @@
         <!-- Quote History Section -->
         <div id="historySection" style="display:none;">
             <h1>היסטוריית הצעות</h1>
+            <div style="margin-bottom: 16px;">
+                <input type="text" id="quoteSearchInput" onkeyup="filterQuoteHistory()"
+                    placeholder="חיפוש לפי מס׳ הצעה, שם לקוח או גודל מערכת..."
+                    style="width: 100%; max-width: 420px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+            </div>
             <table id="quotesTable">
                 <thead>
                     <tr>
@@ -904,7 +917,7 @@
                         <th>לקוח</th>
                         <th>גודל מערכת</th>
                         <th>מחיר</th>
-                        <th>תאריך</th>
+                        <th>תאריך ושעה</th>
                         <th>פעולות</th>
                     </tr>
                 </thead>

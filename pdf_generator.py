@@ -33,6 +33,7 @@ from quote_defaults import (
     QUOTE_SURFACE,
     QUOTE_TEXT,
     calculate_annual_income,
+    calculate_quarterly_value,
 )
 
 
@@ -537,6 +538,9 @@ def build_leasing_metrics_rows(quote_data, model_type="leasing"):
         else float(quote_data.get("total_price") or 0)
     )
     total_revenue = system_value + total_cashflow
+    # Estimated quarterly value = total income (סך הכנסה) / 25 / 4.
+    quarterly_value = round(calculate_quarterly_value(total_revenue))
+    annual_income = round(annual_income)
 
     default_rows = [
         (format_currency(annual_income), "הכנסה שנתית"),
@@ -571,6 +575,14 @@ def build_leasing_metrics_rows(quote_data, model_type="leasing"):
             label = default_label
             value_text = default_value
         rows.append([reshape_hebrew(value_text), reshape_hebrew(label)])
+        if index == 0:
+            # New "estimated quarterly value" cube, directly below annual income.
+            rows.append(
+                [
+                    reshape_hebrew(format_currency(quarterly_value)),
+                    reshape_hebrew("ערך רבעוני משוער"),
+                ]
+            )
     return rows
 
 
