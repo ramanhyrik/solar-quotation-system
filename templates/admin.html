@@ -36,6 +36,7 @@
                 <button type="button" class="btn-calculate admin-card" data-target-section="pricingSection" style="text-align: center; width: 100%;">תמחור והכנסות</button>
                 <button type="button" class="btn-calculate admin-card" data-target-section="companySection" style="text-align: center; width: 100%;">הגדרות חברה ולוגו</button>
                 <button type="button" class="btn-calculate admin-card" data-target-section="calculatorSection" style="text-align: center; width: 100%;">הגדרות מחשבון</button>
+                <button type="button" class="btn-calculate admin-card" data-target-section="metricsSection" style="text-align: center; width: 100%;">מדדים פיננסיים (קוביות)</button>
                 <button type="button" class="btn-calculate admin-card" data-target-section="usersSection" style="text-align: center; width: 100%;">ניהול משתמשים</button>
             </div>
         </div>
@@ -160,6 +161,21 @@
             </form>
         </div>
 
+        <div class="quote-form" style="margin-top: 20px; display: none;" id="metricsSection">
+            <h3>מדדים פיננסיים (קוביות)</h3>
+            <p style="color: #A0AEC0; font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
+                כאן אפשר להחליט אילו קוביות יופיעו בהצעה וב-PDF, מה ייכתב בכל קובייה,
+                את סדר הקוביות, ואיזה חישוב כל קובייה מציגה. גררו את הסדר עם החיצים,
+                הוסיפו או מחקו קוביות, ולחצו ״שמור״.
+            </p>
+            <div id="metricsCubeList"></div>
+            <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
+                <button type="button" id="addCubeBtn" class="btn-calculate" style="background: rgba(26,29,34,0.8); border: 2px solid rgba(58,228,120,0.5);">+ הוסף קובייה</button>
+                <button type="button" id="resetCubesBtn" class="btn-calculate" style="background: rgba(26,29,34,0.8); border: 2px solid rgba(160,174,192,0.4);">אפס לברירת מחדל</button>
+                <button type="button" id="saveCubesBtn" class="btn-calculate" style="flex: 1; min-width: 140px;">שמור מדדים</button>
+            </div>
+        </div>
+
         <div class="quote-form" style="margin-top: 20px; display: none;" id="usersSection">
             <h3>ניהול משתמשים</h3>
 
@@ -262,6 +278,11 @@
             document.getElementById('operatingCostIncrease').value = pricing.operating_cost_increase || 0.02;
             document.getElementById('roofAreaPerKw').value = pricing.roof_area_per_kw || 7.0;
             document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio || 0.25;
+
+            // Financial-metrics cube manager
+            metricsCatalog = Array.isArray(pricing.metrics_catalog) ? pricing.metrics_catalog : [];
+            metricsConfig = Array.isArray(pricing.metrics_config) ? pricing.metrics_config : [];
+            renderMetricsCubes();
 
             const companyResponse = await fetch('/api/company');
             const company = await companyResponse.json();
@@ -464,7 +485,7 @@
 
         // ניווט בין כרטיסי הניהול
         function showAdminSection(sectionId) {
-            const sections = ['pricingSection', 'companySection', 'calculatorSection', 'usersSection'];
+            const sections = ['pricingSection', 'companySection', 'calculatorSection', 'metricsSection', 'usersSection'];
             sections.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = id === sectionId ? 'block' : 'none';
@@ -475,6 +496,128 @@
             // שמירת המיקום האחרון ב-localStorage
             localStorage.setItem('lastAdminSection', sectionId);
         }
+
+        // ========== Financial-metrics cube manager ==========
+        let metricsCatalog = [];
+        let metricsConfig = [];
+
+        const DEFAULT_CUBES = [
+            { label: 'הכנסה שנתית', calculation: 'annual_income', enabled: true },
+            { label: 'ערך רבעוני משוער', calculation: 'quarterly_value', enabled: true },
+            { label: 'תזרים מצטבר ל-25 שנה', calculation: 'cumulative_25', enabled: true },
+            { label: 'שווי מערכת לאחר 25 שנה', calculation: 'system_value', enabled: true },
+            { label: 'סך הכנסה', calculation: 'total_income', enabled: true }
+        ];
+
+        function calcLabel(key) {
+            const found = metricsCatalog.find((c) => c.key === key);
+            return found ? found.label : key;
+        }
+
+        // Read the current DOM rows back into metricsConfig so edits survive
+        // add / delete / reorder.
+        function syncCubesFromDom() {
+            const rows = document.querySelectorAll('#metricsCubeList .cube-row');
+            metricsConfig = Array.from(rows).map((row) => ({
+                label: row.querySelector('.cube-label').value.trim(),
+                calculation: row.querySelector('.cube-calc').value,
+                enabled: row.querySelector('.cube-enabled').checked
+            }));
+        }
+
+        function renderMetricsCubes() {
+            const container = document.getElementById('metricsCubeList');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!metricsConfig.length) {
+                container.innerHTML = '<p style="color:#A0AEC0;">אין קוביות. לחצו ״הוסף קובייה״.</p>';
+                return;
+            }
+
+            const options = metricsCatalog.length
+                ? metricsCatalog
+                : DEFAULT_CUBES.map((c) => ({ key: c.calculation, label: c.label }));
+
+            metricsConfig.forEach((cube, index) => {
+                const row = document.createElement('div');
+                row.className = 'cube-row';
+                row.style.cssText = 'display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px; margin-bottom:8px; border:1px solid rgba(58,228,120,0.25); border-radius:8px; background:rgba(20,24,31,0.6);';
+
+                const optionsHtml = options.map((opt) =>
+                    `<option value="${opt.key}" ${opt.key === cube.calculation ? 'selected' : ''}>${opt.label}</option>`
+                ).join('');
+
+                row.innerHTML = `
+                    <span style="color:#A0AEC0; min-width:22px; text-align:center;">${index + 1}</span>
+                    <input type="text" class="cube-label" value="${(cube.label || '').replace(/"/g, '&quot;')}" placeholder="שם הקובייה"
+                        style="flex:2; min-width:150px; padding:8px; border:2px solid rgba(58,228,120,0.3); border-radius:6px; background:rgba(20,24,31,0.6); color:#fff;">
+                    <select class="cube-calc" title="חישוב"
+                        style="flex:2; min-width:150px; padding:8px; border:2px solid rgba(58,228,120,0.3); border-radius:6px; background:rgba(20,24,31,0.6); color:#fff;">${optionsHtml}</select>
+                    <label style="color:#A0AEC0; font-size:13px; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" class="cube-enabled" ${cube.enabled !== false ? 'checked' : ''}> פעיל
+                    </label>
+                    <button type="button" class="cube-up" title="למעלה" style="padding:6px 10px; cursor:pointer; border-radius:6px; border:1px solid rgba(160,174,192,0.4); background:transparent; color:#fff;">▲</button>
+                    <button type="button" class="cube-down" title="למטה" style="padding:6px 10px; cursor:pointer; border-radius:6px; border:1px solid rgba(160,174,192,0.4); background:transparent; color:#fff;">▼</button>
+                    <button type="button" class="cube-delete" title="מחק" style="padding:6px 10px; cursor:pointer; border-radius:6px; border:1px solid rgba(220,53,69,0.6); background:transparent; color:#ff6b6b;">✕</button>
+                `;
+
+                row.querySelector('.cube-up').addEventListener('click', () => moveCube(index, -1));
+                row.querySelector('.cube-down').addEventListener('click', () => moveCube(index, 1));
+                row.querySelector('.cube-delete').addEventListener('click', () => deleteCube(index));
+                container.appendChild(row);
+            });
+        }
+
+        function moveCube(index, direction) {
+            syncCubesFromDom();
+            const target = index + direction;
+            if (target < 0 || target >= metricsConfig.length) return;
+            const [item] = metricsConfig.splice(index, 1);
+            metricsConfig.splice(target, 0, item);
+            renderMetricsCubes();
+        }
+
+        function deleteCube(index) {
+            syncCubesFromDom();
+            metricsConfig.splice(index, 1);
+            renderMetricsCubes();
+        }
+
+        document.getElementById('addCubeBtn').addEventListener('click', () => {
+            syncCubesFromDom();
+            const firstCalc = (metricsCatalog[0] && metricsCatalog[0].key) || 'annual_income';
+            metricsConfig.push({ label: calcLabel(firstCalc), calculation: firstCalc, enabled: true });
+            renderMetricsCubes();
+        });
+
+        document.getElementById('resetCubesBtn').addEventListener('click', () => {
+            if (!confirm('לאפס את הקוביות לברירת המחדל?')) return;
+            metricsConfig = DEFAULT_CUBES.map((c) => ({ ...c }));
+            renderMetricsCubes();
+        });
+
+        document.getElementById('saveCubesBtn').addEventListener('click', async () => {
+            syncCubesFromDom();
+            const cleaned = metricsConfig.filter((c) => c.calculation);
+            if (!cleaned.length) {
+                alert('צריך לפחות קובייה אחת.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('financial_metrics_config', JSON.stringify(cleaned));
+            try {
+                const response = await fetch('/api/pricing', { method: 'POST', body: formData });
+                if (response.ok) {
+                    alert('המדדים נשמרו בהצלחה!');
+                } else {
+                    alert('שגיאה בשמירת המדדים');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('שגיאה בשמירת המדדים');
+            }
+        });
 
         loadSettings();
 

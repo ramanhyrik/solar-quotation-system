@@ -96,8 +96,8 @@ function buildQuoteTemplateContext() {
     const annualProduction = Number(currentQuoteData.annual_production || 0);
     const grossAnnualRevenue = Number(currentQuoteData.annual_revenue || 0);
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
-    const metricValues = computeDefaultMetricNumbers();
-    const systemValueAfter25Years = metricValues.systemValue;
+    const metricContext = computeMetricContext();
+    const systemValueAfter25Years = metricContext.system_value;
     const treesMultiplier = Number(pricing.trees_multiplier ?? 0.05);
     const degradationRate = Number(pricing.degradation_rate ?? 0.004);
     const operatingCostBase = Number(pricing.operating_cost_base ?? 0.005);
@@ -109,17 +109,16 @@ function buildQuoteTemplateContext() {
         system_size: systemSize !== null ? systemSize.toFixed(1).replace(/\.0$/, '') : '',
         roof_area: roofArea !== null ? roofArea.toFixed(1).replace(/\.0$/, '') : '',
         annual_production: formatInteger(annualProduction),
-        // Keep the legacy placeholder name used by saved templates, but bind
-        // it to the same annual-income value shown in financial metric row 1.
-        annual_revenue: getMetricTemplateValue(1, metricValues.annualIncome),
+        // Keep the legacy placeholder name used by saved templates, but bind it
+        // to the same value shown in the annual-income cube.
+        annual_revenue: metricDisplayForCalc('annual_income'),
         gross_annual_revenue: formatInteger(grossAnnualRevenue),
         total_price: formatInteger(totalPrice),
-        system_value_after_25_years: systemValueAfter25Years !== null
-            ? formatInteger(systemValueAfter25Years)
-            : '',
+        system_value_after_25_years: formatInteger(systemValueAfter25Years),
         trees: formatInteger(annualProduction * treesMultiplier),
         co2_saved: formatInteger(annualProduction * 0.5),
-        total_cashflow_25: getMetricTemplateValue(2, metricValues.cashflow25),
+        total_cashflow_25: metricDisplayForCalc('cumulative_25'),
+        quarterly_value: metricDisplayForCalc('quarterly_value'),
         tariff_rate: tariffRate.toFixed(2),
         tariff_agorot: formatInteger(tariffRate * 100),
         degradation_rate_percent: (degradationRate * 100).toFixed(1).replace(/\.0$/, ''),
@@ -231,13 +230,20 @@ function getFinalQuotePrice() {
     return parseNumericInput(finalPriceField?.value);
 }
 
-const METRIC_ROW_IDS = [1, 2, 3, 4];
-const DEFAULT_METRIC_LABELS = {
-    1: 'הכנסה שנתית',
-    2: 'תזרים מצטבר ל-25 שנה',
-    3: 'שווי מערכת לאחר 25 שנה',
-    4: 'סך הכנסה'
-};
+// ---- Financial metric cubes (configured in the admin panel) ----
+const DEFAULT_METRICS_CONFIG = [
+    { label: 'הכנסה שנתית', calculation: 'annual_income', enabled: true },
+    { label: 'ערך רבעוני משוער', calculation: 'quarterly_value', enabled: true },
+    { label: 'תזרים מצטבר ל-25 שנה', calculation: 'cumulative_25', enabled: true },
+    { label: 'שווי מערכת לאחר 25 שנה', calculation: 'system_value', enabled: true },
+    { label: 'סך הכנסה', calculation: 'total_income', enabled: true }
+];
+const LEGACY_OVERRIDE_ORDER = ['annual_income', 'cumulative_25', 'system_value', 'total_income'];
+
+// Per-quote overrides, keyed by calculation. Preserved from saved quotes so the
+// editor preview matches the PDF; the cubes themselves are managed in the admin
+// panel, so this preview is read-only.
+let quoteMetricOverrides = {};
 
 function formatCurrencyValue(value) {
     const num = Number(value || 0);
@@ -245,131 +251,125 @@ function formatCurrencyValue(value) {
     return `₪${Math.round(num).toLocaleString()}`;
 }
 
-function getMetricTemplateValue(rowId, fallbackValue) {
-    const field = document.getElementById(`metric${rowId}Value`);
-    const rawValue = (field?.value || '').trim();
-    if (!rawValue) {
-        return formatInteger(fallbackValue);
-    }
-    return rawValue.replace(/^\s*₪\s*/, '');
+function getMetricsConfig() {
+    const cfg = getDashboardPricingSettings().metrics_config;
+    const list = Array.isArray(cfg) && cfg.length ? cfg : DEFAULT_METRICS_CONFIG;
+    return list.filter((c) => c && c.calculation && c.enabled !== false);
 }
 
-function computeDefaultMetricNumbers() {
+// Mirror of metrics_catalog.build_metric_context (server) so the editor
+// preview, the text sections and the PDF always agree.
+function computeMetricContext() {
+    const pricing = getDashboardPricingSettings();
     const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
-    const leasingRatio = Number(
-        (getDashboardPricingSettings()).leasing_payment_ratio ?? 0.25
-    );
-    const degradationRate = Number(
-        (getDashboardPricingSettings()).degradation_rate ?? 0.004
-    );
-    const operatingCostBase = Number(
-        (getDashboardPricingSettings()).operating_cost_base ?? 0.005
-    );
-    const operatingCostIncrease = Number(
-        (getDashboardPricingSettings()).operating_cost_increase ?? 0.02
-    );
-    const systemValue = getQuoteSystemValue() || 0;
+    const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.25);
+    const degradationRate = Number(pricing.degradation_rate ?? 0.004);
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
-    // Business rule: every quote is presented leasing-style (no client
-    // investment; income is the leasing revenue share).
-    const isLeasing = true;
-    const revenueShare = leasingRatio;
+    const systemValue = getQuoteSystemValue() || totalPrice || 0;
 
-    let cashflow25 = 0;
-    const baseOperatingCost = totalPrice * operatingCostBase;
+    let cumulative = 0;
     for (let year = 0; year < 25; year++) {
-        const factor = Math.max(0, 1 - (degradationRate * year));
-        const yearlyRevenue = annualRevenue * factor;
-        if (isLeasing) {
-            cashflow25 += yearlyRevenue * leasingRatio;
-        } else {
-            const yearlyOperatingCost = baseOperatingCost * ((1 + operatingCostIncrease) ** year);
-            cashflow25 += yearlyRevenue - yearlyOperatingCost;
-        }
+        cumulative += annualRevenue * Math.max(0, 1 - (degradationRate * year)) * leasingRatio;
     }
-    cashflow25 = Math.round(cashflow25);
+    cumulative = Math.round(cumulative);
 
-    // Annual income is the revenue share only. The 25-year system value is no
-    // longer folded in here — it feeds the separate quarterly-value cube below.
-    const annualIncome = Math.round(annualRevenue * revenueShare);
-    const totalRevenue = systemValue + cashflow25;
-    // Estimated quarterly value = total income (סך הכנסה) / 25 / 4.
-    const quarterlyValue = Math.round(totalRevenue / SYSTEM_VALUE_AMORTIZATION_YEARS / 4);
-
+    const annualIncome = annualRevenue * leasingRatio;
+    const totalIncome = systemValue + cumulative;
     return {
-        annualIncome,
-        cashflow25,
-        systemValue,
-        totalRevenue,
-        quarterlyValue
+        gross_annual_revenue: annualRevenue,
+        annual_income: annualIncome,
+        monthly_income: annualIncome / 12,
+        quarterly_income: annualIncome / 4,
+        cumulative_25: cumulative,
+        system_value: systemValue,
+        total_income: totalIncome,
+        quarterly_value: totalIncome / SYSTEM_VALUE_AMORTIZATION_YEARS / 4
     };
 }
 
-function computeDefaultMetricValues() {
-    const values = computeDefaultMetricNumbers();
-    return {
-        1: formatCurrencyValue(values.annualIncome),
-        2: formatCurrencyValue(values.cashflow25),
-        3: formatCurrencyValue(values.systemValue),
-        4: formatCurrencyValue(values.totalRevenue)
-    };
+function computeCubeValue(calc, context) {
+    const v = context[calc];
+    return Number.isFinite(v) ? v : 0;
 }
 
-function autoFillMetricRow(rowId, defaults) {
-    const labelEl = document.getElementById(`metric${rowId}Label`);
-    const valueEl = document.getElementById(`metric${rowId}Value`);
-    if (labelEl && !labelEl.value.trim()) {
-        labelEl.value = DEFAULT_METRIC_LABELS[rowId];
-    }
-    if (valueEl && (!valueEl.value.trim() || valueEl.dataset.userEdited !== 'true')) {
-        valueEl.value = defaults[rowId] || '';
-        valueEl.dataset.autoFilled = 'true';
-        valueEl.dataset.userEdited = 'false';
-    }
-}
-
-function refreshMetricDefaults() {
-    const defaults = computeDefaultMetricValues();
-    METRIC_ROW_IDS.forEach((id) => autoFillMetricRow(id, defaults));
-
-    // The estimated quarterly value cube is always auto-computed (read-only).
-    const quarterlyEl = document.getElementById('metricQuarterlyValue');
-    if (quarterlyEl) {
-        quarterlyEl.value = formatCurrencyValue(computeDefaultMetricNumbers().quarterlyValue);
-    }
-}
-
-function collectMetricOverrides() {
-    const rows = METRIC_ROW_IDS.map((id) => {
-        const labelEl = document.getElementById(`metric${id}Label`);
-        const valueEl = document.getElementById(`metric${id}Value`);
+// Resolve the cubes for the current quote (config + per-quote overrides).
+function resolveQuoteMetrics() {
+    const context = computeMetricContext();
+    return getMetricsConfig().map((cube) => {
+        const override = quoteMetricOverrides[cube.calculation] || {};
+        const computed = computeCubeValue(cube.calculation, context);
+        const hasOverrideValue = String(override.value || '').trim() !== '';
         return {
-            label: (labelEl?.value || '').trim() || DEFAULT_METRIC_LABELS[id],
-            value: (valueEl?.value || '').trim()
+            calculation: cube.calculation,
+            label: String(override.label || '').trim() || cube.label,
+            value: computed,
+            displayValue: hasOverrideValue
+                ? String(override.value).trim()
+                : formatCurrencyValue(computed)
         };
     });
-    if (rows.every((row) => !row.value)) {
-        return null;
+}
+
+// Value (₪ stripped) for a given calculation, used by the text templates.
+function metricDisplayForCalc(calc) {
+    const cube = resolveQuoteMetrics().find((c) => c.calculation === calc);
+    if (cube) return cube.displayValue.replace(/^\s*₪\s*/, '');
+    return formatInteger(computeCubeValue(calc, computeMetricContext()));
+}
+
+// Render the read-only cube preview from the current config.
+function refreshMetricDefaults() {
+    const container = document.getElementById('financialMetricsEditor');
+    if (!container) return;
+    container.innerHTML = '';
+    resolveQuoteMetrics().forEach((cube) => {
+        const row = document.createElement('div');
+        row.className = 'metric-preview-row';
+        row.style.cssText = 'display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid rgba(58,228,120,0.25); border-radius:8px; margin-bottom:8px; background:rgba(20,24,31,0.5);';
+        const label = document.createElement('span');
+        label.style.color = '#A0AEC0';
+        label.textContent = cube.label;
+        const value = document.createElement('strong');
+        value.style.color = '#fff';
+        value.textContent = cube.displayValue;
+        row.appendChild(label);
+        row.appendChild(value);
+        container.appendChild(row);
+    });
+}
+
+function normalizeOverrides(saved) {
+    let data = saved;
+    if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (_) { return {}; }
     }
-    return rows;
+    if (data && !Array.isArray(data) && typeof data === 'object') {
+        const out = {};
+        Object.keys(data).forEach((key) => {
+            if (data[key] && typeof data[key] === 'object') out[key] = data[key];
+        });
+        return out;
+    }
+    if (Array.isArray(data)) {
+        const out = {};
+        data.forEach((item, index) => {
+            if (index >= LEGACY_OVERRIDE_ORDER.length || !item) return;
+            if (item.label || (item.value !== undefined && item.value !== '')) {
+                out[LEGACY_OVERRIDE_ORDER[index]] = item;
+            }
+        });
+        return out;
+    }
+    return {};
 }
 
 function populateMetricOverrides(saved) {
-    let rows = saved;
-    if (typeof rows === 'string') {
-        try { rows = JSON.parse(rows); } catch (_) { rows = null; }
-    }
-    METRIC_ROW_IDS.forEach((id, index) => {
-        const labelEl = document.getElementById(`metric${id}Label`);
-        const valueEl = document.getElementById(`metric${id}Value`);
-        const row = rows && rows[index];
-        if (labelEl) labelEl.value = (row && row.label) || DEFAULT_METRIC_LABELS[id];
-        if (valueEl) {
-            valueEl.value = (row && row.value) || '';
-            valueEl.dataset.userEdited = row && row.value ? 'true' : 'false';
-            valueEl.dataset.autoFilled = 'false';
-        }
-    });
+    quoteMetricOverrides = normalizeOverrides(saved);
+    refreshMetricDefaults();
+}
+
+function collectMetricOverrides() {
+    return Object.keys(quoteMetricOverrides).length ? quoteMetricOverrides : null;
 }
 
 function collectQuotePayload() {
@@ -444,16 +444,8 @@ function resetQuoteForm() {
 
     document.getElementById('calculations').style.display = 'none';
     currentQuoteData = {};
-    METRIC_ROW_IDS.forEach((id) => {
-        const labelEl = document.getElementById(`metric${id}Label`);
-        const valueEl = document.getElementById(`metric${id}Value`);
-        if (labelEl) labelEl.value = '';
-        if (valueEl) {
-            valueEl.value = '';
-            valueEl.dataset.userEdited = 'false';
-            valueEl.dataset.autoFilled = 'false';
-        }
-    });
+    quoteMetricOverrides = {};
+    refreshMetricDefaults();
     setOfferImagePreview(null);
     const offerImageFile = document.getElementById('offerImageFile');
     if (offerImageFile) offerImageFile.value = '';
@@ -502,16 +494,6 @@ function registerQuoteFieldListeners() {
             refreshQuoteTextSections(true);
         });
     }
-
-    METRIC_ROW_IDS.forEach((id) => {
-        const valueEl = document.getElementById(`metric${id}Value`);
-        if (valueEl) {
-            valueEl.addEventListener('input', (event) => {
-                markFieldAsEdited(event);
-                refreshQuoteTextSections(true);
-            });
-        }
-    });
 }
 
 async function calculateQuote() {
@@ -552,7 +534,7 @@ async function calculateQuote() {
         refreshMetricDefaults();
         refreshQuoteTextSections(true);
 
-        document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeDefaultMetricNumbers().annualIncome)}`;
+        document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeMetricContext().annual_income)}`;
         document.getElementById('annualProduction').textContent = `${formatInteger(data.annual_production)} קוט״ש`;
         updateManualPriceDisplay();
         document.getElementById('calculations').style.display = 'grid';
@@ -646,21 +628,6 @@ function populateQuoteForm(quote) {
     };
     populateMetricOverrides(quote.financial_metrics_overrides);
 
-    // Phase-5 quotes saved auto-filled metric values as overrides. Upgrade
-    // the former row-1 formula when it exactly matches the old calculation.
-    const metric1Value = document.getElementById('metric1Value');
-    if (metric1Value && getQuoteSystemValue()) {
-        const storedValue = Number(metric1Value.value.replace(/[^\d.-]/g, ''));
-        const leasingRatio = Number(getDashboardPricingSettings().leasing_payment_ratio ?? 0.25);
-        const revenueShare = (window.currentModel || 'purchase') === 'leasing' ? leasingRatio : 1;
-        const legacyAnnualIncome = Math.round(currentQuoteData.annual_revenue * revenueShare);
-        if (Number.isFinite(storedValue) && storedValue === legacyAnnualIncome) {
-            metric1Value.dataset.userEdited = 'false';
-            refreshMetricDefaults();
-            refreshQuoteTextSections(true);
-        }
-    }
-
     ['finalPrice', 'pricePerKw', 'basicAssumptionsText', 'revenueCalculationText', 'summaryText', 'environmentalImpactText']
         .forEach((id) => {
             const field = document.getElementById(id);
@@ -671,7 +638,7 @@ function populateQuoteForm(quote) {
         });
 
     updateManualPriceDisplay();
-    document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeDefaultMetricNumbers().annualIncome)}`;
+    document.getElementById('annualRevenue').textContent = `₪${formatInteger(computeMetricContext().annual_income)}`;
     document.getElementById('annualProduction').textContent = `${formatInteger(quote.annual_production || 0)} קוט״ש`;
     document.getElementById('calculations').style.display = 'grid';
 }

@@ -831,50 +831,10 @@
 
                 <h3>מדדים פיננסיים</h3>
                 <small style="display: block; margin-bottom: 10px; color: #A0AEC0;">
-                    התוויות והערכים נטענים אוטומטית לאחר חישוב, וניתן לערוך אותם בחופשיות. השינויים יישמרו עם ההצעה.
+                    הקוביות מחושבות אוטומטית ומוצגות כאן כפי שיופיעו בהצעה וב-PDF.
+                    כדי לשנות שם, סדר, חישוב, או להוסיף/למחוק קובייה — עברו ללוח הניהול ▸ ״מדדים פיננסיים (קוביות)״.
                 </small>
-                <div class="form-grid" id="financialMetricsEditor">
-                    <div>
-                        <label for="metric1Label">שורה 1 — תווית</label>
-                        <input type="text" id="metric1Label" placeholder="לדוגמה: הכנסה שנתית">
-                    </div>
-                    <div>
-                        <label for="metric1Value">שורה 1 — ערך</label>
-                        <input type="text" id="metric1Value" placeholder="לדוגמה: ₪10,800">
-                    </div>
-                    <div>
-                        <label for="metricQuarterlyLabel">ערך רבעוני משוער — תווית</label>
-                        <input type="text" id="metricQuarterlyLabel" value="ערך רבעוני משוער" readonly>
-                    </div>
-                    <div>
-                        <label for="metricQuarterlyValue">ערך רבעוני משוער — ערך</label>
-                        <input type="text" id="metricQuarterlyValue" readonly placeholder="מחושב אוטומטית (סך הכנסה ÷ 25 ÷ 4)">
-                    </div>
-                    <div>
-                        <label for="metric2Label">שורה 2 — תווית</label>
-                        <input type="text" id="metric2Label" placeholder="לדוגמה: תזרים מצטבר ל-25 שנה">
-                    </div>
-                    <div>
-                        <label for="metric2Value">שורה 2 — ערך</label>
-                        <input type="text" id="metric2Value" placeholder="לדוגמה: ₪256,866">
-                    </div>
-                    <div>
-                        <label for="metric3Label">שורה 3 — תווית</label>
-                        <input type="text" id="metric3Label" placeholder="לדוגמה: שווי מערכת לאחר 25 שנה">
-                    </div>
-                    <div>
-                        <label for="metric3Value">שורה 3 — ערך</label>
-                        <input type="text" id="metric3Value" placeholder="לדוגמה: ₪150">
-                    </div>
-                    <div>
-                        <label for="metric4Label">שורה 4 — תווית</label>
-                        <input type="text" id="metric4Label" placeholder="לדוגמה: סך הכנסה">
-                    </div>
-                    <div>
-                        <label for="metric4Value">שורה 4 — ערך</label>
-                        <input type="text" id="metric4Value" placeholder="לדוגמה: ₪257,016">
-                    </div>
-                </div>
+                <div id="financialMetricsEditor"></div>
 
                 <button onclick="calculateQuote()" class="btn-calculate">חשב</button>
 

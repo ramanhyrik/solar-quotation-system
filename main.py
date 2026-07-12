@@ -26,6 +26,13 @@ from quote_defaults import (
     get_legacy_quote_text_defaults,
     render_quote_template,
 )
+from metrics_catalog import (
+    AVAILABLE_CALCULATIONS,
+    build_metric_context,
+    get_metrics_config,
+    parse_metrics_config,
+    resolve_metrics,
+)
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 import base64
@@ -100,6 +107,7 @@ QUOTE_RENDER_PRICING_FIELDS = (
     "revenue_calculation_default",
     "summary_default",
     "environmental_impact_default",
+    "financial_metrics_config",
 )
 
 
@@ -158,22 +166,12 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         quote_data.get("system_size"),
         pricing.get("tariff_rate"),
     )
-    leasing_ratio = float(pricing.get("leasing_payment_ratio") or 0.25)
-    revenue_share = leasing_ratio if quote_data.get("model_type") == "leasing" else 1.0
-    annual_income = calculate_annual_income(
-        annual_revenue,
-        quote_data.get("system_value_after_25_years"),
-        revenue_share,
-    )
-    cashflow_25 = calculate_quote_cashflow_25_years(quote_data, pricing)
-    # "Total income" cube (סך הכנסה) = residual system value + 25-year cash flow.
-    # The estimated quarterly value is that total spread over 25 years / 4.
-    system_value_for_total = float(
-        quote_data.get("system_value_after_25_years")
-        or quote_data.get("total_price")
-        or 0
-    )
-    quarterly_value = calculate_quarterly_value(system_value_for_total + cashflow_25)
+    # Derive the headline figures from the shared metric catalog so the text
+    # sections always match the financial-metric cubes (PDF / editor / sign).
+    metric_ctx = build_metric_context(quote_data, pricing)
+    annual_income = metric_ctx["annual_income"]
+    cashflow_25 = metric_ctx["cumulative_25"]
+    quarterly_value = metric_ctx["quarterly_value"]
 
     return {
         "system_size": format_template_number(quote_data.get("system_size"), 1),
@@ -391,8 +389,11 @@ def ensure_offer_image_column():
             cursor.execute(
                 "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS financial_metrics_overrides TEXT"
             )
+            cursor.execute(
+                "ALTER TABLE pricing_parameters ADD COLUMN IF NOT EXISTS financial_metrics_config TEXT"
+            )
             conn.commit()
-            print("[OK] Verified quotes.offer_image_path and financial_metrics_overrides columns exist")
+            print("[OK] Verified quote-customization + financial_metrics_config columns exist")
     except Exception as e:
         print(f"[WARNING] Failed to verify quote-customization columns: {e}")
 
@@ -611,7 +612,14 @@ async def get_pricing():
     """Get current pricing parameters"""
     with get_db() as conn:
         cursor = get_cursor(conn)
-        return get_latest_pricing(cursor)
+        pricing = get_latest_pricing(cursor)
+    # Expose the effective cube config (falls back to defaults) plus the
+    # calculation catalog so the admin panel can render the cube manager.
+    pricing["metrics_config"] = get_metrics_config(pricing)
+    pricing["metrics_catalog"] = [
+        {"key": key, "label": label} for key, label in AVAILABLE_CALCULATIONS
+    ]
+    return pricing
 
 @app.post("/api/pricing")
 async def update_pricing(
@@ -634,6 +642,7 @@ async def update_pricing(
     revenue_calculation_default: Optional[str] = Form(None),
     summary_default: Optional[str] = Form(None),
     environmental_impact_default: Optional[str] = Form(None),
+    financial_metrics_config: Optional[str] = Form(None),
     user=Depends(get_current_user)
 ):
     """Update pricing and calculator parameters"""
@@ -749,6 +758,14 @@ async def update_pricing(
             ),
         }
 
+        if financial_metrics_config is None:
+            merged["financial_metrics_config"] = current.get("financial_metrics_config")
+        else:
+            cleaned_config = parse_metrics_config(financial_metrics_config)
+            merged["financial_metrics_config"] = (
+                json.dumps(cleaned_config, ensure_ascii=False) if cleaned_config else None
+            )
+
         cursor.execute('''
             UPDATE pricing_parameters SET
             price_per_kwp = %s,
@@ -770,6 +787,7 @@ async def update_pricing(
             revenue_calculation_default = %s,
             summary_default = %s,
             environmental_impact_default = %s,
+            financial_metrics_config = %s,
             updated_at = CURRENT_TIMESTAMP
         ''', (
             merged["price_per_kwp"],
@@ -791,6 +809,7 @@ async def update_pricing(
             merged["revenue_calculation_default"],
             merged["summary_default"],
             merged["environmental_impact_default"],
+            merged["financial_metrics_config"],
         ))
         conn.commit()
         return {"message": "Settings updated successfully"}
@@ -2053,6 +2072,18 @@ async def signature_portal(token: str, request: Request):
                 else 'לא צוין'
             )
 
+            # Config-driven financial cubes (same source as the PDF/editor).
+            metric_cubes = []
+            for cube in resolve_metrics(
+                sig_data, sig_data, sig_data.get("financial_metrics_overrides")
+            ):
+                value_str = (
+                    cube["override_value"]
+                    if cube["override_value"] is not None
+                    else f"{int(round(cube['value'])):,}"
+                )
+                metric_cubes.append({"label": cube["label"], "value": value_str})
+
             return templates.TemplateResponse("sign_quote.html", {
                 "request": request,
                 "expired": False,
@@ -2070,6 +2101,7 @@ async def signature_portal(token: str, request: Request):
                 "annual_revenue": annual_revenue_formatted,
                 "quarterly_value": quarterly_value_formatted,
                 "system_value_after_25_years": system_value_formatted,
+                "metric_cubes": metric_cubes,
                 "basic_assumptions_text": sig_data.get('basic_assumptions_text'),
                 "revenue_calculation_text": sig_data.get('revenue_calculation_text'),
                 "summary_text": sig_data.get('summary_text'),

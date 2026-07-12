@@ -35,6 +35,7 @@ from quote_defaults import (
     calculate_annual_income,
     calculate_quarterly_value,
 )
+from metrics_catalog import resolve_metrics
 
 
 try:
@@ -521,68 +522,19 @@ def _parse_metric_number(value):
 
 
 def build_leasing_metrics_rows(quote_data, model_type="leasing"):
-    annual_revenue = float(quote_data.get("annual_revenue") or 0)
-    stored_system_value = quote_data.get("system_value_after_25_years")
-    _, _, _, leasing_ratio = get_assumption_values(quote_data)
-
-    revenue_share = leasing_ratio if model_type == "leasing" else 1.0
-    annual_income = calculate_annual_income(
-        annual_revenue,
-        stored_system_value,
-        revenue_share,
+    # Cubes are fully admin-configurable: order, labels and calculations come
+    # from the shared catalog (seeded via financial_metrics_config on the
+    # enriched quote_data), with per-quote value/label overrides applied.
+    resolved = resolve_metrics(
+        quote_data, quote_data, quote_data.get("financial_metrics_overrides")
     )
-    total_cashflow = calculate_quote_cashflow_total(quote_data, model_type)
-    system_value = (
-        float(stored_system_value)
-        if stored_system_value not in (None, "")
-        else float(quote_data.get("total_price") or 0)
-    )
-    total_revenue = system_value + total_cashflow
-    # Estimated quarterly value = total income (סך הכנסה) / 25 / 4.
-    quarterly_value = round(calculate_quarterly_value(total_revenue))
-    annual_income = round(annual_income)
-
-    default_rows = [
-        (format_currency(annual_income), "הכנסה שנתית"),
-        (format_currency(total_cashflow), "תזרים מצטבר ל-25 שנה"),
-        (format_currency(system_value), "שווי מערכת לאחר 25 שנה"),
-        (format_currency(total_revenue), "סך הכנסה"),
-    ]
-
-    overrides = _parse_metric_overrides(quote_data) or []
     rows = [[reshape_hebrew("ערך"), reshape_hebrew("מדד")]]
-    for index, (default_value, default_label) in enumerate(default_rows):
-        override = overrides[index] if index < len(overrides) else None
-        # Old quotes saved the former auto-filled annual income as if it were
-        # a manual override. Upgrade only that exact legacy value; preserve a
-        # genuinely customized row value.
-        if index == 0 and override:
-            override_number = _parse_metric_number(override.get("value"))
-            legacy_annual_income = annual_revenue * revenue_share
-            if (
-                override_number is not None
-                and abs(override_number - round(legacy_annual_income)) < 0.01
-            ):
-                override = None
-        if override:
-            label = override.get("label") or default_label
-            raw_value = override.get("value")
-            if raw_value in (None, ""):
-                value_text = default_value
-            else:
-                value_text = str(raw_value)
+    for cube in resolved:
+        if cube["override_value"] is not None:
+            value_text = cube["override_value"]
         else:
-            label = default_label
-            value_text = default_value
-        rows.append([reshape_hebrew(value_text), reshape_hebrew(label)])
-        if index == 0:
-            # New "estimated quarterly value" cube, directly below annual income.
-            rows.append(
-                [
-                    reshape_hebrew(format_currency(quarterly_value)),
-                    reshape_hebrew("ערך רבעוני משוער"),
-                ]
-            )
+            value_text = format_currency(round(cube["value"]))
+        rows.append([reshape_hebrew(value_text), reshape_hebrew(cube["label"])])
     return rows
 
 

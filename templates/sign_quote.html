@@ -401,23 +401,26 @@
                     <span class="detail-label">מחיר כולל:</span>
                     <span class="detail-value" style="font-size: 18px; font-weight: 700; color: #3AE478;">₪{{ total_price }}</span>
                 </div>
-                {% if annual_revenue %}
+                {% if metric_cubes %}
+                    {% for cube in metric_cubes %}
+                <div class="detail-row">
+                    <span class="detail-label">{{ cube.label }}:</span>
+                    <span class="detail-value">₪{{ cube.value }}</span>
+                </div>
+                    {% endfor %}
+                {% else %}
+                    {% if annual_revenue %}
                 <div class="detail-row">
                     <span class="detail-label">הכנסה שנתית משוערת:</span>
                     <span class="detail-value">₪{{ annual_revenue }}</span>
                 </div>
-                {% endif %}
-                {% if quarterly_value and quarterly_value != 'N/A' %}
-                <div class="detail-row">
-                    <span class="detail-label">ערך רבעוני משוער:</span>
-                    <span class="detail-value">₪{{ quarterly_value }}</span>
-                </div>
-                {% endif %}
-                {% if system_value_after_25_years %}
+                    {% endif %}
+                    {% if system_value_after_25_years %}
                 <div class="detail-row">
                     <span class="detail-label">שווי מערכת לאחר 25 שנה:</span>
                     <span class="detail-value">₪{{ system_value_after_25_years }}</span>
                 </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
