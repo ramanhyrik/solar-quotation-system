@@ -448,6 +448,26 @@ if os.getenv("RENDER"):
 # Templates
 templates = Jinja2Templates(directory="templates")
 
+
+def _compute_asset_version() -> str:
+    """Cache-busting token for static JS/CSS.
+
+    Uses the newest mtime of the front-end bundles so browsers re-fetch
+    immediately after every deploy (Render re-checks-out the files, changing
+    their mtime) while still caching between deploys.
+    """
+    newest = 0.0
+    for name in ("dashboard.js", "dashboard.css"):
+        try:
+            newest = max(newest, os.path.getmtime(os.path.join("static", name)))
+        except OSError:
+            continue
+    return str(int(newest)) if newest else str(int(datetime.now().timestamp()))
+
+
+# Exposed to every Jinja template as {{ asset_version }}.
+templates.env.globals["asset_version"] = _compute_asset_version()
+
 # Health check endpoint for uptime monitoring
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
