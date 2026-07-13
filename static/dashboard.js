@@ -55,6 +55,28 @@ function registerOfferImageHandlers() {
             if (status) status.textContent = '';
         });
     }
+
+    // Paste an image straight from the clipboard (Ctrl+V) while the quote form
+    // is open — in addition to the file picker.
+    document.addEventListener('paste', (event) => {
+        const quoteSection = document.getElementById('quoteSection');
+        if (!document.getElementById('offerImageFile') || (quoteSection && quoteSection.style.display === 'none')) {
+            return;
+        }
+        const items = (event.clipboardData && event.clipboardData.items) || [];
+        for (const item of items) {
+            if (item.type && item.type.indexOf('image') === 0) {
+                const file = item.getAsFile();
+                if (file) {
+                    event.preventDefault();
+                    const status = document.getElementById('offerImageStatus');
+                    if (status) status.textContent = 'מעלה תמונה מהלוח...';
+                    uploadOfferImage(file);
+                }
+                break;
+            }
+        }
+    });
 }
 
 const quoteTemplateFieldMap = {
@@ -103,7 +125,11 @@ function buildQuoteTemplateContext() {
     const operatingCostBase = Number(pricing.operating_cost_base ?? 0.005);
     const operatingCostIncrease = Number(pricing.operating_cost_increase ?? 0.02);
     const configuredTariff = Number(pricing.tariff_rate ?? 0.48);
-    const tariffRate = (systemSize || 0) > 22 ? 0.38 : configuredTariff;
+    const urbanPremium = !!document.getElementById('urbanPremium')?.checked;
+    // Tiered tariff: first 22.5 kW at the standard/premium rate, rest at 0.38.
+    const firstTierRate = urbanPremium ? 0.52 : configuredTariff;
+    const secondTierRate = 0.38;
+    const thresholdKw = 22.5;
 
     return {
         system_size: systemSize !== null ? systemSize.toFixed(1).replace(/\.0$/, '') : '',
@@ -119,8 +145,11 @@ function buildQuoteTemplateContext() {
         co2_saved: formatInteger(annualProduction * 0.5),
         total_cashflow_25: metricDisplayForCalc('cumulative_25'),
         quarterly_value: metricDisplayForCalc('quarterly_value'),
-        tariff_rate: tariffRate.toFixed(2),
-        tariff_agorot: formatInteger(tariffRate * 100),
+        tariff_rate: firstTierRate.toFixed(2),
+        tariff_agorot: formatInteger(firstTierRate * 100),
+        tariff_first_agorot: formatInteger(firstTierRate * 100),
+        tariff_second_agorot: formatInteger(secondTierRate * 100),
+        tariff_threshold_kw: thresholdKw.toFixed(1).replace(/\.0$/, ''),
         degradation_rate_percent: (degradationRate * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_base_percent: (operatingCostBase * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_increase_percent: (operatingCostIncrease * 100).toFixed(1).replace(/\.0$/, '')
@@ -317,7 +346,9 @@ function metricDisplayForCalc(calc) {
     return formatInteger(computeCubeValue(calc, computeMetricContext()));
 }
 
-// Render the read-only cube preview from the current config.
+// Render the cube list from the current config. Labels/order/calculations are
+// managed in the admin panel; the VALUE of each cube is editable per quote and
+// saved as an override (empty or unchanged = auto-computed).
 function refreshMetricDefaults() {
     const container = document.getElementById('financialMetricsEditor');
     if (!container) return;
@@ -325,17 +356,35 @@ function refreshMetricDefaults() {
     resolveQuoteMetrics().forEach((cube) => {
         const row = document.createElement('div');
         row.className = 'metric-preview-row';
-        row.style.cssText = 'display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid rgba(58,228,120,0.25); border-radius:8px; margin-bottom:8px; background:rgba(20,24,31,0.5);';
+        row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid rgba(58,228,120,0.25); border-radius:8px; margin-bottom:8px; background:rgba(20,24,31,0.5);';
         const label = document.createElement('span');
-        label.style.color = '#A0AEC0';
+        label.style.cssText = 'flex:1; color:#A0AEC0;';
         label.textContent = cube.label;
-        const value = document.createElement('strong');
-        value.style.color = '#fff';
-        value.textContent = cube.displayValue;
+        const value = document.createElement('input');
+        value.type = 'text';
+        value.className = 'metric-value-input';
+        value.dataset.calc = cube.calculation;
+        value.value = cube.displayValue;
+        value.title = 'ניתן לערוך את הסכום ידנית';
+        value.style.cssText = 'width:150px; text-align:left; padding:6px 10px; border:2px solid rgba(58,228,120,0.3); border-radius:6px; background:rgba(20,24,31,0.7); color:#fff; font-weight:600;';
+        value.addEventListener('input', onMetricValueInput);
         row.appendChild(label);
         row.appendChild(value);
         container.appendChild(row);
     });
+}
+
+function onMetricValueInput(event) {
+    const el = event.target;
+    const calc = el.dataset.calc;
+    const raw = (el.value || '').trim();
+    const computed = formatCurrencyValue(computeCubeValue(calc, computeMetricContext()));
+    if (!raw || raw === computed) {
+        delete quoteMetricOverrides[calc];
+    } else {
+        quoteMetricOverrides[calc] = Object.assign({}, quoteMetricOverrides[calc], { value: raw });
+    }
+    refreshQuoteTextSections(true);
 }
 
 function normalizeOverrides(saved) {
@@ -409,7 +458,8 @@ function collectQuotePayload() {
         environmental_impact_text: document.getElementById('environmentalImpactText').value,
         annual_revenue: currentQuoteData.annual_revenue,
         payback_period: currentQuoteData.payback_period,
-        model_type: window.currentModel || 'purchase'
+        model_type: window.currentModel || 'purchase',
+        urban_premium: !!document.getElementById('urbanPremium')?.checked
     };
 }
 
@@ -442,6 +492,8 @@ function resetQuoteForm() {
         field.dataset.autoFilled = 'false';
     });
 
+    const urbanPremiumField = document.getElementById('urbanPremium');
+    if (urbanPremiumField) urbanPremiumField.checked = false;
     document.getElementById('calculations').style.display = 'none';
     currentQuoteData = {};
     quoteMetricOverrides = {};
@@ -494,6 +546,16 @@ function registerQuoteFieldListeners() {
             refreshQuoteTextSections(true);
         });
     }
+
+    const urbanPremiumField = document.getElementById('urbanPremium');
+    if (urbanPremiumField) {
+        urbanPremiumField.addEventListener('change', () => {
+            // Re-run the (tiered) calculation so revenue/cubes reflect the toggle.
+            if (parseNumericInput(document.getElementById('systemSize')?.value)) {
+                calculateQuote();
+            }
+        });
+    }
 }
 
 async function calculateQuote() {
@@ -505,8 +567,10 @@ async function calculateQuote() {
     }
 
     try {
+        const urbanPremium = !!document.getElementById('urbanPremium')?.checked;
         const formData = new FormData();
         formData.append('system_size', systemSize);
+        formData.append('urban_premium', urbanPremium);
 
         const response = await fetch('/api/calculate', {
             method: 'POST',
@@ -520,7 +584,8 @@ async function calculateQuote() {
             annual_revenue: data.annual_revenue,
             tariff_rate: data.tariff_rate,
             payback_period: data.payback_period,
-            annual_production: data.annual_production
+            annual_production: data.annual_production,
+            urban_premium: urbanPremium
         };
 
         const finalPriceField = document.getElementById('finalPrice');
@@ -615,16 +680,15 @@ function populateQuoteForm(quote) {
     setOfferImagePreview(quote.offer_image_path || null);
     const offerImageFile = document.getElementById('offerImageFile');
     if (offerImageFile) offerImageFile.value = '';
+    const urbanPremiumField = document.getElementById('urbanPremium');
+    if (urbanPremiumField) urbanPremiumField.checked = !!quote.urban_premium;
     currentQuoteData = {
         total_price: Number(quote.total_price || 0),
         annual_revenue: Number(quote.annual_revenue || 0),
-        tariff_rate: Number(
-            quote.tariff_rate
-            || (Number(quote.system_size || 0) > 22 ? 0.38 : getDashboardPricingSettings().tariff_rate)
-            || 0.48
-        ),
+        tariff_rate: Number(quote.tariff_rate || getDashboardPricingSettings().tariff_rate || 0.48),
         payback_period: Number(quote.payback_period || 0),
-        annual_production: Number(quote.annual_production || 0)
+        annual_production: Number(quote.annual_production || 0),
+        urban_premium: !!quote.urban_premium
     };
     populateMetricOverrides(quote.financial_metrics_overrides);
 

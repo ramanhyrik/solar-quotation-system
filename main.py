@@ -20,9 +20,13 @@ from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
 from quote_defaults import (
     QUOTE_TEXT_FIELD_MAP,
+    LARGE_SYSTEM_THRESHOLD_KW,
+    LARGE_SYSTEM_TARIFF_RATE,
     calculate_annual_income,
     calculate_quarterly_value,
+    calculate_tiered_annual_revenue,
     get_effective_tariff_rate,
+    get_first_tier_rate,
     get_legacy_quote_text_defaults,
     render_quote_template,
 )
@@ -162,10 +166,13 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
     degradation_rate = float(pricing.get("degradation_rate") or 0.004)
     operating_cost_base = float(pricing.get("operating_cost_base") or 0.005)
     operating_cost_increase = float(pricing.get("operating_cost_increase") or 0.02)
+    urban_premium = bool(quote_data.get("urban_premium"))
     tariff_rate = get_effective_tariff_rate(
         quote_data.get("system_size"),
         pricing.get("tariff_rate"),
     )
+    # Tiered tariff: first 22.5 kW at the standard/premium rate, the rest at 0.38.
+    first_tier_rate = get_first_tier_rate(urban_premium, pricing.get("tariff_rate"))
     # Derive the headline figures from the shared metric catalog so the text
     # sections always match the financial-metric cubes (PDF / editor / sign).
     metric_ctx = build_metric_context(quote_data, pricing)
@@ -190,7 +197,12 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         "total_cashflow_25": format_template_number(cashflow_25),
         "quarterly_value": format_template_number(quarterly_value),
         "tariff_rate": format_template_number(tariff_rate, 2),
-        "tariff_agorot": format_template_number(tariff_rate * 100),
+        # Backward-compatible: existing templates using {tariff_agorot} now show
+        # the first-tier rate (48, or 52 with Urban Premium).
+        "tariff_agorot": format_template_number(first_tier_rate * 100),
+        "tariff_first_agorot": format_template_number(first_tier_rate * 100),
+        "tariff_second_agorot": format_template_number(LARGE_SYSTEM_TARIFF_RATE * 100),
+        "tariff_threshold_kw": format_template_number(LARGE_SYSTEM_THRESHOLD_KW, 1),
         "degradation_rate_percent": format_template_number(degradation_rate * 100, 1),
         "operating_cost_base_percent": format_template_number(operating_cost_base * 100, 1),
         "operating_cost_increase_percent": format_template_number(
@@ -392,8 +404,26 @@ def ensure_offer_image_column():
             cursor.execute(
                 "ALTER TABLE pricing_parameters ADD COLUMN IF NOT EXISTS financial_metrics_config TEXT"
             )
+            cursor.execute(
+                "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS urban_premium BOOLEAN DEFAULT FALSE"
+            )
+            # Upgrade the stored single-rate tariff wording to the tiered wording
+            # (idempotent: the LIKE stops matching once replaced). Preserves any
+            # custom prose around the parenthetical.
+            cursor.execute(
+                """
+                UPDATE pricing_parameters
+                SET basic_assumptions_default = REPLACE(
+                    basic_assumptions_default,
+                    '({tariff_agorot} אגורות לקוט״ש)',
+                    '{tariff_threshold_kw} קילוואט ראשונים בתעריף {tariff_first_agorot} אגורות לקוט״ש וכל הספק מעל {tariff_threshold_kw} קילוואט בתעריף {tariff_second_agorot} אגורות לקוט״ש'
+                )
+                WHERE basic_assumptions_default LIKE %s
+                """,
+                ("%({tariff_agorot} אגורות לקוט״ש)%",),
+            )
             conn.commit()
-            print("[OK] Verified quote-customization + financial_metrics_config columns exist")
+            print("[OK] Verified quote-customization + financial_metrics_config + urban_premium columns exist")
     except Exception as e:
         print(f"[WARNING] Failed to verify quote-customization columns: {e}")
 
@@ -817,6 +847,7 @@ async def update_pricing(
 @app.post("/api/calculate")
 async def calculate_quote(
     system_size: float = Form(...),
+    urban_premium: bool = Form(False),
 ):
     """Calculate quote based on system size"""
     with get_db() as conn:
@@ -826,8 +857,11 @@ async def calculate_quote(
 
     total_price = system_size * params["price_per_kwp"]
     annual_production = system_size * params["production_per_kwp"]
+    # Tiered tariff: first 22.5 kW at the standard/premium rate, the rest at 0.38.
+    annual_revenue = calculate_tiered_annual_revenue(
+        system_size, params["production_per_kwp"], urban_premium, params["tariff_rate"]
+    )
     tariff_rate = get_effective_tariff_rate(system_size, params["tariff_rate"])
-    annual_revenue = annual_production * tariff_rate
     payback_period = round(total_price / annual_revenue, 2) if annual_revenue > 0 else 0
     trees = int(annual_production * params["trees_multiplier"])
     co2_saved = int(annual_production * 0.5)
@@ -837,6 +871,7 @@ async def calculate_quote(
         "annual_production": annual_production,
         "annual_revenue": annual_revenue,
         "tariff_rate": tariff_rate,
+        "urban_premium": urban_premium,
         "payback_period": payback_period,
         "environmental_impact": {
             "trees": trees,
@@ -862,10 +897,10 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
                 total_price, maintenance, service, system_value_after_25_years,
                 basic_assumptions_text, revenue_calculation_text, summary_text,
                 environmental_impact_text, offer_image_path, financial_metrics_overrides,
-                annual_revenue, payback_period, model_type, created_by
+                annual_revenue, payback_period, model_type, urban_premium, created_by
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             RETURNING id
         ''', (
@@ -896,6 +931,7 @@ async def create_quote(request: Request, user=Depends(get_current_user)):
             data.get("annual_revenue"),
             data.get("payback_period"),
             data.get("model_type", "purchase"),
+            bool(data.get("urban_premium")),
             user["user_id"]
         ))
         quote_id = cursor.fetchone()['id']
