@@ -69,13 +69,10 @@ def build_metric_context(quote_data, pricing=None):
     annual_revenue = _num(quote_data.get("annual_revenue"))
     total_price = _num(quote_data.get("total_price"))
     leasing_ratio = _assumption(quote_data, pricing, "leasing_payment_ratio", 0.25)
-    degradation_rate = _assumption(quote_data, pricing, "degradation_rate", 0.004)
 
-    cumulative = 0.0
-    for year in range(AMORTIZATION_YEARS):
-        factor = max(0.0, 1 - (degradation_rate * year))
-        cumulative += annual_revenue * factor * leasing_ratio
-    cumulative_25 = round(cumulative)
+    # 25-year customer share = annual revenue × 25 years × leasing share.
+    # Flat, with no production degradation, per the agreed tariff model.
+    cumulative_25 = round(annual_revenue * AMORTIZATION_YEARS * leasing_ratio)
 
     stored_system_value = quote_data.get("system_value_after_25_years")
     system_value = (

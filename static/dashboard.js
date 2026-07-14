@@ -292,15 +292,12 @@ function computeMetricContext() {
     const pricing = getDashboardPricingSettings();
     const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
     const leasingRatio = Number(pricing.leasing_payment_ratio ?? 0.25);
-    const degradationRate = Number(pricing.degradation_rate ?? 0.004);
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
     const systemValue = getQuoteSystemValue() || totalPrice || 0;
 
-    let cumulative = 0;
-    for (let year = 0; year < 25; year++) {
-        cumulative += annualRevenue * Math.max(0, 1 - (degradationRate * year)) * leasingRatio;
-    }
-    cumulative = Math.round(cumulative);
+    // 25-year customer share = annual revenue × 25 years × leasing share
+    // (flat, no degradation — matches metrics_catalog.build_metric_context).
+    const cumulative = Math.round(annualRevenue * 25 * leasingRatio);
 
     const annualIncome = annualRevenue * leasingRatio;
     const totalIncome = systemValue + cumulative;

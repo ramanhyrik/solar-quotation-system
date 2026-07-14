@@ -560,13 +560,13 @@ def build_leasing_cashflow_rows(quote_data, model_type="leasing"):
     cumulative = -initial_investment
 
     for year in range(1, 26):
-        production_factor = max(0.0, 1 - (degradation_rate * (year - 1)))
-        yearly_revenue = annual_revenue * production_factor
         if is_leasing:
-            year_customer_income = yearly_revenue * leasing_ratio
+            # Flat customer share each year (no degradation), so the 25-year
+            # total matches the "תזרים מצטבר ל-25 שנה" cube.
+            year_customer_income = annual_revenue * leasing_ratio
         else:
             yearly_operating_cost = base_operating_cost * ((1 + operating_cost_increase) ** (year - 1))
-            year_customer_income = yearly_revenue - yearly_operating_cost
+            year_customer_income = annual_revenue - yearly_operating_cost
         total_customer_income += year_customer_income
         cumulative += year_customer_income
         rows.append(
