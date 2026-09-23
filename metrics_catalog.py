@@ -59,7 +59,20 @@ def _assumption(quote_data, pricing, key, default):
     return float(default)
 
 
-def build_metric_context(quote_data, pricing=None):
+def _effective_metric_value(calculation, computed, overrides):
+    """Use a numeric override when deriving a total from a displayed amount."""
+    raw = overrides.get(calculation, {}).get("value")
+    if raw in (None, ""):
+        return computed
+    cleaned = "".join(str(raw).replace("₪", "").replace(",", "").split())
+    try:
+        value = float(cleaned)
+    except (TypeError, ValueError):
+        return computed
+    return value if math.isfinite(value) else computed
+
+
+def build_metric_context(quote_data, pricing=None, overrides=None):
     """Compute every base figure the cubes can reference.
 
     All quotes are presented leasing-style (income = leasing revenue share, no
@@ -67,6 +80,9 @@ def build_metric_context(quote_data, pricing=None):
     """
     quote_data = quote_data or {}
     pricing = pricing or {}
+    overrides = normalize_overrides(
+        quote_data.get("financial_metrics_overrides") if overrides is None else overrides
+    )
 
     annual_revenue = _num(quote_data.get("annual_revenue"))
     total_price = _num(quote_data.get("total_price"))
@@ -86,7 +102,19 @@ def build_metric_context(quote_data, pricing=None):
     )
 
     annual_income = annual_revenue * leasing_ratio
-    total_income = system_value + cumulative_25
+    # Total income follows the first enabled cumulative metric in display order.
+    # Without a cumulative cube, retain the established 25-year default.
+    config_source = pricing if "financial_metrics_config" in pricing else quote_data
+    cumulative_key = next(
+        (cube["calculation"] for cube in get_metrics_config(config_source)
+         if cube.get("enabled", True) and cube["calculation"] in ("cumulative_18", "cumulative_25")),
+        "cumulative_25",
+    )
+    cumulative_value = cumulative_18 if cumulative_key == "cumulative_18" else cumulative_25
+    total_income = (
+        _effective_metric_value("system_value", system_value, overrides)
+        + _effective_metric_value(cumulative_key, cumulative_value, overrides)
+    )
 
     return {
         "gross_annual_revenue": annual_revenue,
@@ -189,9 +217,11 @@ def resolve_metrics(quote_data, pricing=None, overrides=None):
     computed value, an override label wins over the configured label. Disabled
     cubes are skipped.
     """
-    context = build_metric_context(quote_data, pricing)
     config = get_metrics_config(pricing)
-    overrides = normalize_overrides(overrides)
+    overrides = normalize_overrides(
+        (quote_data or {}).get("financial_metrics_overrides") if overrides is None else overrides
+    )
+    context = build_metric_context(quote_data, pricing, overrides)
 
     result = []
     for cube in config:

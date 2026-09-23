@@ -288,6 +288,15 @@ function getMetricsConfig() {
 
 // Mirror of metrics_catalog.build_metric_context (server) so the editor
 // preview, the text sections and the PDF always agree.
+function effectiveMetricValue(calc, computed) {
+    const raw = quoteMetricOverrides[calc]?.value;
+    if (raw === undefined || raw === null || String(raw).trim() === '') return computed;
+    const cleaned = String(raw).replace(/[₪,\s]/g, '');
+    if (!cleaned) return computed;
+    const value = Number(cleaned);
+    return Number.isFinite(value) ? value : computed;
+}
+
 function computeMetricContext() {
     const pricing = getDashboardPricingSettings();
     const annualRevenue = Number(currentQuoteData.annual_revenue || 0);
@@ -301,7 +310,12 @@ function computeMetricContext() {
     const cumulative18 = Math.round(annualRevenue * 18 * leasingRatio);
 
     const annualIncome = annualRevenue * leasingRatio;
-    const totalIncome = systemValue + cumulative;
+    const cumulativeKey = getMetricsConfig().find((cube) =>
+        cube.calculation === 'cumulative_18' || cube.calculation === 'cumulative_25'
+    )?.calculation || 'cumulative_25';
+    const cumulativeValue = cumulativeKey === 'cumulative_18' ? cumulative18 : cumulative;
+    const totalIncome = effectiveMetricValue('system_value', systemValue)
+        + effectiveMetricValue(cumulativeKey, cumulativeValue);
     return {
         gross_annual_revenue: annualRevenue,
         annual_income: annualIncome,
@@ -383,6 +397,12 @@ function onMetricValueInput(event) {
     } else {
         quoteMetricOverrides[calc] = Object.assign({}, quoteMetricOverrides[calc], { value: raw });
     }
+    // Update dependent totals without rebuilding the active input or moving its cursor.
+    const resolved = new Map(resolveQuoteMetrics().map((cube) => [cube.calculation, cube]));
+    document.querySelectorAll('#financialMetricsEditor .metric-value-input').forEach((input) => {
+        const cube = resolved.get(input.dataset.calc);
+        if (input !== el && cube) input.value = cube.displayValue;
+    });
     refreshQuoteTextSections(true);
 }
 

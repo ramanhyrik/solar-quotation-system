@@ -10,6 +10,51 @@ from pdf_generator import build_leasing_metrics_rows, build_specs_rows, reshape_
 
 
 class QuoteMetricTests(unittest.TestCase):
+    def test_total_matches_selected_eighteen_year_cashflow(self):
+        config = [{"calculation": key} for key in (
+            "system_value", "annual_income", "cumulative_18", "total_income"
+        )]
+        pricing = {"leasing_payment_ratio": 1, "financial_metrics_config": json.dumps(config)}
+        quote = {"annual_revenue": 13680, "total_price": 101250}
+        context = build_metric_context(quote, pricing)
+        self.assertEqual(context["cumulative_18"], 246240)
+        self.assertEqual(context["total_income"], 347490)
+        for model in ("purchase", "leasing"):
+            rows = build_leasing_metrics_rows({**quote, **pricing}, model)
+            self.assertIn(reshape_hebrew("₪347,490"), [row[0] for row in rows])
+            self.assertNotIn(reshape_hebrew("₪443,250"), [row[0] for row in rows])
+
+    def test_total_tracks_numeric_overrides_and_clearing_them(self):
+        quote = {"annual_revenue": 13680, "total_price": 101250}
+        pricing = {"financial_metrics_config": [
+            {"calculation": "cumulative_18"}, {"calculation": "total_income"}
+        ]}
+        overrides = {"system_value": {"value": "₪101,250"},
+                     "cumulative_18": {"value": "₪246,240"}}
+        self.assertEqual(build_metric_context(quote, pricing, overrides)["total_income"], 347490)
+        resolved = resolve_metrics(quote, pricing, overrides)
+        self.assertEqual(resolved[1]["value"], 347490)
+        quote["financial_metrics_overrides"] = json.dumps(overrides)
+        self.assertEqual(build_metric_context(quote, pricing)["total_income"], 347490)
+        overrides["cumulative_18"]["value"] = "0"
+        self.assertEqual(build_metric_context(quote, pricing, overrides)["total_income"], 101250)
+        for value in ("", "included", "₪", "NaN"):
+            overrides["cumulative_18"]["value"] = value
+            self.assertEqual(build_metric_context(quote, pricing, overrides)["total_income"], 162810)
+        overrides["cumulative_18"]["value"] = "₪246,240"
+        overrides["total_income"] = {"value": "400000"}
+        self.assertEqual(resolve_metrics(quote, pricing, overrides)[1]["override_value"], "400000")
+
+    def test_total_uses_first_enabled_cumulative_metric(self):
+        quote = {"annual_revenue": 13680, "total_price": 101250, "leasing_payment_ratio": 1}
+        for config, expected in (
+            ([{"calculation": "cumulative_18", "enabled": False}, {"calculation": "cumulative_25"}], 443250),
+            ([{"calculation": "cumulative_18"}, {"calculation": "cumulative_25"}], 347490),
+            ([{"calculation": "cumulative_25"}, {"calculation": "cumulative_18"}], 443250),
+        ):
+            with self.subTest(config=config):
+                self.assertEqual(build_metric_context(quote, {"financial_metrics_config": config})["total_income"], expected)
+
     def test_eighteen_year_metric_and_existing_totals(self):
         for revenue, ratio, expected in (
             (13680, 0.25, 61560),
