@@ -295,9 +295,10 @@ function computeMetricContext() {
     const totalPrice = getFinalQuotePrice() || Number(currentQuoteData.total_price || 0);
     const systemValue = getQuoteSystemValue() || totalPrice || 0;
 
-    // 25-year customer share = annual revenue × 25 years × leasing share
+    // Cumulative customer share = annual revenue × years × leasing share
     // (flat, no degradation — matches metrics_catalog.build_metric_context).
     const cumulative = Math.round(annualRevenue * 25 * leasingRatio);
+    const cumulative18 = Math.round(annualRevenue * 18 * leasingRatio);
 
     const annualIncome = annualRevenue * leasingRatio;
     const totalIncome = systemValue + cumulative;
@@ -307,6 +308,7 @@ function computeMetricContext() {
         monthly_income: annualIncome / 12,
         quarterly_income: annualIncome / 4,
         cumulative_25: cumulative,
+        cumulative_18: cumulative18,
         system_value: systemValue,
         total_income: totalIncome,
         quarterly_value: totalIncome / SYSTEM_VALUE_AMORTIZATION_YEARS / 4
@@ -418,6 +420,13 @@ function collectMetricOverrides() {
     return Object.keys(quoteMetricOverrides).length ? quoteMetricOverrides : null;
 }
 
+function removeMaintenance() {
+    const field = document.getElementById('maintenance');
+    field.value = '';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.focus();
+}
+
 function collectQuotePayload() {
     const customerName = document.getElementById('customerName').value;
     const systemSize = parseNumericInput(document.getElementById('systemSize').value);
@@ -443,7 +452,7 @@ function collectQuotePayload() {
         roof_area: parseNumericInput(document.getElementById('roofArea').value),
         annual_production: currentQuoteData.annual_production,
         total_price: getFinalQuotePrice() || currentQuoteData.total_price,
-        maintenance: document.getElementById('maintenance').value || null,
+        maintenance: document.getElementById('maintenance').value.trim() || null,
         service: document.getElementById('service').value || null,
         system_value_after_25_years: getQuoteSystemValue(),
         price_per_kwp_quote: getQuotePricePerKw(),
@@ -864,7 +873,7 @@ async function generateSignatureLink(quoteId) {
                     </button>
                 </div>
                 <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; font-size: 13px; color: #856404;">
-                    הקישור תקף ל-30 יום
+                    הקישור בתוקף עד ${new Date(data.expires_at).toLocaleDateString('he-IL')}
                 </div>
             </div>
         `;

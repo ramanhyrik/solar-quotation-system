@@ -103,7 +103,10 @@ def style_axes(ax):
 
 
 def generate_monthly_production_chart(system_kwp: float, annual_production: float) -> bytes:
-    monthly_production = [(annual_production / 12) * coef for coef in MONTHLY_COEFFICIENTS]
+    # Treat the seasonal coefficients as relative weights so the monthly bars
+    # add up to the quote's calculated annual production.
+    coefficient_total = sum(MONTHLY_COEFFICIENTS)
+    monthly_production = [annual_production * coef / coefficient_total for coef in MONTHLY_COEFFICIENTS]
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
     fig.patch.set_facecolor(CHART_BACKGROUND)
@@ -159,8 +162,8 @@ def generate_monthly_production_chart(system_kwp: float, annual_production: floa
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{int(x):,}"))
     style_axes(ax)
 
-    total_kwh = sum(monthly_production)
-    annotation_text = f"סה״כ: {total_kwh:,.0f} קוט״ש/שנה"
+    annual_production_text = f"{annual_production:,.2f}".rstrip("0").rstrip(".")
+    annotation_text = f"סה״כ: {annual_production_text} קוט״ש/שנה"
     ax.text(
         0.98,
         0.97,

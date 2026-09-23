@@ -789,7 +789,9 @@
                 <div class="form-grid">
                     <div>
                         <label for="maintenance">תחזוקה</label>
-                        <input type="text" id="maintenance" placeholder="לדוגמה: תחזוקה שנתית לפי הצורך">
+                        <input type="text" id="maintenance" placeholder="לדוגמה: תחזוקה שנתית לפי הצורך" aria-describedby="maintenanceHelp">
+                        <button type="button" class="remove-maintenance" onclick="removeMaintenance()">הסר תחזוקה מההצעה</button>
+                        <small id="maintenanceHelp" class="maintenance-help">כשהשדה ריק, שורת התחזוקה לא תופיע בהצעה.</small>
                     </div>
                     <div>
                         <label for="service">שירות</label>

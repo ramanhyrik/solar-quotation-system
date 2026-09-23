@@ -382,7 +382,7 @@
                     <span class="detail-value">{{ annual_production }} קוט״ש</span>
                 </div>
                 {% endif %}
-                {% if maintenance %}
+                {% if maintenance and maintenance|trim %}
                 <div class="detail-row">
                     <span class="detail-label">תחזוקה:</span>
                     <span class="detail-value">{{ maintenance }}</span>

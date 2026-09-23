@@ -1,7 +1,7 @@
 import json
 import os
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
 from io import BytesIO
 
 from PIL import Image as PILImage
@@ -36,6 +36,7 @@ from quote_defaults import (
     calculate_quarterly_value,
 )
 from metrics_catalog import resolve_metrics
+from quote_validity import quote_valid_until
 
 
 try:
@@ -477,8 +478,10 @@ def build_specs_rows(quote_data, not_specified, model_type="purchase"):
             f"{reshape_hebrew('קוט״ש/שנה')} {format_number(annual_prod)}" if annual_prod else not_specified,
             reshape_hebrew("ייצור שנתי:"),
         ],
-        [reshape_hebrew(safe_get(quote_data, "maintenance")) or not_specified, reshape_hebrew("תחזוקה:")],
     ]
+    maintenance = str(safe_get(quote_data, "maintenance")).strip()
+    if maintenance:
+        rows.append([reshape_hebrew(maintenance), reshape_hebrew("תחזוקה:")])
     if model_type != "leasing":
         rows.append(
             [reshape_hebrew(safe_get(quote_data, "service")) or not_specified, reshape_hebrew("שירות:")]
@@ -812,7 +815,7 @@ def generate_quote_pdf_base(quote_data, company_info=None, customer_signature_pa
     cwd, script_dir = build_header(elements, quote_data, title_text, styles["title"])
 
     today = datetime.now()
-    valid_until = today + timedelta(days=30)
+    valid_until = quote_valid_until(today)
     not_specified = reshape_hebrew("לא צוין")
 
     quote_info_rows = [

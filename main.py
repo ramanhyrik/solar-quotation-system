@@ -18,6 +18,7 @@ import io
 import glob
 from urllib.parse import quote as url_quote
 from pdf_generator import generate_quote_pdf, generate_leasing_quote_pdf
+from quote_validity import quote_valid_until
 from quote_defaults import (
     QUOTE_TEXT_FIELD_MAP,
     LARGE_SYSTEM_THRESHOLD_KW,
@@ -1516,9 +1517,8 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
             # Generate unique token (URL-safe)
             signature_token = secrets.token_urlsafe(32)
 
-            # Set expiration (30 days from now)
-            from datetime import timedelta
-            expires_at = datetime.now() + timedelta(days=30)
+            # Apply the same 14-business-day validity policy as quote PDFs.
+            expires_at = quote_valid_until(datetime.now())
 
             # Get base URL from environment or use Render URL
             base_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
@@ -1541,7 +1541,7 @@ async def generate_signature_link(quote_id: int, user=Depends(get_current_user))
                         "message": "Signature link already exists",
                         "signature_link": f"/sign/{existing['signature_token']}",
                         "full_url": f"{base_url}/sign/{existing['signature_token']}",
-                        "expires_at": existing['expires_at'],
+                        "expires_at": existing_expires.isoformat(),
                         "quote_number": quote_data.get('quote_number'),
                         "customer_name": quote_data.get('customer_name')
                     })

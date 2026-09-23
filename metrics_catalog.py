@@ -11,6 +11,7 @@ main.py, pdf_generator.py and the migration.
 """
 
 import json
+import math
 
 
 # --- Calculation catalog ---------------------------------------------------
@@ -20,6 +21,7 @@ AVAILABLE_CALCULATIONS = [
     ("annual_income", "הכנסה שנתית"),
     ("quarterly_value", "ערך רבעוני משוער"),
     ("cumulative_25", "תזרים מצטבר ל-25 שנה"),
+    ("cumulative_18", "תזרים מצטבר ל-18 שנה"),
     ("system_value", "שווי מערכת לאחר 25 שנה"),
     ("total_income", "סך הכנסה"),
     ("gross_annual_revenue", "הכנסה שנתית ברוטו"),
@@ -70,9 +72,11 @@ def build_metric_context(quote_data, pricing=None):
     total_price = _num(quote_data.get("total_price"))
     leasing_ratio = _assumption(quote_data, pricing, "leasing_payment_ratio", 0.25)
 
-    # 25-year customer share = annual revenue × 25 years × leasing share.
+    # Cumulative customer share = annual revenue × years × leasing share.
     # Flat, with no production degradation, per the agreed tariff model.
     cumulative_25 = round(annual_revenue * AMORTIZATION_YEARS * leasing_ratio)
+    # Match JavaScript Math.round so half-shekel values agree with the editor.
+    cumulative_18 = math.floor(annual_revenue * 18 * leasing_ratio + 0.5)
 
     stored_system_value = quote_data.get("system_value_after_25_years")
     system_value = (
@@ -90,6 +94,7 @@ def build_metric_context(quote_data, pricing=None):
         "monthly_income": annual_income / 12,
         "quarterly_income": annual_income / 4,
         "cumulative_25": cumulative_25,
+        "cumulative_18": cumulative_18,
         "system_value": system_value,
         "total_income": total_income,
         "quarterly_value": total_income / AMORTIZATION_YEARS / 4,
