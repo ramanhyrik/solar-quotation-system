@@ -73,6 +73,24 @@
                 </div>
                 <div class="form-grid" style="margin-top: 20px;">
                     <div>
+                        <label for="urbanPremiumTariffRate">תעריף אורבן פרימיום (₪/קוט״ש)</label>
+                        <input type="number" id="urbanPremiumTariffRate" step="0.0001" min="0" value="0.52" required>
+                        <small>0.52 = 52 אגורות לקוט״ש</small>
+                    </div>
+                    <div>
+                        <label for="urbanPremiumThresholdKw">הספק הזכאי לאורבן פרימיום (קילוואט)</label>
+                        <input type="number" id="urbanPremiumThresholdKw" step="0.01" min="0" value="22.5" required>
+                        <small>ההספק שמעל הגבול מחושב לפי 0.38 ₪/קוט״ש.</small>
+                    </div>
+                    <div>
+                        <label for="urbanPremiumPreviewSize">גודל מערכת לבדיקה (קילוואט)</label>
+                        <input type="number" id="urbanPremiumPreviewSize" step="0.01" min="0" value="60">
+                        <small>לבדיקת החישוב בלבד. לחצו על עדכן תמחור לשמירת התעריף והגבול.</small>
+                    </div>
+                </div>
+                <div id="urbanPremiumPreview" role="status" aria-live="polite" style="margin: 12px 0; color: #fff; line-height: 1.8;"></div>
+                <div class="form-grid" style="margin-top: 20px;">
+                    <div>
                         <label>Basic Assumptions</label>
                         <textarea id="basicAssumptionsDefault"></textarea>
                     </div>
@@ -264,6 +282,8 @@
 
             document.getElementById('productionPerKwp').value = pricing.production_per_kwp;
             document.getElementById('tariffRate').value = pricing.tariff_rate;
+            document.getElementById('urbanPremiumTariffRate').value = pricing.urban_premium_tariff_rate ?? 0.52;
+            document.getElementById('urbanPremiumThresholdKw').value = pricing.urban_premium_threshold_kw ?? 22.5;
             document.getElementById('treesMultiplier').value = pricing.trees_multiplier;
             updateIncomeCalculation(pricing);
             document.getElementById('basicAssumptionsDefault').value = pricing.basic_assumptions_default || '';
@@ -277,7 +297,8 @@
             document.getElementById('operatingCostBase').value = pricing.operating_cost_base || 0.005;
             document.getElementById('operatingCostIncrease').value = pricing.operating_cost_increase || 0.02;
             document.getElementById('roofAreaPerKw').value = pricing.roof_area_per_kw || 7.0;
-            document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio || 0.25;
+            document.getElementById('leasingPaymentRatio').value = pricing.leasing_payment_ratio ?? 0.25;
+            updateUrbanPremiumPreview();
 
             // Financial-metrics cube manager
             metricsCatalog = Array.isArray(pricing.metrics_catalog) ? pricing.metrics_catalog : [];
@@ -334,6 +355,30 @@
             }
         }
 
+        function updateUrbanPremiumPreview() {
+            const ids = ['urbanPremiumPreviewSize', 'productionPerKwp', 'urbanPremiumTariffRate', 'urbanPremiumThresholdKw', 'leasingPaymentRatio'];
+            const fields = ids.map((id) => document.getElementById(id));
+            const output = document.getElementById('urbanPremiumPreview');
+            if (fields.some((field) => !field.value.trim() || !field.checkValidity())) {
+                output.textContent = 'הזינו ערכים תקינים כדי לראות את החישוב.';
+                return;
+            }
+            const [size, production, rate, limit, share] = fields.map((field) => Number(field.value));
+            if ([size, production, rate, limit, share].some((value) => !Number.isFinite(value) || value < 0)) {
+                output.textContent = 'הזינו ערכים תקינים כדי לראות את החישוב.';
+                return;
+            }
+            const firstKw = Math.min(size, limit);
+            const remainingKw = Math.max(0, size - limit);
+            const gross = production * (firstKw * rate + remainingKw * 0.38);
+            const format = (value) => value.toLocaleString('he-IL', { maximumFractionDigits: 2 });
+            output.textContent = `אורבן פרימיום: (${format(firstKw)} × ${rate} + ${format(remainingKw)} × 0.38) × ${format(production)} = ₪${format(gross)} הכנסה שנתית ברוטו. חלק הלקוח: ₪${format(gross * share)} לשנה.`;
+        }
+
+        ['urbanPremiumPreviewSize', 'productionPerKwp', 'urbanPremiumTariffRate', 'urbanPremiumThresholdKw', 'leasingPaymentRatio'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', updateUrbanPremiumPreview);
+        });
+
         ['productionPerKwp', 'tariffRate', 'leasingPaymentRatio'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', () => updateIncomeCalculation());
@@ -346,6 +391,8 @@
             const formData = new FormData();
             formData.append('production_per_kwp', document.getElementById('productionPerKwp').value);
             formData.append('tariff_rate', document.getElementById('tariffRate').value);
+            formData.append('urban_premium_tariff_rate', document.getElementById('urbanPremiumTariffRate').value);
+            formData.append('urban_premium_threshold_kw', document.getElementById('urbanPremiumThresholdKw').value);
             formData.append('trees_multiplier', document.getElementById('treesMultiplier').value);
             formData.append('leasing_payment_ratio', document.getElementById('leasingPaymentRatio').value);
             formData.append('basic_assumptions_default', document.getElementById('basicAssumptionsDefault').value);

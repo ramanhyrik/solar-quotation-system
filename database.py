@@ -113,6 +113,8 @@ def init_database():
                 price_per_kwp NUMERIC DEFAULT 4300,
                 production_per_kwp NUMERIC DEFAULT 1360,
                 tariff_rate NUMERIC DEFAULT 0.48,
+                urban_premium_tariff_rate NUMERIC DEFAULT 0.52,
+                urban_premium_threshold_kw NUMERIC DEFAULT 22.5,
                 trees_multiplier NUMERIC DEFAULT 0.05,
                 vat_rate NUMERIC DEFAULT 0.17,
                 direction_south NUMERIC DEFAULT 1.0,

@@ -14,6 +14,7 @@ import os
 import shutil
 import traceback
 import re
+import math
 import io
 import glob
 from urllib.parse import quote as url_quote
@@ -28,6 +29,7 @@ from quote_defaults import (
     calculate_tiered_annual_revenue,
     get_effective_tariff_rate,
     get_first_tier_rate,
+    get_first_tier_limit,
     get_legacy_quote_text_defaults,
     render_quote_template,
 )
@@ -113,6 +115,8 @@ QUOTE_RENDER_PRICING_FIELDS = (
     "summary_default",
     "environmental_impact_default",
     "financial_metrics_config",
+    "urban_premium_tariff_rate",
+    "urban_premium_threshold_kw",
 )
 
 
@@ -168,12 +172,11 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
     operating_cost_base = float(pricing.get("operating_cost_base") or 0.005)
     operating_cost_increase = float(pricing.get("operating_cost_increase") or 0.02)
     urban_premium = bool(quote_data.get("urban_premium"))
-    tariff_rate = get_effective_tariff_rate(
-        quote_data.get("system_size"),
-        pricing.get("tariff_rate"),
+    # Urban Premium uses the administrator's rate and capacity limit.
+    first_tier_rate = get_first_tier_rate(
+        urban_premium, pricing.get("tariff_rate"), pricing.get("urban_premium_tariff_rate")
     )
-    # Tiered tariff: first 22.5 kW at the standard/premium rate, the rest at 0.38.
-    first_tier_rate = get_first_tier_rate(urban_premium, pricing.get("tariff_rate"))
+    first_tier_limit = get_first_tier_limit(urban_premium, pricing.get("urban_premium_threshold_kw"))
     # Derive the headline figures from the shared metric catalog so the text
     # sections always match the financial-metric cubes (PDF / editor / sign).
     metric_ctx = build_metric_context(quote_data, pricing)
@@ -197,13 +200,13 @@ def build_quote_render_context(quote_data: dict, pricing: dict) -> dict:
         "co2_saved": format_template_number(annual_production * 0.5),
         "total_cashflow_25": format_template_number(cashflow_25),
         "quarterly_value": format_template_number(quarterly_value),
-        "tariff_rate": format_template_number(tariff_rate, 2),
+        "tariff_rate": format_template_number(first_tier_rate, 4),
         # Backward-compatible: existing templates using {tariff_agorot} now show
-        # the first-tier rate (48, or 52 with Urban Premium).
-        "tariff_agorot": format_template_number(first_tier_rate * 100),
-        "tariff_first_agorot": format_template_number(first_tier_rate * 100),
+        # the configured first-tier rate.
+        "tariff_agorot": format_template_number(first_tier_rate * 100, 2),
+        "tariff_first_agorot": format_template_number(first_tier_rate * 100, 2),
         "tariff_second_agorot": format_template_number(LARGE_SYSTEM_TARIFF_RATE * 100),
-        "tariff_threshold_kw": format_template_number(LARGE_SYSTEM_THRESHOLD_KW, 1),
+        "tariff_threshold_kw": format_template_number(first_tier_limit, 2),
         "degradation_rate_percent": format_template_number(degradation_rate * 100, 1),
         "operating_cost_base_percent": format_template_number(operating_cost_base * 100, 1),
         "operating_cost_increase_percent": format_template_number(
@@ -407,6 +410,12 @@ def ensure_offer_image_column():
             )
             cursor.execute(
                 "ALTER TABLE quotes ADD COLUMN IF NOT EXISTS urban_premium BOOLEAN DEFAULT FALSE"
+            )
+            cursor.execute(
+                "ALTER TABLE pricing_parameters ADD COLUMN IF NOT EXISTS urban_premium_tariff_rate NUMERIC DEFAULT 0.52"
+            )
+            cursor.execute(
+                "ALTER TABLE pricing_parameters ADD COLUMN IF NOT EXISTS urban_premium_threshold_kw NUMERIC DEFAULT 22.5"
             )
             # Upgrade the stored single-rate tariff wording to the tiered wording
             # (idempotent: the LIKE stops matching once replaced). Preserves any
@@ -657,6 +666,8 @@ async def update_pricing(
     price_per_kwp: Optional[float] = Form(None),
     production_per_kwp: Optional[float] = Form(None),
     tariff_rate: Optional[float] = Form(None),
+    urban_premium_tariff_rate: Optional[float] = Form(None),
+    urban_premium_threshold_kw: Optional[float] = Form(None),
     trees_multiplier: Optional[float] = Form(None),
     vat_rate: Optional[float] = Form(None),
     direction_south: Optional[float] = Form(None),
@@ -679,6 +690,10 @@ async def update_pricing(
     """Update pricing and calculator parameters"""
     if not user:
         raise HTTPException(status_code=403, detail="Unauthorized")
+
+    for value in (urban_premium_tariff_rate, urban_premium_threshold_kw):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise HTTPException(status_code=422, detail="Urban Premium settings must be finite, non-negative numbers")
 
     with get_db() as conn:
         cursor = get_cursor(conn)
@@ -711,6 +726,14 @@ async def update_pricing(
                 else production_per_kwp
             ),
             "tariff_rate": current.get("tariff_rate") if tariff_rate is None else tariff_rate,
+            "urban_premium_tariff_rate": (
+                current.get("urban_premium_tariff_rate", 0.52)
+                if urban_premium_tariff_rate is None else urban_premium_tariff_rate
+            ),
+            "urban_premium_threshold_kw": (
+                current.get("urban_premium_threshold_kw", 22.5)
+                if urban_premium_threshold_kw is None else urban_premium_threshold_kw
+            ),
             "trees_multiplier": (
                 current.get("trees_multiplier")
                 if trees_multiplier is None
@@ -802,6 +825,8 @@ async def update_pricing(
             price_per_kwp = %s,
             production_per_kwp = %s,
             tariff_rate = %s,
+            urban_premium_tariff_rate = %s,
+            urban_premium_threshold_kw = %s,
             trees_multiplier = %s,
             vat_rate = %s,
             direction_south = %s,
@@ -824,6 +849,8 @@ async def update_pricing(
             merged["price_per_kwp"],
             merged["production_per_kwp"],
             merged["tariff_rate"],
+            merged["urban_premium_tariff_rate"],
+            merged["urban_premium_threshold_kw"],
             merged["trees_multiplier"],
             merged["vat_rate"],
             merged["direction_south"],
@@ -858,11 +885,15 @@ async def calculate_quote(
 
     total_price = system_size * params["price_per_kwp"]
     annual_production = system_size * params["production_per_kwp"]
-    # Tiered tariff: first 22.5 kW at the standard/premium rate, the rest at 0.38.
+    # Standard or configured premium first tier; remaining capacity uses 0.38.
     annual_revenue = calculate_tiered_annual_revenue(
-        system_size, params["production_per_kwp"], urban_premium, params["tariff_rate"]
+        system_size, params["production_per_kwp"], urban_premium, params["tariff_rate"],
+        params.get("urban_premium_tariff_rate"), params.get("urban_premium_threshold_kw")
     )
-    tariff_rate = get_effective_tariff_rate(system_size, params["tariff_rate"])
+    tariff_rate = get_effective_tariff_rate(
+        system_size, params["tariff_rate"], urban_premium,
+        params.get("urban_premium_tariff_rate"), params.get("urban_premium_threshold_kw")
+    )
     payback_period = round(total_price / annual_revenue, 2) if annual_revenue > 0 else 0
     trees = int(annual_production * params["trees_multiplier"])
     co2_saved = int(annual_production * 0.5)

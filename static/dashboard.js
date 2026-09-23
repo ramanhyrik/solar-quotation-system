@@ -90,6 +90,16 @@ function getDashboardPricingSettings() {
     return window.dashboardPricingSettings || {};
 }
 
+function refreshUrbanPremiumLabel() {
+    const label = document.getElementById('urbanPremiumLabel');
+    if (!label) return;
+    const pricing = getDashboardPricingSettings();
+    const rate = Number(pricing.urban_premium_tariff_rate ?? 0.52);
+    const limit = Number(pricing.urban_premium_threshold_kw ?? 22.5);
+    const agorot = Number((rate * 100).toFixed(2));
+    label.textContent = `אורבן פרימיום (Urban Premium) — ${limit} קילוואט ראשונים בתעריף ${agorot} אג׳`;
+}
+
 function parseNumericInput(value) {
     const parsed = parseFloat(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -126,10 +136,10 @@ function buildQuoteTemplateContext() {
     const operatingCostIncrease = Number(pricing.operating_cost_increase ?? 0.02);
     const configuredTariff = Number(pricing.tariff_rate ?? 0.48);
     const urbanPremium = !!document.getElementById('urbanPremium')?.checked;
-    // Tiered tariff: first 22.5 kW at the standard/premium rate, rest at 0.38.
-    const firstTierRate = urbanPremium ? 0.52 : configuredTariff;
+    // Use the configured premium rate/limit when selected; the remainder is 0.38.
+    const firstTierRate = urbanPremium ? Number(pricing.urban_premium_tariff_rate ?? 0.52) : configuredTariff;
     const secondTierRate = 0.38;
-    const thresholdKw = 22.5;
+    const thresholdKw = urbanPremium ? Number(pricing.urban_premium_threshold_kw ?? 22.5) : 22.5;
 
     return {
         system_size: systemSize !== null ? systemSize.toFixed(1).replace(/\.0$/, '') : '',
@@ -145,11 +155,11 @@ function buildQuoteTemplateContext() {
         co2_saved: formatInteger(annualProduction * 0.5),
         total_cashflow_25: metricDisplayForCalc('cumulative_25'),
         quarterly_value: metricDisplayForCalc('quarterly_value'),
-        tariff_rate: firstTierRate.toFixed(2),
-        tariff_agorot: formatInteger(firstTierRate * 100),
-        tariff_first_agorot: formatInteger(firstTierRate * 100),
+        tariff_rate: String(Number(firstTierRate.toFixed(4))),
+        tariff_agorot: String(Number((firstTierRate * 100).toFixed(2))),
+        tariff_first_agorot: String(Number((firstTierRate * 100).toFixed(2))),
         tariff_second_agorot: formatInteger(secondTierRate * 100),
-        tariff_threshold_kw: thresholdKw.toFixed(1).replace(/\.0$/, ''),
+        tariff_threshold_kw: String(Number(thresholdKw.toFixed(2))),
         degradation_rate_percent: (degradationRate * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_base_percent: (operatingCostBase * 100).toFixed(1).replace(/\.0$/, ''),
         operating_cost_increase_percent: (operatingCostIncrease * 100).toFixed(1).replace(/\.0$/, '')

@@ -782,7 +782,7 @@
                 </div>
                 <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; color: #fff; cursor: pointer;">
                     <input type="checkbox" id="urbanPremium" style="width: 18px; height: 18px; cursor: pointer;">
-                    <span>אורבן פרימיום (Urban Premium) — 22.5 קילוואט ראשונים בתעריף 52 אג׳ במקום 48 אג׳</span>
+                    <span id="urbanPremiumLabel">אורבן פרימיום (Urban Premium)</span>
                 </label>
 
                 <h3>עריכת הצעה</h3>
@@ -1011,6 +1011,7 @@
                 const data = await response.json();
                 calculatorSettings = data || {};
                 window.dashboardPricingSettings = calculatorSettings;
+                refreshUrbanPremiumLabel();
                 calculatorSettingsLoaded = true;
                 if (typeof initializeQuoteTextDefaults === 'function') {
                     initializeQuoteTextDefaults();

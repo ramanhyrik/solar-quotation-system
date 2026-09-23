@@ -64,14 +64,23 @@ LEGACY_QUOTE_TEXT_DEFAULTS = {
 PLACEHOLDER_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
-def get_first_tier_rate(urban_premium=False, configured_rate=STANDARD_TARIFF_RATE):
-    """Tariff for the first 22.5 kW. Urban Premium raises it to 0.52."""
+def get_first_tier_rate(urban_premium=False, configured_rate=STANDARD_TARIFF_RATE,
+                        premium_rate=URBAN_PREMIUM_TARIFF_RATE):
+    """Tariff for the first tier, using the administrator's premium setting."""
     if urban_premium:
-        return URBAN_PREMIUM_TARIFF_RATE
-    return float(configured_rate or STANDARD_TARIFF_RATE)
+        return float(URBAN_PREMIUM_TARIFF_RATE if premium_rate is None else premium_rate)
+    return float(STANDARD_TARIFF_RATE if configured_rate is None else configured_rate)
 
 
-def get_effective_tariff_rate(system_size, configured_rate=STANDARD_TARIFF_RATE):
+def get_first_tier_limit(urban_premium=False, premium_limit=LARGE_SYSTEM_THRESHOLD_KW):
+    if urban_premium and premium_limit is not None:
+        return float(premium_limit)
+    return LARGE_SYSTEM_THRESHOLD_KW
+
+
+def get_effective_tariff_rate(system_size, configured_rate=STANDARD_TARIFF_RATE,
+                              urban_premium=False, premium_rate=URBAN_PREMIUM_TARIFF_RATE,
+                              premium_limit=LARGE_SYSTEM_THRESHOLD_KW):
     """Blended ₪/kWh tariff for a system (kept for backward compatibility).
 
     The real revenue is tiered (see :func:`calculate_tiered_annual_revenue`);
@@ -79,11 +88,12 @@ def get_effective_tariff_rate(system_size, configured_rate=STANDARD_TARIFF_RATE)
     still get a reasonable number.
     """
     size = float(system_size or 0)
+    first_rate = get_first_tier_rate(urban_premium, configured_rate, premium_rate)
+    threshold = get_first_tier_limit(urban_premium, premium_limit)
     if size <= 0:
-        return float(configured_rate or STANDARD_TARIFF_RATE)
-    first_kw = min(size, LARGE_SYSTEM_THRESHOLD_KW)
-    second_kw = max(0.0, size - LARGE_SYSTEM_THRESHOLD_KW)
-    first_rate = float(configured_rate or STANDARD_TARIFF_RATE)
+        return first_rate
+    first_kw = min(size, threshold)
+    second_kw = max(0.0, size - threshold)
     blended = (first_kw * first_rate + second_kw * LARGE_SYSTEM_TARIFF_RATE) / size
     return blended
 
@@ -93,21 +103,24 @@ def calculate_tiered_annual_revenue(
     production_per_kwp,
     urban_premium=False,
     configured_rate=STANDARD_TARIFF_RATE,
+    premium_rate=URBAN_PREMIUM_TARIFF_RATE,
+    premium_limit=LARGE_SYSTEM_THRESHOLD_KW,
 ):
-    """Annual revenue with a tariff split at the 22.5 kW threshold.
+    """Annual revenue split at the standard or configured premium capacity limit.
 
-    * First 22.5 kW  -> 0.48 ₪/kWh (0.52 with Urban Premium)
-    * Above 22.5 kW  -> 0.38 ₪/kWh (always)
+    * First tier -> configured standard or Urban Premium rate and capacity limit
+    * Above the first-tier limit -> 0.38 ₪/kWh
 
-    Production is split proportionally by capacity, e.g. a 25 kW system bills
-    the first 22.5 kW at the first-tier rate and the remaining 2.5 kW at 0.38.
+    Production is split proportionally by capacity. The standard limit and
+    default premium limit are 22.5 kW.
     """
     size = float(system_size or 0)
     production_per_kw = float(production_per_kwp or 0)
-    first_rate = get_first_tier_rate(urban_premium, configured_rate)
+    first_rate = get_first_tier_rate(urban_premium, configured_rate, premium_rate)
+    threshold = get_first_tier_limit(urban_premium, premium_limit)
 
-    first_kw = min(size, LARGE_SYSTEM_THRESHOLD_KW)
-    second_kw = max(0.0, size - LARGE_SYSTEM_THRESHOLD_KW)
+    first_kw = min(size, threshold)
+    second_kw = max(0.0, size - threshold)
 
     first_production = first_kw * production_per_kw
     second_production = second_kw * production_per_kw
